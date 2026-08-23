@@ -1,5 +1,6 @@
 package com.infinitypickaxes.core.enchant;
 
+import com.infinitypickaxes.utils.TextUtil;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 
