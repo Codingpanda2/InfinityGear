@@ -5,6 +5,11 @@
 
 prefix: "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> "
 
+# Real-time Action Bar sent on every block mined
+mining-actionbar:
+  enabled: true
+  message: "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Nv.%level%<dark_gray>)"
+
 messages:
   no-permission: "<red>No tienes permisos suficientes para ejecutar este comando.</red>"
   player-only: "<red>Este comando solo puede ser ejecutado por jugadores en el servidor.</red>"

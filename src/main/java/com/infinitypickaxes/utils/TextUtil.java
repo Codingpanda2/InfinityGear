@@ -3,17 +3,20 @@ package com.infinitypickaxes.utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.ChatColor;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class TextUtil {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
     private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
     private static final TreeMap<Integer, String> ROMAN_NUMERALS = new TreeMap<>();
+    private static final Pattern CENTER_PATTERN = Pattern.compile("<center>(.*?)</center>", Pattern.CASE_INSENSITIVE);
+    private static final int CHAT_CENTER_PX = 154;
 
     static {
         ROMAN_NUMERALS.put(1000, "M");
@@ -34,13 +37,19 @@ public final class TextUtil {
     private TextUtil() {}
 
     /**
-     * Parses a string containing MiniMessage formatting or legacy '&' codes into a rich Adventure Component.
+     * Parses a string containing MiniMessage formatting, legacy '&' codes, and <center> tags into a rich Adventure Component.
      */
     public static Component parse(String text) {
         if (text == null || text.isEmpty()) {
             return Component.empty();
         }
-        // If string uses legacy & color codes, convert to MiniMessage friendly or parse with legacy
+
+        // Process <center> tags with exact Minecraft font width padding
+        if (text.toLowerCase().contains("<center>")) {
+            text = processCentering(text);
+        }
+
+        // Convert legacy color codes if present
         if (text.contains("&")) {
             text = text.replace("&0", "<black>")
                        .replace("&1", "<dark_blue>")
@@ -65,6 +74,7 @@ public final class TextUtil {
                        .replace("&k", "<obf>")
                        .replace("&r", "<reset>");
         }
+
         try {
             return MINI_MESSAGE.deserialize(text);
         } catch (Exception e) {
@@ -82,6 +92,55 @@ public final class TextUtil {
             result.add(parse(line));
         }
         return result;
+    }
+
+    /**
+     * Replaces <center>content</center> with space-padded text matching the Minecraft chat window center.
+     */
+    public static String processCentering(String text) {
+        Matcher matcher = CENTER_PATTERN.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String content = matcher.group(1);
+            String padded = center(content);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(padded));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    public static String center(String text) {
+        if (text == null || text.isEmpty()) return "";
+        // Strip XML / MiniMessage tags and legacy codes to calculate actual character lengths
+        String stripped = text.replaceAll("<[^>]*>", "").replaceAll("&[0-9a-fk-orA-FK-OR]", "");
+
+        int messagePxSize = 0;
+        for (char c : stripped.toCharArray()) {
+            messagePxSize += getCharWidth(c);
+        }
+
+        int halvedMessageSize = messagePxSize / 2;
+        int toCompensate = CHAT_CENTER_PX - halvedMessageSize;
+        int spaceLength = 4; // Standard space pixel length in Minecraft font
+        int compensated = 0;
+        StringBuilder padding = new StringBuilder();
+        while (compensated < toCompensate) {
+            padding.append(" ");
+            compensated += spaceLength;
+        }
+
+        return padding.toString() + text;
+    }
+
+    private static int getCharWidth(char c) {
+        return switch (c) {
+            case 'i', '!', '|', ':', ';', '.', ',' -> 2;
+            case 'l', '\'', '`' -> 3;
+            case 't', 'I', '[', ']', ' ' -> 4;
+            case 'k', 'f', '(', ')', '{', '}', '<', '>' -> 5;
+            case '@', '~' -> 7;
+            default -> 6;
+        };
     }
 
     /**

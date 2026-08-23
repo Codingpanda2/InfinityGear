@@ -58,7 +58,10 @@ public class BlockBreakListener implements Listener {
         // 5. Add XP & update pickaxe progression
         plugin.getLevelManager().addXp(pickaxe, totalXp, player);
 
-        // 6. Dispatch block break to active perks (e.g. AutoSmelt, BlastRadius, FortuneFrenzy)
+        // 6. Send real-time Action Bar with progress & XP
+        plugin.getMessageManager().sendMiningActionbar(player, pickaxe, totalXp);
+
+        // 7. Dispatch block break to active perks (e.g. AutoSmelt, BlastRadius, FortuneFrenzy)
         plugin.getPerkManager().dispatchBlockBreak(event, pickaxe, player);
     }
 }

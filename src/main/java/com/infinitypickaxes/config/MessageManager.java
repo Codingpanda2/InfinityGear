@@ -2,6 +2,7 @@ package com.infinitypickaxes.config;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.utils.ProgressBarUtil;
 import com.infinitypickaxes.utils.TextUtil;
 import net.kyori.adventure.title.Title;
 import org.bukkit.command.CommandSender;
@@ -36,6 +37,40 @@ public class MessageManager {
     public void sendRawMessage(CommandSender sender, String rawMessage, String... placeholders) {
         if (sender == null || rawMessage == null) return;
         sender.sendMessage(TextUtil.parse(applyPlaceholders(rawMessage, placeholders)));
+    }
+
+    public void sendMiningActionbar(Player player, InfinityPickaxe pickaxe, double gainedXp) {
+        if (player == null || pickaxe == null) return;
+        FileConfiguration messagesConfig = plugin.getConfigManager().getMessagesConfig();
+        FileConfiguration config = plugin.getConfigManager().getConfig();
+
+        if (!messagesConfig.getBoolean("mining-actionbar.enabled", true)) {
+            return;
+        }
+
+        String template = messagesConfig.getString("mining-actionbar.message",
+                "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Nv.%level%<dark_gray>)");
+
+        double reqXp = plugin.getLevelManager().getRequiredXp(pickaxe.getLevel());
+        String bar = ProgressBarUtil.getProgressBar(
+                pickaxe.getXp(),
+                reqXp,
+                config.getInt("progress-bar.total-bars", 10),
+                config.getString("progress-bar.completed-symbol", "■"),
+                config.getString("progress-bar.uncompleted-symbol", "□"),
+                config.getString("progress-bar.completed-color", "<#00FF88>"),
+                config.getString("progress-bar.uncompleted-color", "<#555555>")
+        );
+
+        String formatted = template
+                .replace("%gained_xp%", String.format("%.0f", gainedXp))
+                .replace("%current_xp%", String.format("%.0f", pickaxe.getXp()))
+                .replace("%required_xp%", String.format("%.0f", reqXp))
+                .replace("%xp_bar%", bar)
+                .replace("%level%", String.valueOf(pickaxe.getLevel()))
+                .replace("%blocks_mined%", String.valueOf(pickaxe.getBlocksMined()));
+
+        player.sendActionBar(TextUtil.parse(formatted));
     }
 
     public void sendLevelUp(Player player, InfinityPickaxe pickaxe, int oldLevel, int newLevel) {
