@@ -74,6 +74,8 @@ progress-bar:
 
 # Pickaxe Visual Lore Template (Fully customizable with MiniMessage & Hex Colors)
 pickaxe-lore:
+  # Set to true if you want to override the item name. Default is false (keeps default/vanilla name).
+  custom-display-name: false
   display-name: "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient> <gray>[<yellow>Nv.%level%<gray>]"
   lore:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"

@@ -163,11 +163,15 @@ public class PickaxeManager {
             }
         }
 
-        // 3. Display Name
-        String nameTemplate = config.getString("pickaxe-lore.display-name", "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient> <gray>[<yellow>Nv.%level%<gray>]");
-        nameTemplate = nameTemplate.replace("%level%", String.valueOf(pickaxe.getLevel()))
-                                   .replace("%player%", pickaxe.getOwnerName());
-        meta.displayName(TextUtil.parse(nameTemplate));
+        // 3. Display Name (Only modified if custom-display-name is enabled)
+        if (config.getBoolean("pickaxe-lore.custom-display-name", false)) {
+            String nameTemplate = config.getString("pickaxe-lore.display-name", "");
+            if (!nameTemplate.isEmpty()) {
+                nameTemplate = nameTemplate.replace("%level%", String.valueOf(pickaxe.getLevel()))
+                                           .replace("%player%", pickaxe.getOwnerName());
+                meta.displayName(TextUtil.parse(nameTemplate));
+            }
+        }
 
         // 4. Progress bar calculation
         double reqXp = plugin.getLevelManager().getRequiredXp(pickaxe.getLevel());
