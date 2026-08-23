@@ -25,11 +25,11 @@ messages:
 
   # Level Up Notifications
   level-up-chat:
-    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</dark_gray>"
     - "<center><gradient:#00FF88:#00E5FF><b>¡SUBIDA DE NIVEL DE PICO!</b></gradient></center>"
     - "<center><gray>Tu pico ha alcanzado el <gold><b>Nivel %level%</b></gold></center>"
     - "%unlocks_summary%"
-    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</dark_gray>"
   level-up-title: "<gradient:#00FF88:#00E5FF><b>¡NIVEL %level%!</b></gradient>"
   level-up-subtitle: "<gray>¡Nuevos sockets y habilidades desbloqueados!</gray>"
   level-up-actionbar: "<green>+1 Nivel de Pico <dark_gray>(<yellow>Nv.%level%<dark_gray>)</green>"
