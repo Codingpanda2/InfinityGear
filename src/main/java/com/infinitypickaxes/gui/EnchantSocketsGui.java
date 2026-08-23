@@ -18,6 +18,13 @@ public class EnchantSocketsGui extends CustomGui {
 
     private final FileConfiguration menuConfig;
     private final Map<Integer, EnchantSocket> slotToSocket = new HashMap<>();
+    private int currentPage = 0;
+    private static final int[] INNER_SLOTS = {
+            10, 11, 12, 13, 14, 15, 16,
+            19, 20, 21, 22, 23, 24, 25,
+            28, 29, 30, 31, 32, 33, 34,
+            37, 38, 39, 41, 42, 43
+    };
 
     public EnchantSocketsGui(InfinityPickaxes plugin, Player player, InfinityPickaxe pickaxe) {
         super(
@@ -25,7 +32,7 @@ public class EnchantSocketsGui extends CustomGui {
                 player,
                 pickaxe,
                 TextUtil.parse(plugin.getConfigManager().getEnchantsMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Encantamientos")),
-                plugin.getConfigManager().getEnchantsMenuConfig().getInt("size", 45)
+                plugin.getConfigManager().getEnchantsMenuConfig().getInt("size", 54)
         );
         this.menuConfig = plugin.getConfigManager().getEnchantsMenuConfig();
     }
@@ -54,7 +61,8 @@ public class EnchantSocketsGui extends CustomGui {
                 .build());
 
         // 3. Back Button
-        int backSlot = menuConfig.getInt("items.back-button.slot", 40);
+        int backSlot = menuConfig.getInt("items.back-button.slot", 49);
+        if (backSlot >= inventory.getSize()) backSlot = 40;
         Material backMat = Material.matchMaterial(menuConfig.getString("items.back-button.material", "ARROW"));
         String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Volver al Menú Principal</b></yellow>");
         List<String> backLore = menuConfig.getStringList("items.back-button.lore");
@@ -63,13 +71,47 @@ public class EnchantSocketsGui extends CustomGui {
                 .lore(backLore)
                 .build());
 
-        // 4. Render Enchantment Sockets
-        int fallbackSlot = 10;
-        for (EnchantSocket socket : plugin.getEnchantManager().getAllSockets()) {
-            if (!socket.isEnabled()) continue;
+        // 4. Collect all enabled sockets
+        List<EnchantSocket> allSockets = new ArrayList<>();
+        for (EnchantSocket s : plugin.getEnchantManager().getAllSockets()) {
+            if (s.isEnabled()) {
+                allSockets.add(s);
+            }
+        }
 
-            int targetSlot = socket.getSlot() >= 0 ? socket.getSlot() : fallbackSlot++;
-            if (targetSlot >= inventory.getSize()) continue;
+        int pageSize = INNER_SLOTS.length;
+        int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / pageSize));
+        if (currentPage >= totalPages) currentPage = totalPages - 1;
+        if (currentPage < 0) currentPage = 0;
+
+        // 5. Pagination Buttons
+        int prevSlot = 45;
+        int nextSlot = 53;
+        if (currentPage > 0) {
+            inventory.setItem(prevSlot, new ItemBuilder(Material.SPECTRAL_ARROW)
+                    .name("<yellow><b>« Página Anterior (" + currentPage + "/" + totalPages + ")</b></yellow>")
+                    .build());
+        }
+        if (currentPage < totalPages - 1) {
+            inventory.setItem(nextSlot, new ItemBuilder(Material.SPECTRAL_ARROW)
+                    .name("<yellow><b>Página Siguiente (" + (currentPage + 2) + "/" + totalPages + ") »</b></yellow>")
+                    .build());
+        }
+
+        // 6. Populate Sockets on Current Page
+        int startIndex = currentPage * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, allSockets.size());
+
+        for (int i = startIndex; i < endIndex; i++) {
+            EnchantSocket socket = allSockets.get(i);
+            int targetSlot;
+
+            // If on first page and socket has a custom valid slot configured, try to use it
+            if (currentPage == 0 && socket.getSlot() >= 0 && socket.getSlot() < inventory.getSize() && !slotToSocket.containsKey(socket.getSlot())) {
+                targetSlot = socket.getSlot();
+            } else {
+                targetSlot = INNER_SLOTS[i - startIndex];
+            }
 
             slotToSocket.put(targetSlot, socket);
             inventory.setItem(targetSlot, buildSocketItem(socket));
@@ -145,10 +187,30 @@ public class EnchantSocketsGui extends CustomGui {
         event.setCancelled(true);
         int slot = event.getRawSlot();
 
-        int backSlot = menuConfig.getInt("items.back-button.slot", 40);
+        int backSlot = menuConfig.getInt("items.back-button.slot", 49);
+        if (backSlot >= inventory.getSize()) backSlot = 40;
+
         if (slot == backSlot) {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
             new MainPickaxeGui(plugin, player, pickaxe).open();
+            return;
+        }
+
+        // Previous Page
+        if (slot == 45 && currentPage > 0) {
+            currentPage--;
+            player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.2f);
+            setupItems();
+            return;
+        }
+
+        // Next Page
+        List<EnchantSocket> allSockets = new ArrayList<>(plugin.getEnchantManager().getAllSockets());
+        int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / INNER_SLOTS.length));
+        if (slot == 53 && currentPage < totalPages - 1) {
+            currentPage++;
+            player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.2f);
+            setupItems();
             return;
         }
 
@@ -158,15 +220,10 @@ public class EnchantSocketsGui extends CustomGui {
             if (cursorItem != null && !cursorItem.getType().isAir()) {
                 boolean success = plugin.getEnchantManager().handleSocketUpgrade(player, pickaxe, socket, cursorItem);
                 if (success) {
-                    // Update cursor item reference in event
                     event.getView().setCursor(cursorItem);
-                    // Refresh GUI
                     setupItems();
                 }
             } else {
-                // If cursor is empty, inform the player
-                int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
-                int reqBookLvl = (currentLvl == 0) ? 1 : currentLvl;
                 plugin.getMessageManager().sendMessage(player, "messages.enchant-no-book-in-hand");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
             }

@@ -3,7 +3,7 @@
 # ==============================================================================
 
 title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Encantamientos"
-size: 45
+size: 54
 
 fill-item:
   material: BLACK_STAINED_GLASS_PANE
@@ -61,7 +61,7 @@ items:
 
   # Back Button to Main Menu
   back-button:
-    slot: 40
+    slot: 49
     material: ARROW
     name: "<yellow><b>Volver al Menú Principal</b></yellow>"
     lore:

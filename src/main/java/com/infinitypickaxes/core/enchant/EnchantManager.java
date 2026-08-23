@@ -89,7 +89,89 @@ public class EnchantManager {
             }
         }
 
-        plugin.getLogger().info("Cargados " + socketsById.size() + " sockets de encantamientos.");
+        // 2. Discover and dynamically register any compatible EcoEnchants
+        discoverAndRegisterEcoEnchants();
+
+        plugin.getLogger().info("Cargados " + socketsById.size() + " sockets de encantamientos compatibles.");
+    }
+
+    public void discoverAndRegisterEcoEnchants() {
+        FileConfiguration config = plugin.getConfigManager().getConfig();
+        if (!config.getBoolean("settings.auto-register-ecoenchants", true)) {
+            return;
+        }
+
+        List<Enchantment> discovered = ecoHook.discoverPickaxeEnchants();
+        int added = 0;
+
+        for (Enchantment ench : discovered) {
+            if (ench == null || ench.getKey() == null) continue;
+            String keyStr = ench.getKey().toString().toLowerCase();
+            String id = ench.getKey().getKey().toLowerCase();
+
+            if (socketsByKey.containsKey(keyStr) || socketsById.containsKey(id)) {
+                continue;
+            }
+
+            // Derive display name from Paper Component if available or format ID
+            String displayName;
+            try {
+                net.kyori.adventure.text.Component comp = ench.displayName(1);
+                displayName = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp);
+                displayName = displayName.replace(" I", "").replace(" 1", "");
+            } catch (Throwable t) {
+                displayName = "<#00E5FF><b>" + capitalize(id.replace("_", " ")) + "</b></#00E5FF>";
+            }
+
+            int maxLevel = Math.max(1, ench.getMaxLevel());
+            int unlockLevel = 10;
+            if (maxLevel == 1) unlockLevel = 15;
+            else if (maxLevel >= 5) unlockLevel = 25;
+
+            List<String> desc = new ArrayList<>();
+            desc.add("<gray>Encantamiento detectado de EcoEnchants.");
+
+            NavigableMap<Integer, Integer> scaling = new TreeMap<>();
+            scaling.put(unlockLevel, 1);
+            if (maxLevel > 1) {
+                scaling.put(50, Math.max(2, maxLevel / 2));
+                scaling.put(75, maxLevel);
+            }
+
+            EnchantSocket socket = new EnchantSocket(
+                    id,
+                    keyStr,
+                    ench.getKey(),
+                    displayName,
+                    Material.ENCHANTED_BOOK,
+                    -1,
+                    true,
+                    unlockLevel,
+                    maxLevel,
+                    scaling,
+                    desc,
+                    null
+            );
+
+            socketsById.put(id, socket);
+            socketsByKey.put(keyStr, socket);
+            added++;
+        }
+
+        if (added > 0) {
+            plugin.getLogger().info("Se detectaron y agregaron " + added + " encantamientos de EcoEnchants al menú dinámico.");
+        }
+    }
+
+    private String capitalize(String text) {
+        if (text == null || text.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String part : text.split(" ")) {
+            if (!part.isEmpty()) {
+                sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1).toLowerCase()).append(" ");
+            }
+        }
+        return sb.toString().trim();
     }
 
     public EnchantSocket getSocket(String id) {
