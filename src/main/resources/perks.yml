@@ -1,0 +1,67 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - PERKS CONFIGURATION
+# ==============================================================================
+
+# Perk slot unlock milestones (Pickaxe Level -> Unlocked Slots)
+slots-milestones:
+  10: 1
+  25: 2
+  50: 3
+  75: 4
+  100: 5
+
+perks:
+  haste_surge:
+    display-name: "<#FFD700><b>Furia de Prisa (Haste)</b></#FFD700>"
+    icon: GOLDEN_PICKAXE
+    slot: 11
+    enabled: true
+    required-level: 10
+    description:
+      - "<gray>Otorga el efecto de <yellow>Prisa Minera II</yellow> permanente"
+      - "<gray>mientras sostienes este pico en la mano principal."
+    amplifier: 1
+
+  autosmelt:
+    display-name: "<#FF4500><b>Fundición Instantánea</b></#FF4500>"
+    icon: LAVA_BUCKET
+    slot: 12
+    enabled: true
+    required-level: 25
+    description:
+      - "<gray>Convierte automáticamente los minerales de hierro,"
+      - "<gray>oro, cobre y comida en sus lingotes/versiones fundidas."
+
+  blast_radius:
+    display-name: "<#DC143C><b>Onda Expansiva (3x3)</b></#DC143C>"
+    icon: TNT
+    slot: 13
+    enabled: true
+    required-level: 50
+    description:
+      - "<gray>Probabilidad de detonar y minar un área cúbica de <red>3x3</red>"
+      - "<gray>alrededor del bloque minado."
+    chance: 15.0 # 15% chance per block
+
+  fortune_frenzy:
+    display-name: "<#00FA9A><b>Frenesí de Fortuna</b></#00FA9A>"
+    icon: EMERALD
+    slot: 14
+    enabled: true
+    required-level: 75
+    description:
+      - "<gray>Otorga un multiplicador aleatorio de <green>x2 a x4</green>"
+      - "<gray>en todos los minerales minados."
+    chance: 25.0
+    multiplier: 3
+
+  void_siphon:
+    display-name: "<gradient:#9400D3:#4B0082><b>Sifón del Vacío</b></gradient>"
+    icon: END_CRYSTAL
+    slot: 15
+    enabled: true
+    required-level: 100
+    description:
+      - "<gray>El poder supremo: Multiplica la ganancia de experiencia"
+      - "<gray>y duplica la probabilidad de todos los demás perks."
+    xp-multiplier: 2.0

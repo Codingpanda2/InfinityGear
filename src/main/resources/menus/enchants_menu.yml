@@ -1,0 +1,68 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - ENCHANTS & SOCKETS MENU GUI
+# ==============================================================================
+
+title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Encantamientos"
+size: 45
+
+fill-item:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+# Format for each enchantment item displayed in the menu
+enchant-format:
+  unlocked-name: "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]"
+  locked-name: "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Bloqueado)</red>"
+
+  lore-unlocked:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "%enchant_description%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<gray>Nivel Actual: <yellow>%current_level%</yellow><gray>/<gold>%max_level%</gold>"
+    - "<gray>Límite por Nivel de Pico: <aqua>Nv. %current_max_for_pickaxe%</aqua>"
+    - ""
+    - "<white><b>Requisito de Mejora:</b></white>"
+    - "<yellow>• Libro de %enchant_raw_name% <gold>Nv. %required_book_level%</gold></yellow>"
+    - ""
+    - "<green>▶ Arrastra y suelta el libro aquí o</green>"
+    - "<green>  haz click teniendo el libro en tu cursor.</green>"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+  lore-maxed:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "%enchant_description%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<gold><b>¡NIVEL MÁXIMO ALCANZADO!</b></gold>"
+    - "<gray>Nivel Actual: <green>%current_level%</green><gray>/<gold>%max_level%</gold>"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+  lore-locked:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "%enchant_description%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<red><b>SOCKET BLOQUEADO</b></red>"
+    - "<gray>Requiere que tu pico sea <yellow>Nivel %unlock_level%</yellow>."
+    - "<gray>Nivel actual de tu pico: <aqua>%pickaxe_level%</aqua>"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+items:
+  # Information Guide
+  info-book:
+    slot: 4
+    material: KNOWLEDGE_BOOK
+    name: "<#00FF88><b>¿Cómo Mejorar Sockets?</b></#00FF88>"
+    lore:
+      - "<gray>Para subir el nivel de un encantamiento:"
+      - "<white>1.</white> <gray>Consigue un libro encantado del <yellow>mismo nivel</yellow>"
+      - "   <gray>que tiene tu pico actualmente."
+      - "<white>2.</white> <gray>Haz click en el socket o arrastra el libro"
+      - "   <gray>directamente sobre el slot deseado."
+      - "<white>3.</white> <gray>¡El libro se consumirá y el pico mejorará!"
+
+  # Back Button to Main Menu
+  back-button:
+    slot: 40
+    material: ARROW
+    name: "<yellow><b>Volver al Menú Principal</b></yellow>"
+    lore:
+      - "<gray>Haz click para regresar."

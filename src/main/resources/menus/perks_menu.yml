@@ -1,0 +1,60 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - PERKS MENU GUI
+# ==============================================================================
+
+title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Perks & Habilidades"
+size: 36
+
+fill-item:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+perk-format:
+  active-name: "%perk_display_name% <green>(Equipado)</green>"
+  inactive-name: "%perk_display_name% <yellow>(Disponible)</yellow>"
+  locked-name: "<dark_gray>🔒</dark_gray> %perk_display_name% <red>(Bloqueado)</red>"
+
+  lore-active:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "%perk_description%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<green><b>ESTADO: ACTIVO / EQUIPADO</b></green>"
+    - "<gray>Haz click para desequipar este perk."
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+  lore-inactive:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "%perk_description%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<yellow><b>ESTADO: DISPONIBLE</b></yellow>"
+    - "<gray>Haz click para equipar este perk."
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+  lore-locked:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "%perk_description%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<red><b>PERK BLOQUEADO</b></red>"
+    - "<gray>Requiere que tu pico sea <yellow>Nivel %required_level%</yellow>."
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+items:
+  info-item:
+    slot: 4
+    material: NETHER_STAR
+    name: "<#FFA500><b>Ranuras de Habilidades (Perks)</b></#FFA500>"
+    lore:
+      - "<gray>Alcanza niveles mayores con tu pico"
+      - "<gray>para desbloquear ranuras de perks:"
+      - "<white>•</white> <gray>Nv. 10: <yellow>1 Ranura</yellow>"
+      - "<white>•</white> <gray>Nv. 25: <yellow>2 Ranuras</yellow>"
+      - "<white>•</white> <gray>Nv. 50: <yellow>3 Ranuras</yellow>"
+      - "<white>•</white> <gray>Nv. 75: <yellow>4 Ranuras</yellow>"
+      - "<white>•</white> <gray>Nv. 100: <yellow>5 Ranuras (Todas)</yellow>"
+
+  back-button:
+    slot: 31
+    material: ARROW
+    name: "<yellow><b>Volver al Menú Principal</b></yellow>"
+    lore:
+      - "<gray>Haz click para regresar."

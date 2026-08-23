@@ -1,0 +1,44 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - MESSAGES CONFIGURATION
+# ==============================================================================
+# All messages support MiniMessage format (gradients, hex colors, hover, click).
+
+prefix: "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> "
+
+messages:
+  no-permission: "<red>No tienes permisos suficientes para ejecutar este comando.</red>"
+  player-only: "<red>Este comando solo puede ser ejecutado por jugadores en el servidor.</red>"
+  player-not-found: "<red>El jugador especificado no se encuentra en línea.</red>"
+  reload-success: "<green>Configuración y menús recargados exitosamente.</green>"
+
+  # Pickaxe administration
+  pickaxe-given: "<green>Has entregado un Infinity Pickaxe (Nv. <yellow>%level%</yellow>) a <aqua>%player%</aqua>.</green>"
+  pickaxe-received: "<green>¡Has recibido un <gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> nivel <yellow>%level%</yellow>!</green>"
+  set-level-success: "<green>Se ha establecido el nivel del pico en <yellow>%level%</yellow>.</green>"
+  add-xp-success: "<green>Se han añadido <yellow>%xp% XP</yellow> al pico de <aqua>%player%</aqua>.</green>"
+  must-hold-pickaxe: "<red>Debes sostener un Infinity Pickaxe en tu mano principal.</red>"
+
+  # Level Up Notifications
+  level-up-chat:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<center><gradient:#00FF88:#00E5FF><b>¡SUBIDA DE NIVEL DE PICO!</b></gradient></center>"
+    - "<center><gray>Tu pico ha alcanzado el <gold><b>Nivel %level%</b></gold></center>"
+    - "%unlocks_summary%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+  level-up-title: "<gradient:#00FF88:#00E5FF><b>¡NIVEL %level%!</b></gradient>"
+  level-up-subtitle: "<gray>¡Nuevos sockets y habilidades desbloqueados!</gray>"
+  level-up-actionbar: "<green>+1 Nivel de Pico <dark_gray>(<yellow>Nv.%level%<dark_gray>)</green>"
+
+  # Enchantment Upgrades
+  enchant-upgraded: "<green>¡Has mejorado el encantamiento <aqua>%enchant%</aqua> a <yellow>Nivel %level%</yellow>!</green>"
+  enchant-max-reached: "<red>Este encantamiento ya se encuentra en su nivel máximo para tu nivel de pico (<yellow>Máx: %max%</yellow>).</red>"
+  enchant-locked-pickaxe-level: "<red>Tu pico requiere ser <yellow>Nivel %required%</yellow> para desbloquear este socket.</red>"
+  enchant-invalid-book: "<red>Debes colocar un libro de <aqua>%enchant%</aqua> <yellow>Nivel %required_book_level%</yellow> para mejorar este socket.</red>"
+  enchant-no-book-in-hand: "<red>No tienes el libro requerido en tu cursor para aplicar la mejora.</red>"
+
+  # Perks
+  perk-unlocked: "<green>¡Has desbloqueado el perk <gold>%perk%</gold>!</green>"
+  perk-equipped: "<green>Perk <gold>%perk%</gold> equipado exitosamente.</green>"
+  perk-unequipped: "<yellow>Perk <gold>%perk%</gold> desequipado.</yellow>"
+  perk-locked: "<red>Este perk requiere que tu pico sea <yellow>Nivel %required%</yellow>.</red>"
+  perk-max-slots: "<red>Has alcanzado el límite máximo de perks equipados para tu nivel.</red>"

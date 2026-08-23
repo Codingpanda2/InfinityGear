@@ -1,0 +1,98 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - MAIN CONFIGURATION
+# ==============================================================================
+
+# General settings
+settings:
+  # Base pickaxe item material (e.g. NETHERITE_PICKAXE, DIAMOND_PICKAXE)
+  default-material: NETHERITE_PICKAXE
+  # Automatically convert any regular vanilla pickaxe held or used by a player into an Infinity Pickaxe
+  auto-convert-vanilla: true
+  # All pickaxes are unbreakable by default
+  unbreakable: true
+  # Hide vanilla attributes/unbreakable tags on item
+  hide-flags: true
+  # Max pickaxe level
+  max-level: 100
+  # Default maximum sockets allowed at level 100
+  max-sockets: 10
+
+# Trigger to open the Pickaxe Menu
+interaction:
+  # Action to open GUI: SHIFT_RIGHT_CLICK, SHIFT_LEFT_CLICK, or BOTH
+  trigger: SHIFT_RIGHT_CLICK
+  # Allow opening GUI in air without clicking a block
+  allow-air-click: true
+
+# Menu Provider (NATIVE, ZMENU, DELUXEMENUS, COMMAND)
+menu-provider:
+  # "NATIVE": Uses built-in sleek GUIs with custom textures & CustomModelData support
+  # "COMMAND": Automatically executes a command (e.g. zMenu or DeluxeMenus) on Shift+Click
+  type: NATIVE
+  command: "zmenu open infinity_pickaxe %player%"
+
+# Leveling Formula & XP Calculation
+leveling:
+  # XP calculation type: "FORMULA" or "CUSTOM_TABLE"
+  type: FORMULA
+  formula:
+    # Base XP needed for level 1
+    base-xp: 100
+    # Multiplier exponent: required_xp = base_xp * (level ^ exponent) + (level * linear)
+    exponent: 1.35
+    linear: 50
+  
+  # Sounds played upon level up
+  levelup-sound:
+    enabled: true
+    sound: ENTITY_PLAYER_LEVELUP
+    volume: 1.0
+    pitch: 1.2
+  
+  # Particles on level up
+  levelup-particles:
+    enabled: true
+    particle: TOTEM_OF_UNDYING
+    count: 30
+
+# Anti-Exploit Protection
+anti-exploit:
+  # Prevent XP from blocks placed by players
+  prevent-placed-blocks: true
+  # Max blocks to store in memory before oldest cleanup
+  placed-blocks-cache-size: 50000
+  # Ignore creative mode mining
+  ignore-creative: true
+
+# Visual Progress Bar Settings (used in Lore and Menus)
+progress-bar:
+  total-bars: 20
+  completed-symbol: "■"
+  uncompleted-symbol: "□"
+  completed-color: "<#00FF88>"
+  uncompleted-color: "<#555555>"
+
+# Pickaxe Visual Lore Template (Fully customizable with MiniMessage & Hex Colors)
+pickaxe-lore:
+  display-name: "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient> <gray>[<yellow>Nv.%level%<gray>]"
+  lore:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<gray>Dueño: <yellow>%player%</yellow>"
+    - "<gray>Nivel del Pico: <gold><b>%level%</b></gold><gray>/<yellow>%max_level%</yellow>"
+    - "<gray>Progreso XP: %xp_bar% <aqua>%current_xp%</aqua><gray>/<aqua>%required_xp%</aqua>"
+    - "<gray>Bloques Minados: <yellow>%blocks_mined%</yellow>"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<white><b>ENCANTAMIENTOS (<gold>%enchant_count%</gold><white>/</white><gold>%max_sockets%</gold>)</b></white>"
+    - "%enchants_list%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<white><b>PERKS ACTIVOS (<gold>%perks_count%</gold><white>/</white><gold>%max_perks%</gold>)</b></white>"
+    - "%perks_list%"
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<yellow><i>Shift + Click Derecho para abrir el Menú</i></yellow>"
+
+# Line formats inside the %enchants_list% and %perks_list% placeholders
+formats:
+  enchant-line: "  <gray>• <aqua>%enchant_name%</aqua> <yellow>%enchant_level%</yellow>"
+  no-enchants: "  <dark_gray><i>Sin encantamientos aplicados</i></dark_gray>"
+  perk-line: "  <gray>• <gold>%perk_name%</gold> <green>(Activo)</green>"
+  no-perks: "  <dark_gray><i>Sin perks equipados</i></dark_gray>"

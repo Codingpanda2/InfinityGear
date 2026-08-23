@@ -1,0 +1,61 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - BLOCKS & XP CONFIGURATION
+# ==============================================================================
+
+# Default XP rewarded if a mined block is not explicitly listed below
+default-xp: 1
+
+# Specific blocks XP rewards (Material names must match Paper/Spigot Material enum)
+blocks:
+  # Common Stones
+  STONE: 1
+  COBBLESTONE: 1
+  DEEPSLATE: 2
+  COBBLED_DEEPSLATE: 2
+  ANDESITE: 1
+  DIORITE: 1
+  GRANITE: 1
+  TUFF: 1
+  CALCITE: 2
+  DRIPSTONE_BLOCK: 2
+  SANDSTONE: 1
+  RED_SANDSTONE: 1
+  BASALT: 2
+  BLACKSTONE: 2
+  END_STONE: 3
+  NETHERRACK: 1
+
+  # Common Ores
+  COAL_ORE: 3
+  DEEPSLATE_COAL_ORE: 4
+  COPPER_ORE: 4
+  DEEPSLATE_COPPER_ORE: 5
+  IRON_ORE: 5
+  DEEPSLATE_IRON_ORE: 6
+  GOLD_ORE: 8
+  DEEPSLATE_GOLD_ORE: 10
+  NETHER_GOLD_ORE: 6
+  NETHER_QUARTZ_ORE: 5
+  REDSTONE_ORE: 7
+  DEEPSLATE_REDSTONE_ORE: 8
+  LAPIS_ORE: 7
+  DEEPSLATE_LAPIS_ORE: 8
+
+  # Rare & High-Tier Ores
+  DIAMOND_ORE: 15
+  DEEPSLATE_DIAMOND_ORE: 20
+  EMERALD_ORE: 25
+  DEEPSLATE_EMERALD_ORE: 30
+  ANCIENT_DEBRIS: 50
+
+  # Special Minerals & Hard Blocks
+  OBSIDIAN: 15
+  CRYING_OBSIDIAN: 20
+  AMETHYST_BLOCK: 5
+  BUDDING_AMETHYST: 10
+  GLOWSTONE: 3
+  RAW_IRON_BLOCK: 25
+  RAW_COPPER_BLOCK: 20
+  RAW_GOLD_BLOCK: 35
+  DIAMOND_BLOCK: 60
+  NETHERITE_BLOCK: 150

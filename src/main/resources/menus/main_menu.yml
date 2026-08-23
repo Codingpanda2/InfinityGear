@@ -1,0 +1,65 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - MAIN MENU GUI
+# ==============================================================================
+
+title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Principal"
+size: 36
+
+# Decorative filler glass
+fill-item:
+  material: BLACK_STAINED_GLASS_PANE
+  name: " "
+
+items:
+  # Display of the current pickaxe
+  pickaxe-display:
+    slot: 13
+    # If copy-held-item is true, it displays the actual pickaxe held with its updated stats
+    copy-held-item: true
+
+  # Navigation Button: Enchants Sockets Menu
+  enchants-button:
+    slot: 20
+    material: ENCHANTED_BOOK
+    name: "<#00E5FF><b>Sockets de Encantamientos</b></#00E5FF>"
+    lore:
+      - "<gray>Gestiona y mejora los encantamientos"
+      - "<gray>compatibles con tu Infinity Pickaxe."
+      - ""
+      - "<gray>Sockets Ocupados: <gold>%enchant_count%</gold><gray>/<yellow>%max_sockets%</yellow>"
+      - ""
+      - "<yellow>▶ Haz click para abrir el menú de sockets</yellow>"
+
+  # Navigation Button: Perks Menu
+  perks-button:
+    slot: 24
+    material: NETHER_STAR
+    name: "<#FFA500><b>Habilidades y Perks</b></#FFA500>"
+    lore:
+      - "<gray>Desbloquea y equipa habilidades pasivas"
+      - "<gray>y activas para potenciar tu minería."
+      - ""
+      - "<gray>Perks Equipados: <gold>%perks_count%</gold><gray>/<yellow>%max_perks%</yellow>"
+      - ""
+      - "<yellow>▶ Haz click para abrir el menú de perks</yellow>"
+
+  # Statistics Summary Item
+  stats-info:
+    slot: 22
+    material: BOOK
+    name: "<#00FF88><b>Estadísticas de Minería</b></#00FF88>"
+    lore:
+      - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+      - "<gray>Nivel del Pico: <gold><b>%level%</b></gold><gray>/100"
+      - "<gray>XP Actual: <aqua>%current_xp%</aqua><gray>/<aqua>%required_xp%</aqua>"
+      - "<gray>Progreso: %xp_bar%"
+      - "<gray>Total Minado: <yellow>%blocks_mined%</yellow> bloques"
+      - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+
+  # Close Button
+  close-button:
+    slot: 31
+    material: BARRIER
+    name: "<red><b>Cerrar Menú</b></red>"
+    lore:
+      - "<gray>Haz click para volver al juego."

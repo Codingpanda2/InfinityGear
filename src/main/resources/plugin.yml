@@ -1,0 +1,26 @@
+name: InfinityPickaxes
+version: '1.0.0'
+main: com.infinitypickaxes.InfinityPickaxes
+api-version: '1.21'
+author: aland
+description: Advanced Rival-style leveling pickaxes with EcoEnchants addon integration, interactive GUIs, sockets, and perks.
+softdepend:
+  - EcoEnchants
+  - eco
+  - PlaceholderAPI
+  - WorldGuard
+
+commands:
+  infinitypickaxes:
+    description: Main command for InfinityPickaxes
+    aliases: [pickaxe, ipickaxe, infinitypickaxe]
+    permission: infinitypickaxes.admin
+    usage: /<command> [give|reload|setlevel|addxp|gui|info]
+
+permissions:
+  infinitypickaxes.use:
+    description: Allows using the Infinity Pickaxe and opening its GUI.
+    default: true
+  infinitypickaxes.admin:
+    description: Full administrative access to InfinityPickaxes commands.
+    default: op
