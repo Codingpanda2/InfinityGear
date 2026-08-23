@@ -193,8 +193,33 @@ public class PickaxeManager {
             enchantLines.add(noEnchantsText);
         } else {
             for (Map.Entry<String, Integer> entry : pickaxe.getEnchantments().entrySet()) {
-                EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(entry.getKey());
-                String dName = (socket != null) ? socket.getDisplayName() : entry.getKey();
+                String keyStr = entry.getKey();
+                EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(keyStr);
+                if (socket == null && keyStr.contains(":")) {
+                    socket = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
+                }
+
+                String dName;
+                if (socket != null) {
+                    dName = socket.getDisplayName();
+                } else {
+                    Enchantment ench = getEnchantment(keyStr);
+                    if (ench != null) {
+                        try {
+                            Component comp = ench.displayName(1);
+                            dName = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp)
+                                    .replace(" I", "").replace(" 1", "");
+                        } catch (Throwable t) {
+                            String keyOnly = ench.getKey().getKey().replace("_", " ");
+                            dName = "<#00E5FF>" + capitalize(keyOnly) + "</#00E5FF>";
+                        }
+                    } else {
+                        String raw = keyStr;
+                        if (raw.contains(":")) raw = raw.substring(raw.indexOf(":") + 1);
+                        dName = "<#00E5FF>" + capitalize(raw.replace("_", " ")) + "</#00E5FF>";
+                    }
+                }
+
                 String line = enchantLineFormat
                         .replace("%enchant_name%", dName)
                         .replace("%enchant_level%", TextUtil.toRoman(entry.getValue()))
@@ -272,5 +297,16 @@ public class PickaxeManager {
         if (player == null) return null;
         ItemStack held = player.getInventory().getItemInMainHand();
         return getOrCreatePickaxe(held, player);
+    }
+
+    private String capitalize(String text) {
+        if (text == null || text.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String part : text.split(" ")) {
+            if (!part.isEmpty()) {
+                sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1).toLowerCase()).append(" ");
+            }
+        }
+        return sb.toString().trim();
     }
 }
