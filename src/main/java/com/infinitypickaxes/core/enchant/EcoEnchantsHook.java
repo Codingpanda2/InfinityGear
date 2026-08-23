@@ -5,6 +5,7 @@ import com.infinitypickaxes.utils.TextUtil;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
@@ -21,6 +22,15 @@ public class EcoEnchantsHook {
     private final InfinityPickaxes plugin;
     private boolean ecoEnchantsPresent = false;
     private boolean ecoFrameworkPresent = false;
+
+    private static final Set<String> NON_PICKAXE_KEYWORDS = Set.of(
+            "protection", "fire_protection", "blast_protection", "projectile_protection", "feather_falling",
+            "respiration", "aqua_affinity", "thorns", "depth_strider", "frost_walker", "soul_speed", "swift_sneak",
+            "sharpness", "smite", "bane_of_arthropods", "knockback", "fire_aspect", "looting", "sweeping",
+            "power", "punch", "flame", "infinity", "loyalty", "impaling", "riptide", "channeling", "multishot",
+            "quick_charge", "piercing", "density", "breach", "wind_burst", "lure", "luck_of_the_sea",
+            "unbreaking", "mending", "curse", "vanishing", "binding"
+    );
 
     public EcoEnchantsHook(InfinityPickaxes plugin) {
         this.plugin = plugin;
@@ -107,7 +117,6 @@ public class EcoEnchantsHook {
                 String rawId = socket.getId().toLowerCase();
                 String keyStr = socket.getKeyString().toLowerCase();
 
-                // If already detected via NBT/Meta, skip lore guessing for this key
                 if (result.containsKey(keyStr)) continue;
 
                 for (String line : textLines) {
@@ -153,20 +162,63 @@ public class EcoEnchantsHook {
     }
 
     /**
-     * Discovers all pickaxe-compatible enchantments currently registered on the server.
+     * Strictly discovers only pickaxe-compatible enchantments currently registered on the server.
      */
     public List<Enchantment> discoverPickaxeEnchants() {
         List<Enchantment> pickaxeEnchants = new ArrayList<>();
+        ItemStack pickaxe = new ItemStack(Material.NETHERITE_PICKAXE);
+        ItemStack diamondPickaxe = new ItemStack(Material.DIAMOND_PICKAXE);
+        ItemStack sword = new ItemStack(Material.NETHERITE_SWORD);
+        ItemStack chestplate = new ItemStack(Material.NETHERITE_CHESTPLATE);
+        ItemStack bow = new ItemStack(Material.BOW);
+
         try {
             for (Enchantment ench : Bukkit.getRegistry(Enchantment.class)) {
                 if (ench == null || ench.getKey() == null) continue;
                 String keyStr = ench.getKey().toString().toLowerCase();
+                String keyOnly = ench.getKey().getKey().toLowerCase();
 
-                if (keyStr.contains("pickaxe") || keyStr.contains("mine") || keyStr.contains("drill") || keyStr.contains("explosive") || keyStr.contains("jackhammer") || keyStr.contains("telepathy") || keyStr.contains("efficiency") || keyStr.contains("fortune") || keyStr.contains("silk_touch")) {
+                // 1. Explicit keyword blacklist for non-pickaxe categories
+                boolean blacklisted = false;
+                for (String word : NON_PICKAXE_KEYWORDS) {
+                    if (keyOnly.contains(word)) {
+                        blacklisted = true;
+                        break;
+                    }
+                }
+                if (blacklisted) continue;
+
+                // 2. Strict item capability check
+                boolean canPickaxe = false;
+                try {
+                    canPickaxe = ench.canEnchantItem(pickaxe) || ench.canEnchantItem(diamondPickaxe);
+                } catch (Throwable ignored) {}
+
+                // Check if it's actually an armor or sword enchant that falsely returned true
+                boolean isArmorOrWeaponOnly = false;
+                try {
+                    if ((ench.canEnchantItem(sword) || ench.canEnchantItem(chestplate) || ench.canEnchantItem(bow)) && !canPickaxe) {
+                        isArmorOrWeaponOnly = true;
+                    }
+                } catch (Throwable ignored) {}
+
+                if (isArmorOrWeaponOnly) continue;
+
+                // 3. Name or target check
+                boolean nameSuggestsPickaxe = keyOnly.contains("pickaxe") || keyOnly.contains("mine")
+                        || keyOnly.contains("drill") || keyOnly.contains("explosive") || keyOnly.contains("dynamite")
+                        || keyOnly.contains("jackhammer") || keyOnly.contains("telepathy") || keyOnly.contains("telekinesis")
+                        || keyOnly.contains("efficiency") || keyOnly.contains("fortune") || keyOnly.contains("silk_touch")
+                        || keyOnly.contains("smelt") || keyOnly.contains("auto_smelt") || keyOnly.contains("infernal")
+                        || keyOnly.contains("vein") || keyOnly.contains("haste") || keyOnly.contains("speed")
+                        || keyOnly.contains("quarry") || keyOnly.contains("laser");
+
+                if (canPickaxe || nameSuggestsPickaxe) {
                     pickaxeEnchants.add(ench);
                 }
             }
         } catch (Throwable ignored) {}
+
         return pickaxeEnchants;
     }
 }

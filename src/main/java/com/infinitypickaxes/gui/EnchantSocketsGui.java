@@ -19,12 +19,6 @@ public class EnchantSocketsGui extends CustomGui {
     private final FileConfiguration menuConfig;
     private final Map<Integer, EnchantSocket> slotToSocket = new HashMap<>();
     private int currentPage = 0;
-    private static final int[] INNER_SLOTS = {
-            10, 11, 12, 13, 14, 15, 16,
-            19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34,
-            37, 38, 39, 41, 42, 43
-    };
 
     public EnchantSocketsGui(InfinityPickaxes plugin, Player player, InfinityPickaxe pickaxe) {
         super(
@@ -37,39 +31,71 @@ public class EnchantSocketsGui extends CustomGui {
         this.menuConfig = plugin.getConfigManager().getEnchantsMenuConfig();
     }
 
+    private int getBackSlot() {
+        int configured = menuConfig.getInt("items.back-button.slot", -1);
+        if (configured >= 0 && configured < inventory.getSize()) {
+            return configured;
+        }
+        return inventory.getSize() - 5;
+    }
+
+    private int getPrevSlot() {
+        return inventory.getSize() - 9;
+    }
+
+    private int getNextSlot() {
+        return inventory.getSize() - 1;
+    }
+
+    private List<Integer> getUsableInnerSlots() {
+        List<Integer> slots = new ArrayList<>();
+        int rows = inventory.getSize() / 9;
+        for (int r = 1; r < rows - 1; r++) {
+            for (int c = 1; c <= 7; c++) {
+                slots.add(r * 9 + c);
+            }
+        }
+        return slots;
+    }
+
     @Override
     public void setupItems() {
         inventory.clear();
         slotToSocket.clear();
 
+        int invSize = inventory.getSize();
+
         // 1. Background filler
         Material fillMat = Material.matchMaterial(menuConfig.getString("fill-item.material", "BLACK_STAINED_GLASS_PANE"));
         if (fillMat == null) fillMat = Material.BLACK_STAINED_GLASS_PANE;
         ItemStack filler = new ItemBuilder(fillMat).name(" ").build();
-        for (int i = 0; i < inventory.getSize(); i++) {
+        for (int i = 0; i < invSize; i++) {
             inventory.setItem(i, filler);
         }
 
         // 2. Info guide book
         int infoSlot = menuConfig.getInt("items.info-book.slot", 4);
-        Material infoMat = Material.matchMaterial(menuConfig.getString("items.info-book.material", "KNOWLEDGE_BOOK"));
-        String infoName = menuConfig.getString("items.info-book.name", "<#00FF88><b>¿Cómo Mejorar Sockets?</b></#00FF88>");
-        List<String> infoLore = menuConfig.getStringList("items.info-book.lore");
-        inventory.setItem(infoSlot, new ItemBuilder(infoMat != null ? infoMat : Material.KNOWLEDGE_BOOK)
-                .name(infoName)
-                .lore(infoLore)
-                .build());
+        if (infoSlot >= 0 && infoSlot < invSize) {
+            Material infoMat = Material.matchMaterial(menuConfig.getString("items.info-book.material", "KNOWLEDGE_BOOK"));
+            String infoName = menuConfig.getString("items.info-book.name", "<#00FF88><b>¿Cómo Mejorar Sockets?</b></#00FF88>");
+            List<String> infoLore = menuConfig.getStringList("items.info-book.lore");
+            inventory.setItem(infoSlot, new ItemBuilder(infoMat != null ? infoMat : Material.KNOWLEDGE_BOOK)
+                    .name(infoName)
+                    .lore(infoLore)
+                    .build());
+        }
 
         // 3. Back Button
-        int backSlot = menuConfig.getInt("items.back-button.slot", 49);
-        if (backSlot >= inventory.getSize()) backSlot = 40;
-        Material backMat = Material.matchMaterial(menuConfig.getString("items.back-button.material", "ARROW"));
-        String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Volver al Menú Principal</b></yellow>");
-        List<String> backLore = menuConfig.getStringList("items.back-button.lore");
-        inventory.setItem(backSlot, new ItemBuilder(backMat != null ? backMat : Material.ARROW)
-                .name(backName)
-                .lore(backLore)
-                .build());
+        int backSlot = getBackSlot();
+        if (backSlot >= 0 && backSlot < invSize) {
+            Material backMat = Material.matchMaterial(menuConfig.getString("items.back-button.material", "ARROW"));
+            String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Volver al Menú Principal</b></yellow>");
+            List<String> backLore = menuConfig.getStringList("items.back-button.lore");
+            inventory.setItem(backSlot, new ItemBuilder(backMat != null ? backMat : Material.ARROW)
+                    .name(backName)
+                    .lore(backLore)
+                    .build());
+        }
 
         // 4. Collect all enabled sockets
         List<EnchantSocket> allSockets = new ArrayList<>();
@@ -79,20 +105,21 @@ public class EnchantSocketsGui extends CustomGui {
             }
         }
 
-        int pageSize = INNER_SLOTS.length;
+        List<Integer> usableSlots = getUsableInnerSlots();
+        int pageSize = Math.max(1, usableSlots.size());
         int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / pageSize));
         if (currentPage >= totalPages) currentPage = totalPages - 1;
         if (currentPage < 0) currentPage = 0;
 
         // 5. Pagination Buttons
-        int prevSlot = 45;
-        int nextSlot = 53;
-        if (currentPage > 0) {
+        int prevSlot = getPrevSlot();
+        int nextSlot = getNextSlot();
+        if (currentPage > 0 && prevSlot >= 0 && prevSlot < invSize) {
             inventory.setItem(prevSlot, new ItemBuilder(Material.SPECTRAL_ARROW)
                     .name("<yellow><b>« Página Anterior (" + currentPage + "/" + totalPages + ")</b></yellow>")
                     .build());
         }
-        if (currentPage < totalPages - 1) {
+        if (currentPage < totalPages - 1 && nextSlot >= 0 && nextSlot < invSize) {
             inventory.setItem(nextSlot, new ItemBuilder(Material.SPECTRAL_ARROW)
                     .name("<yellow><b>Página Siguiente (" + (currentPage + 2) + "/" + totalPages + ") »</b></yellow>")
                     .build());
@@ -106,15 +133,21 @@ public class EnchantSocketsGui extends CustomGui {
             EnchantSocket socket = allSockets.get(i);
             int targetSlot;
 
-            // If on first page and socket has a custom valid slot configured, try to use it
-            if (currentPage == 0 && socket.getSlot() >= 0 && socket.getSlot() < inventory.getSize() && !slotToSocket.containsKey(socket.getSlot())) {
+            if (currentPage == 0 && socket.getSlot() >= 0 && socket.getSlot() < invSize - 9 && !slotToSocket.containsKey(socket.getSlot())) {
                 targetSlot = socket.getSlot();
             } else {
-                targetSlot = INNER_SLOTS[i - startIndex];
+                int localIndex = i - startIndex;
+                if (localIndex < usableSlots.size()) {
+                    targetSlot = usableSlots.get(localIndex);
+                } else {
+                    continue;
+                }
             }
 
-            slotToSocket.put(targetSlot, socket);
-            inventory.setItem(targetSlot, buildSocketItem(socket));
+            if (targetSlot >= 0 && targetSlot < invSize) {
+                slotToSocket.put(targetSlot, socket);
+                inventory.setItem(targetSlot, buildSocketItem(socket));
+            }
         }
     }
 
@@ -186,10 +219,9 @@ public class EnchantSocketsGui extends CustomGui {
     public void handleClick(InventoryClickEvent event) {
         event.setCancelled(true);
         int slot = event.getRawSlot();
+        if (slot < 0 || slot >= inventory.getSize()) return;
 
-        int backSlot = menuConfig.getInt("items.back-button.slot", 49);
-        if (backSlot >= inventory.getSize()) backSlot = 40;
-
+        int backSlot = getBackSlot();
         if (slot == backSlot) {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
             new MainPickaxeGui(plugin, player, pickaxe).open();
@@ -197,7 +229,8 @@ public class EnchantSocketsGui extends CustomGui {
         }
 
         // Previous Page
-        if (slot == 45 && currentPage > 0) {
+        int prevSlot = getPrevSlot();
+        if (slot == prevSlot && currentPage > 0) {
             currentPage--;
             player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.2f);
             setupItems();
@@ -205,9 +238,14 @@ public class EnchantSocketsGui extends CustomGui {
         }
 
         // Next Page
-        List<EnchantSocket> allSockets = new ArrayList<>(plugin.getEnchantManager().getAllSockets());
-        int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / INNER_SLOTS.length));
-        if (slot == 53 && currentPage < totalPages - 1) {
+        int nextSlot = getNextSlot();
+        List<Integer> usableSlots = getUsableInnerSlots();
+        List<EnchantSocket> allSockets = new ArrayList<>();
+        for (EnchantSocket s : plugin.getEnchantManager().getAllSockets()) {
+            if (s.isEnabled()) allSockets.add(s);
+        }
+        int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / Math.max(1, usableSlots.size())));
+        if (slot == nextSlot && currentPage < totalPages - 1) {
             currentPage++;
             player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.2f);
             setupItems();
