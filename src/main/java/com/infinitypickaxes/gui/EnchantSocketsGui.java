@@ -122,11 +122,16 @@ public class EnchantSocketsGui extends CustomGui {
             } else {
                 formatted.add(line
                         .replace("%enchant_display_name%", socket.getDisplayName())
-                        .replace("%enchant_raw_name%", socket.getId())
+                        .replace("%enchant_name%", socket.getCleanName())
+                        .replace("%enchant_clean_name%", socket.getCleanName())
+                        .replace("%enchant_raw_name%", socket.getCleanName())
                         .replace("%current_level%", String.valueOf(currentLvl))
+                        .replace("%current_level_roman%", (currentLvl > 0) ? TextUtil.toRoman(currentLvl) : "0")
                         .replace("%max_level%", String.valueOf(globalMax))
+                        .replace("%max_level_roman%", TextUtil.toRoman(globalMax))
                         .replace("%current_max_for_pickaxe%", String.valueOf(maxForPickaxe))
-                        .replace("%required_book_level%", String.valueOf(requiredBookLevel))
+                        .replace("%required_book_level%", TextUtil.toRoman(requiredBookLevel))
+                        .replace("%required_book_level_num%", String.valueOf(requiredBookLevel))
                         .replace("%unlock_level%", String.valueOf(socket.getUnlockPickaxeLevel()))
                         .replace("%pickaxe_level%", String.valueOf(pickaxe.getLevel()))
                 );

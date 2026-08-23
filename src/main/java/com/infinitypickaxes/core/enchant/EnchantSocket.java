@@ -54,6 +54,10 @@ public class EnchantSocket {
         return displayName;
     }
 
+    public String getCleanName() {
+        return TextUtil.stripFormatting(displayName);
+    }
+
     public Material getIcon() {
         return icon;
     }

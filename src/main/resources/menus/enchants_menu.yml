@@ -22,7 +22,7 @@ enchant-format:
     - "<gray>Límite por Nivel de Pico: <aqua>Nv. %current_max_for_pickaxe%</aqua>"
     - ""
     - "<white><b>Requisito de Mejora:</b></white>"
-    - "<yellow>• Libro de %enchant_raw_name% <gold>Nv. %required_book_level%</gold></yellow>"
+    - "<yellow>• Libro de %enchant_display_name% <gold>Nv. %required_book_level%</gold></yellow>"
     - ""
     - "<green>▶ Arrastra y suelta el libro aquí o</green>"
     - "<green>  haz click teniendo el libro en tu cursor.</green>"

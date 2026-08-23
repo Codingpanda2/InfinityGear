@@ -154,4 +154,48 @@ public final class TextUtil {
         }
         return ROMAN_NUMERALS.get(l) + toRoman(number - l);
     }
+
+    /**
+     * Converts a Roman Numeral string (or integer string) back to integer.
+     */
+    public static int fromRoman(String roman) {
+        if (roman == null || roman.trim().isEmpty()) return 1;
+        roman = roman.trim().toUpperCase();
+        int result = 0;
+        int lastValue = 0;
+        for (int i = roman.length() - 1; i >= 0; i--) {
+            int value = switch (roman.charAt(i)) {
+                case 'I' -> 1;
+                case 'V' -> 5;
+                case 'X' -> 10;
+                case 'L' -> 50;
+                case 'C' -> 100;
+                case 'D' -> 500;
+                case 'M' -> 1000;
+                default -> 0;
+            };
+            if (value == 0) {
+                try {
+                    return Integer.parseInt(roman);
+                } catch (NumberFormatException e) {
+                    return 1;
+                }
+            }
+            if (value < lastValue) {
+                result -= value;
+            } else {
+                result += value;
+                lastValue = value;
+            }
+        }
+        return result > 0 ? result : 1;
+    }
+
+    /**
+     * Strips all MiniMessage and legacy color tags from a string.
+     */
+    public static String stripFormatting(String text) {
+        if (text == null) return "";
+        return text.replaceAll("<[^>]*>", "").replaceAll("&[0-9a-fk-orA-FK-OR]", "").trim();
+    }
 }
