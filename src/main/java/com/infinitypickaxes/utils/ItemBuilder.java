@@ -19,13 +19,24 @@ public class ItemBuilder {
     private final ItemMeta meta;
 
     public ItemBuilder(Material material) {
-        this.item = new ItemStack(material != null ? material : Material.STONE);
+        this(material, 1);
+    }
+
+    public ItemBuilder(Material material, int amount) {
+        this.item = new ItemStack(material != null ? material : Material.STONE, Math.max(1, amount));
         this.meta = item.getItemMeta();
     }
 
     public ItemBuilder(ItemStack itemStack) {
         this.item = itemStack != null ? itemStack.clone() : new ItemStack(Material.STONE);
         this.meta = item.getItemMeta();
+    }
+
+    public ItemBuilder glow() {
+        if (meta != null) {
+            meta.setEnchantmentGlintOverride(true);
+        }
+        return this;
     }
 
     public ItemBuilder name(String miniMessageName) {
