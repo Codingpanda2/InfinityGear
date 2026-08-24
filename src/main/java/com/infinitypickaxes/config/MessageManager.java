@@ -11,10 +11,15 @@ import org.bukkit.entity.Player;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MessageManager {
 
     private final InfinityPickaxes plugin;
+    private final Map<UUID, Double> accumulatedStreakXp = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastMinedTime = new ConcurrentHashMap<>();
 
     public MessageManager(InfinityPickaxes plugin) {
         this.plugin = plugin;
@@ -48,6 +53,21 @@ public class MessageManager {
             return;
         }
 
+        long now = System.currentTimeMillis();
+        UUID uuid = player.getUniqueId();
+        Long lastTime = lastMinedTime.get(uuid);
+        long timeout = messagesConfig.getLong("mining-actionbar.streak-timeout-ms", 2500L);
+
+        double streakXp;
+        if (lastTime != null && (now - lastTime) < timeout) {
+            streakXp = accumulatedStreakXp.getOrDefault(uuid, 0.0) + gainedXp;
+        } else {
+            streakXp = gainedXp;
+        }
+
+        accumulatedStreakXp.put(uuid, streakXp);
+        lastMinedTime.put(uuid, now);
+
         String template = messagesConfig.getString("mining-actionbar.message",
                 "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Nv.%level%<dark_gray>)");
 
@@ -63,7 +83,8 @@ public class MessageManager {
         );
 
         String formatted = template
-                .replace("%gained_xp%", String.format("%.0f", gainedXp))
+                .replace("%gained_xp%", String.format("%.0f", streakXp))
+                .replace("%single_block_xp%", String.format("%.0f", gainedXp))
                 .replace("%current_xp%", String.format("%.0f", pickaxe.getXp()))
                 .replace("%required_xp%", String.format("%.0f", reqXp))
                 .replace("%xp_bar%", bar)
