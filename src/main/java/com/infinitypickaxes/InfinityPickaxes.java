@@ -7,13 +7,16 @@ import com.infinitypickaxes.core.enchant.EnchantManager;
 import com.infinitypickaxes.core.level.LevelManager;
 import com.infinitypickaxes.core.perk.PerkManager;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
+import com.infinitypickaxes.gui.CustomGui;
 import com.infinitypickaxes.gui.GuiManager;
 import com.infinitypickaxes.hooks.PlaceholderAPIHook;
 import com.infinitypickaxes.listeners.*;
 import com.infinitypickaxes.utils.TextUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -29,6 +32,7 @@ public final class InfinityPickaxes extends JavaPlugin {
     private PickaxeManager pickaxeManager;
     private GuiManager guiManager;
     private PickaxeHeldListener heldListener;
+    private PlaceholderAPIHook papiHook;
 
     @Override
     public void onEnable() {
@@ -47,10 +51,10 @@ public final class InfinityPickaxes extends JavaPlugin {
         console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>       ⛏️ INFINITY PICKAXES </b></gradient><gray>v<yellow>" + getDescription().getVersion() + "</yellow> <dark_gray>┃</dark_gray> <gray>Paper 1.21.4"));
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
 
-        // 1. Initialize Configuration & Messages
+        // 1. Initialize Configuration & Locales
         this.configManager = new ConfigManager(this);
         this.messageManager = new MessageManager(this);
-        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[1/6]</dark_gray> <white>Archivos de Configuración:</white> <green>Cargados exitosamente.</green>"));
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[1/6]</dark_gray> <white>Configuración & Idiomas:</white> <green>Cargados (Idioma: " + configManager.getCurrentLanguage() + ")</green>"));
 
         // 2. Initialize Core Subsystems
         this.levelManager = new LevelManager(this);
@@ -81,7 +85,8 @@ public final class InfinityPickaxes extends JavaPlugin {
 
         // 4. Register PlaceholderAPI Hook if present
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new PlaceholderAPIHook(this).register();
+            this.papiHook = new PlaceholderAPIHook(this);
+            this.papiHook.register();
             console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[5/6]</dark_gray> <white>PlaceholderAPI Bridge:</white> <green>Expansión vinculada para zMenu/DeluxeMenus.</green>"));
         } else {
             console.sendMessage(TextUtil.parse("<yellow>  ℹ <dark_gray>[5/6]</dark_gray> <white>PlaceholderAPI Bridge:</white> <dark_gray>No detectado (Opcional).</dark_gray>"));
@@ -102,14 +107,76 @@ public final class InfinityPickaxes extends JavaPlugin {
         console.sendMessage(TextUtil.parse(""));
     }
 
-    @Override
-    public void onDisable() {
+    /**
+     * Completely safe reload method without memory leaks or duplicate tasks.
+     */
+    public void reloadPlugin(CommandSender sender) {
+        long start = System.currentTimeMillis();
+
+        // 1. Stop tick task
         if (heldListener != null) {
             heldListener.stopTickTask();
         }
+
+        // 2. Close open CustomGui inventories
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getOpenInventory().getTopInventory().getHolder() instanceof CustomGui) {
+                p.closeInventory();
+            }
+        }
+
+        // 3. Reload configurations and locales
+        this.configManager.reload();
+
+        // 4. Reload core subsystems
+        this.levelManager.loadConfig();
+        this.enchantManager.loadConfig();
+        this.perkManager.loadConfig();
+
+        // 5. Restart tick task
+        if (this.heldListener != null) {
+            this.heldListener.startTickTask();
+        }
+
+        // 6. Ensure PlaceholderAPI hook is registered
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI") && papiHook == null) {
+            this.papiHook = new PlaceholderAPIHook(this);
+            this.papiHook.register();
+        }
+
+        long elapsed = System.currentTimeMillis() - start;
+        messageManager.sendMessage(sender, "messages.reload-success");
+        getLogger().info("InfinityPickaxes reloaded in " + elapsed + "ms. Active language: " + configManager.getCurrentLanguage());
+    }
+
+    @Override
+    public void onDisable() {
+        // 1. Stop tick task
+        if (heldListener != null) {
+            heldListener.stopTickTask();
+        }
+
+        // 2. Close any open CustomGui inventories
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.getOpenInventory().getTopInventory().getHolder() instanceof CustomGui) {
+                p.closeInventory();
+            }
+        }
+
+        // 3. Cancel all bukkit scheduler tasks for this plugin
+        Bukkit.getScheduler().cancelTasks(this);
+
+        // 4. Unregister PlaceholderAPI
+        if (papiHook != null) {
+            try {
+                papiHook.unregister();
+            } catch (Throwable ignored) {}
+            papiHook = null;
+        }
+
         ConsoleCommandSender console = Bukkit.getConsoleSender();
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
-        console.sendMessage(TextUtil.parse("<red>  ✖ </red><gradient:#FF5555:#FF0055><b>INFINITY PICKAXES</b></gradient> <dark_gray>»</dark_gray> <gray>Tareas detenidas y plugin deshabilitado correctamente.</gray>"));
+        console.sendMessage(TextUtil.parse("<red>  ✖ </red><gradient:#FF5555:#FF0055><b>INFINITY PICKAXES</b></gradient> <dark_gray>»</dark_gray> <gray>Plugin disabled safely and all tasks terminated.</gray>"));
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
         instance = null;
     }

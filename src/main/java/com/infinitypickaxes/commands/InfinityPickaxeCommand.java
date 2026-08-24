@@ -53,11 +53,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
                     return true;
                 }
-                plugin.getConfigManager().reload();
-                plugin.getLevelManager().loadConfig();
-                plugin.getEnchantManager().loadConfig();
-                plugin.getPerkManager().loadConfig();
-                plugin.getMessageManager().sendMessage(sender, "messages.reload-success");
+                plugin.reloadPlugin(sender);
             }
 
             case "give" -> {
