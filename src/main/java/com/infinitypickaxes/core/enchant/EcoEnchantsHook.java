@@ -183,14 +183,14 @@ public class EcoEnchantsHook {
         String id = ench.getKey().getKey().toLowerCase();
         int safeLevel = Math.max(1, level);
 
-        // 1. Try EcoEnchants Live API (direct runtime evaluation)
+        // 1. Try EcoEnchants Live API (direct runtime evaluation with level)
         if (ecoEnchantsPresent) {
             rawLines.addAll(fetchFromEcoEnchantsApi(ench, safeLevel));
         }
 
         // 2. Try EcoEnchants YAML config files on server disk
         if (rawLines.isEmpty()) {
-            rawLines.addAll(fetchFromEcoEnchantsFiles(id, safeLevel));
+            rawLines.addAll(fetchFromEcoEnchantsFiles(id, ench.getKey().toString(), safeLevel));
         }
 
         // 3. Fallback to standard clean English descriptions
@@ -231,7 +231,14 @@ public class EcoEnchantsHook {
             Object ecoEnchantObj = null;
 
             if (ecoEnchantsClass != null) {
+                // Try static getByKey(NamespacedKey)
                 ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, key);
+                if (ecoEnchantObj == null) {
+                    ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, new NamespacedKey("ecoenchants", id));
+                }
+                if (ecoEnchantObj == null) {
+                    ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, NamespacedKey.minecraft(id));
+                }
                 if (ecoEnchantObj == null) {
                     ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByID", new Class<?>[]{String.class}, id);
                 }
@@ -246,6 +253,9 @@ public class EcoEnchantsHook {
                         if (instance != null) {
                             ecoEnchantObj = invokeMethodQuietly(instance.getClass(), instance, "getByKey", new Class<?>[]{NamespacedKey.class}, key);
                             if (ecoEnchantObj == null) {
+                                ecoEnchantObj = invokeMethodQuietly(instance.getClass(), instance, "getByKey", new Class<?>[]{NamespacedKey.class}, new NamespacedKey("ecoenchants", id));
+                            }
+                            if (ecoEnchantObj == null) {
                                 ecoEnchantObj = invokeMethodQuietly(instance.getClass(), instance, "getByID", new Class<?>[]{String.class}, id);
                             }
                         }
@@ -255,6 +265,9 @@ public class EcoEnchantsHook {
 
             if (ecoEnchantObj == null && coreEnchantsClass != null) {
                 ecoEnchantObj = invokeMethodQuietly(coreEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, key);
+                if (ecoEnchantObj == null) {
+                    ecoEnchantObj = invokeMethodQuietly(coreEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, new NamespacedKey("ecoenchants", id));
+                }
                 if (ecoEnchantObj == null) {
                     ecoEnchantObj = invokeMethodQuietly(coreEnchantsClass, null, "get", new Class<?>[]{NamespacedKey.class}, key);
                 }
@@ -294,7 +307,7 @@ public class EcoEnchantsHook {
         return results;
     }
 
-    private List<String> fetchFromEcoEnchantsFiles(String id, int level) {
+    private List<String> fetchFromEcoEnchantsFiles(String id, String namespacedKeyStr, int level) {
         List<String> results = new ArrayList<>();
         try {
             List<File> searchDirs = new ArrayList<>();
@@ -307,17 +320,19 @@ public class EcoEnchantsHook {
 
             File pluginsDir = plugin.getDataFolder().getParentFile();
             if (pluginsDir != null && pluginsDir.exists()) {
-                File ecoDir = new File(pluginsDir, "EcoEnchants");
-                if (ecoDir.exists() && !searchDirs.contains(ecoDir)) {
-                    searchDirs.add(ecoDir);
-                    File eDir = new File(ecoDir, "enchants");
-                    if (eDir.exists()) searchDirs.add(eDir);
+                for (String dirName : new String[]{"EcoEnchants", "ecoenchants", "Eco", "eco"}) {
+                    File d = new File(pluginsDir, dirName);
+                    if (d.exists() && !searchDirs.contains(d)) {
+                        searchDirs.add(d);
+                        File eDir = new File(d, "enchants");
+                        if (eDir.exists() && !searchDirs.contains(eDir)) searchDirs.add(eDir);
+                    }
                 }
             }
 
             File matchedFile = null;
             for (File dir : searchDirs) {
-                matchedFile = findYamlFile(dir, id);
+                matchedFile = findYamlFile(dir, id, namespacedKeyStr);
                 if (matchedFile != null) break;
             }
 
@@ -436,10 +451,10 @@ public class EcoEnchantsHook {
     private String evaluateEcoPlaceholders(String rawLine, Map<String, String> placeholdersMap, int level) {
         String result = rawLine;
 
-        // Strip rogue closing tags that EcoEnchants puts at the end of its YAML lines
+        // 1. Strip rogue closing tags that EcoEnchants puts at the end of its YAML lines
         result = result.replaceAll("(?i)</?gr[ae]y>", "").trim();
 
-        // 1. Evaluate specific placeholder keys from YAML
+        // 2. Evaluate specific placeholder keys from YAML
         for (Map.Entry<String, String> entry : placeholdersMap.entrySet()) {
             String pKey = entry.getKey();
             String formula = entry.getValue();
@@ -455,7 +470,7 @@ public class EcoEnchantsHook {
             result = result.replace("%" + pKey + "%", "<green>" + evaluatedVal + "</green>");
         }
 
-        // 2. Built-in defaults for common EcoEnchants placeholder names if not mapped
+        // 3. Built-in defaults for common EcoEnchants placeholder names if not mapped in YAML
         if (result.contains("%placeholder%x%placeholder%")) {
             result = result.replace("%placeholder%x%placeholder%", "<green>3x3</green>");
         }
@@ -467,7 +482,7 @@ public class EcoEnchantsHook {
             result = result.replace("%placeholder%", "<green>" + level + "</green>");
         }
 
-        // Replace any %level% remaining
+        // Replace any remaining %level%
         result = result.replace("%level%", String.valueOf(level));
 
         return result;
@@ -580,8 +595,25 @@ public class EcoEnchantsHook {
         if (rawLine == null || rawLine.trim().isEmpty()) return "";
         String s = rawLine.trim();
 
-        // 1. Strip legacy codes
-        s = s.replaceAll("(?i)[&§][0-9a-fk-or]", "");
+        // 1. Convert legacy color codes if present
+        if (s.contains("&") || s.contains("§")) {
+            s = s.replaceAll("(?i)[&§]0", "<black>")
+                 .replaceAll("(?i)[&§]1", "<dark_blue>")
+                 .replaceAll("(?i)[&§]2", "<dark_green>")
+                 .replaceAll("(?i)[&§]3", "<dark_aqua>")
+                 .replaceAll("(?i)[&§]4", "<dark_red>")
+                 .replaceAll("(?i)[&§]5", "<dark_purple>")
+                 .replaceAll("(?i)[&§]6", "<gold>")
+                 .replaceAll("(?i)[&§]7", "<gray>")
+                 .replaceAll("(?i)[&§]8", "<dark_gray>")
+                 .replaceAll("(?i)[&§]9", "<blue>")
+                 .replaceAll("(?i)[&§]a", "<green>")
+                 .replaceAll("(?i)[&§]b", "<aqua>")
+                 .replaceAll("(?i)[&§]c", "<red>")
+                 .replaceAll("(?i)[&§]d", "<light_purple>")
+                 .replaceAll("(?i)[&§]e", "<yellow>")
+                 .replaceAll("(?i)[&§]f", "<white>");
+        }
 
         // 2. Strip any rogue </gray>, <gray>, </grey>, <grey>
         s = s.replaceAll("(?i)</?gr[ae]y>", "").trim();
@@ -592,7 +624,7 @@ public class EcoEnchantsHook {
         return "<gray>" + s + "</gray>";
     }
 
-    private File findYamlFile(File dir, String id) {
+    private File findYamlFile(File dir, String id, String namespacedKeyStr) {
         if (dir == null || !dir.isDirectory()) return null;
         File exact = new File(dir, id + ".yml");
         if (exact.exists()) return exact;
@@ -601,10 +633,21 @@ public class EcoEnchantsHook {
         if (files != null) {
             for (File f : files) {
                 if (f.isDirectory()) {
-                    File found = findYamlFile(f, id);
+                    File found = findYamlFile(f, id, namespacedKeyStr);
                     if (found != null) return found;
-                } else if (f.getName().equalsIgnoreCase(id + ".yml") || f.getName().replace(".yml", "").equalsIgnoreCase(id)) {
-                    return f;
+                } else if (f.getName().endsWith(".yml")) {
+                    String baseName = f.getName().replace(".yml", "").toLowerCase();
+                    if (baseName.equalsIgnoreCase(id) || baseName.replace("_", "").equalsIgnoreCase(id.replace("_", ""))) {
+                        return f;
+                    }
+                    try {
+                        YamlConfiguration yml = YamlConfiguration.loadConfiguration(f);
+                        String fileId = yml.getString("id", "");
+                        String fileKey = yml.getString("key", "");
+                        if (fileId.equalsIgnoreCase(id) || fileKey.equalsIgnoreCase(namespacedKeyStr) || fileKey.equalsIgnoreCase("ecoenchants:" + id) || fileKey.equalsIgnoreCase("minecraft:" + id)) {
+                            return f;
+                        }
+                    } catch (Throwable ignored) {}
                 }
             }
         }
@@ -617,10 +660,16 @@ public class EcoEnchantsHook {
             case "efficiency" -> lines.add("Increases mining speed significantly.");
             case "fortune" -> lines.add("Gives a boost to certain block drops.");
             case "silk_touch" -> lines.add("Allows blocks to drop themselves when mined.");
-            case "blast_mining" -> lines.add("<green>" + Math.min(100, Math.max(5, level * 5)) + "%</green> chance to mine blocks in a <green>3x3</green> area");
-            case "dynamite" -> lines.add("Mines blocks in a <green>3x3</green> area");
+            case "blast_mining" -> {
+                lines.add("<green>" + Math.min(100, Math.max(5, level * 5)) + "%</green> chance to mine blocks in");
+                lines.add("a <green>3x3</green> area");
+            }
+            case "dynamite" -> lines.add("Mines blocks in a <green>" + (level <= 1 ? "3x3" : (level * 3 + 3) + "x" + (level * 3 + 3)) + "</green> area");
             case "infernal_touch", "autosmelt" -> lines.add("Automatically smelts mined blocks");
-            case "telekinesis", "telepathy" -> lines.add("Drops and experience go directly into your inventory");
+            case "telekinesis", "telepathy" -> {
+                lines.add("Drops and experience go directly");
+                lines.add("into your inventory");
+            }
             case "drill" -> lines.add("Drills continuous tunnels while mining.");
             case "jackhammer" -> lines.add("Breaks entire layers of blocks at once.");
             case "laser" -> lines.add("Fires a continuous beam that breaks blocks.");
