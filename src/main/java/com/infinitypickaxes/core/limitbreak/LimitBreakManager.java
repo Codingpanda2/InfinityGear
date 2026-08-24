@@ -5,7 +5,6 @@ import com.infinitypickaxes.api.events.LimitBreakApplyEvent;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.ItemBuilder;
-import com.infinitypickaxes.utils.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;

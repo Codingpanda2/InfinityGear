@@ -4,7 +4,6 @@ import com.infinitypickaxes.core.perk.PickaxePerk;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import org.bukkit.Material;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 

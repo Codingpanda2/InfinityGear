@@ -2,8 +2,6 @@ package com.infinitypickaxes.utils;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -13,7 +11,6 @@ import java.util.regex.Pattern;
 public final class TextUtil {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
-    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacyAmpersand();
     private static final TreeMap<Integer, String> ROMAN_NUMERALS = new TreeMap<>();
     private static final Pattern CENTER_PATTERN = Pattern.compile("<center>(.*?)</center>", Pattern.CASE_INSENSITIVE);
     private static final int CHAT_CENTER_PX = 154;

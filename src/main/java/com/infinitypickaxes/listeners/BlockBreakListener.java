@@ -3,7 +3,6 @@ package com.infinitypickaxes.listeners;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import org.bukkit.GameMode;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;

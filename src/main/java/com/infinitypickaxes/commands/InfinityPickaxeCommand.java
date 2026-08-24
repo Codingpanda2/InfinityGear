@@ -254,7 +254,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {
                 return Bukkit.getOnlinePlayers().stream()
-                        .map(Player::getName)
+                        .map(p -> p.getName())
                         .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
                         .collect(Collectors.toList());
             }
@@ -277,7 +277,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 4 && (args[0].equalsIgnoreCase("book") || args[0].equalsIgnoreCase("limitbreak"))) {
             return Bukkit.getOnlinePlayers().stream()
-                    .map(Player::getName)
+                    .map(p -> p.getName())
                     .filter(n -> n.toLowerCase().startsWith(args[3].toLowerCase()))
                     .collect(Collectors.toList());
         }

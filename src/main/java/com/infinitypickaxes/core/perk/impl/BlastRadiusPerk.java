@@ -1,6 +1,5 @@
 package com.infinitypickaxes.core.perk.impl;
 
-import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.perk.PickaxePerk;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import org.bukkit.Material;

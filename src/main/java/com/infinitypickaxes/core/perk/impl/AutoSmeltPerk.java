@@ -4,12 +4,10 @@ import com.infinitypickaxes.core.perk.PickaxePerk;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Collection;
 import java.util.List;
 
 public class AutoSmeltPerk implements PickaxePerk {
