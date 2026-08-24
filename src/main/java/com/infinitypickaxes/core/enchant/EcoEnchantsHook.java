@@ -17,6 +17,8 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class EcoEnchantsHook {
 
@@ -170,7 +172,7 @@ public class EcoEnchantsHook {
     }
 
     /**
-     * Extracts pure display header in exact EcoEnchants format with authentic colors & numerals.
+     * Extracts pure display header in exact MiniMessage / EcoEnchants format with authentic colors & numerals.
      */
     public String getEnchantmentHeader(Enchantment ench, int level) {
         if (ench == null || ench.getKey() == null) return "Enchantment";
@@ -221,31 +223,73 @@ public class EcoEnchantsHook {
     }
 
     private String formatHeaderWithLevel(String rawDisplayName, int level, int maxLevel) {
-        String clean = cleanEnchantmentName(rawDisplayName);
+        return appendLevelToMiniMessage(rawDisplayName, level, maxLevel);
+    }
+
+    public static String appendLevelToMiniMessage(String rawName, int level, int maxLevel) {
+        if (rawName == null || rawName.trim().isEmpty()) return "";
+        String s = rawName.trim();
+
+        // 1. If maxLevel is 1 and current level is 1, no numeral needed
+        if (maxLevel <= 1 && level <= 1) {
+            return s.startsWith("<") ? s : "<gray>" + s + "</gray>";
+        }
+
         String roman = TextUtil.toRoman(level);
 
-        if (maxLevel <= 1 && level <= 1) {
-            if (rawDisplayName.startsWith("<") && rawDisplayName.contains(">")) {
-                String openTag = rawDisplayName.substring(0, rawDisplayName.indexOf(">") + 1);
-                String closeTag = "</" + openTag.substring(1);
-                return openTag + clean + closeTag;
+        // 2. Remove any existing trailing Roman numerals or numbers from the end
+        s = cleanTrailingNumeralFromMiniMessage(s);
+
+        // 3. If the string has closing tags at the end (e.g. "</gradient>", "</#FF00E5>", "</b>", etc.)
+        if (s.endsWith(">")) {
+            int firstClosingTagIndex = findLastClosingTagSequenceStart(s);
+            if (firstClosingTagIndex > 0) {
+                String beforeTags = s.substring(0, firstClosingTagIndex).trim();
+                String closingTags = s.substring(firstClosingTagIndex);
+
+                // If it contains custom colors/gradients/rainbow, include Roman numeral inside the styling
+                if (s.contains("<gradient") || s.contains("<#") || s.contains("<color") || s.contains("<rainbow")) {
+                    return beforeTags + " " + roman + closingTags;
+                } else {
+                    // Vanilla / gray style: Name</gray> <#00E5FF>III</#00E5FF>
+                    return beforeTags + closingTags + " <#00E5FF>" + roman + "</#00E5FF>";
+                }
             }
-            return "<gray>" + clean + "</gray>";
         }
 
-        // Check if rawDisplayName has a custom hex or color tag (e.g. <#FF00E5>, <#00E5FF>)
-        if (rawDisplayName.startsWith("<#") || rawDisplayName.startsWith("<gradient") || rawDisplayName.startsWith("<color")) {
-            String openTag = rawDisplayName.substring(0, rawDisplayName.indexOf(">") + 1);
-            String closeTag = "</" + openTag.substring(1);
-            return openTag + clean + " " + roman + closeTag;
-        } else if (rawDisplayName.startsWith("<") && !rawDisplayName.startsWith("<gray>") && !rawDisplayName.startsWith("<white>")) {
-            String openTag = rawDisplayName.substring(0, rawDisplayName.indexOf(">") + 1);
-            String closeTag = "</" + openTag.substring(1);
-            return openTag + clean + " " + roman + closeTag;
-        } else {
-            // Vanilla style: <gray>Name</gray> <#00E5FF>Roman</#00E5FF>
-            return "<gray>" + clean + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
+        // 4. If plain string without tags
+        if (!s.startsWith("<")) {
+            return "<gray>" + s + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
         }
+
+        return s + " <#00E5FF>" + roman + "</#00E5FF>";
+    }
+
+    private static int findLastClosingTagSequenceStart(String s) {
+        if (!s.endsWith(">")) return -1;
+        int idx = s.length();
+        while (idx > 0 && s.charAt(idx - 1) == '>') {
+            int openBracket = s.lastIndexOf('<', idx - 1);
+            if (openBracket == -1) break;
+            String tag = s.substring(openBracket, idx);
+            if (tag.startsWith("</")) {
+                idx = openBracket;
+            } else {
+                break;
+            }
+        }
+        return idx < s.length() ? idx : -1;
+    }
+
+    private static String cleanTrailingNumeralFromMiniMessage(String s) {
+        if (s == null || s.isEmpty()) return "";
+        Pattern p = Pattern.compile("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)(\\s*(</[^>]+>)*)$");
+        Matcher m = p.matcher(s);
+        if (m.find()) {
+            String trailingTags = m.group(3) != null ? m.group(3) : "";
+            return s.substring(0, m.start()) + trailingTags;
+        }
+        return s;
     }
 
     private String getFallbackHeader(String id, int level, int maxLevel) {
