@@ -189,7 +189,7 @@ public class PickaxeManager {
                 config.getString("progress-bar.uncompleted-color", "<#555555>")
         );
 
-        // 5. Enchantments List format (Exact layout: Title + Roman Numerals + Multi-line Descriptions)
+        // 5. Enchantments List format (Exact layout: Authentic Title/Numerals + Multi-line Dynamic Descriptions)
         List<String> enchantLines = new ArrayList<>();
         if (pickaxe.getEnchantments().isEmpty()) {
             String noEnchantsText = config.getString("formats.no-enchants", "");
@@ -202,46 +202,11 @@ public class PickaxeManager {
                 int level = entry.getValue();
                 if (level <= 0) continue;
 
-                EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(keyStr);
-                if (socket == null && keyStr.contains(":")) {
-                    socket = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
-                }
-
                 Enchantment ench = getEnchantment(keyStr);
-                int maxLevel = 1;
-                if (socket != null) {
-                    maxLevel = socket.getMaxLevel();
-                } else if (ench != null) {
-                    maxLevel = ench.getMaxLevel();
-                }
-
-                String baseNameWithColor = plugin.getEnchantManager().getEcoHook().getEnchantmentDisplayName(ench);
-                String roman = TextUtil.toRoman(level);
-                String header;
-
-                if (maxLevel > 1 || level > 1) {
-                    if (baseNameWithColor.startsWith("<#") || baseNameWithColor.startsWith("<gradient")) {
-                        int closeTag = baseNameWithColor.lastIndexOf("</");
-                        if (closeTag > 0) {
-                            String openTag = baseNameWithColor.substring(0, baseNameWithColor.indexOf(">") + 1);
-                            String closeTagStr = baseNameWithColor.substring(closeTag);
-                            String content = baseNameWithColor.substring(openTag.length(), closeTag);
-                            header = openTag + content + " " + roman + closeTagStr;
-                        } else {
-                            header = baseNameWithColor + " <#00E5FF>" + roman + "</#00E5FF>";
-                        }
-                    } else {
-                        String clean = EcoEnchantsHook.cleanEnchantmentName(baseNameWithColor);
-                        header = "<gray>" + clean + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
-                    }
-                } else {
-                    String clean = EcoEnchantsHook.cleanEnchantmentName(baseNameWithColor);
-                    header = "<gray>" + clean + "</gray>";
-                }
-
+                String header = plugin.getEnchantManager().getEcoHook().getEnchantmentHeader(ench, level);
                 enchantLines.add(header);
 
-                // Add multi-line description underneath
+                // Add exact multi-line description underneath
                 List<String> desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
                 if (desc != null && !desc.isEmpty()) {
                     for (String d : desc) {

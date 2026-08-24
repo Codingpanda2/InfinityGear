@@ -169,6 +169,123 @@ public class EcoEnchantsHook {
                name.contains("layer") || name.contains("cuboid") || name.contains("excavat");
     }
 
+    /**
+     * Extracts pure display header in exact EcoEnchants format with authentic colors & numerals.
+     */
+    public String getEnchantmentHeader(Enchantment ench, int level) {
+        if (ench == null || ench.getKey() == null) return "Enchantment";
+        String id = ench.getKey().getKey().toLowerCase();
+        int maxLevel = ench.getMaxLevel();
+
+        // 1. Try EcoEnchants Live API
+        if (ecoEnchantsPresent) {
+            Object ecoEnchantObj = findEcoEnchantObject(ench);
+            if (ecoEnchantObj != null) {
+                // Try getFormattedDisplayName(level)
+                Object res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getFormattedDisplayName", new Class<?>[]{int.class}, level);
+                if (res != null) {
+                    String str = stringifyComponentOrObject(res);
+                    if (!str.trim().isEmpty()) {
+                        return formatHeaderWithLevel(str, level, maxLevel);
+                    }
+                }
+
+                // Try getDisplayName(level)
+                res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getDisplayName", new Class<?>[]{int.class}, level);
+                if (res != null) {
+                    String str = stringifyComponentOrObject(res);
+                    if (!str.trim().isEmpty()) {
+                        return formatHeaderWithLevel(str, level, maxLevel);
+                    }
+                }
+
+                // Try getDisplayName()
+                res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getDisplayName", new Class<?>[]{});
+                if (res != null) {
+                    String str = stringifyComponentOrObject(res);
+                    if (!str.trim().isEmpty()) {
+                        return formatHeaderWithLevel(str, level, maxLevel);
+                    }
+                }
+            }
+        }
+
+        // 2. Try EcoEnchants YAML files on disk
+        String yamlHeader = findHeaderInEcoYaml(id, ench.getKey().toString(), level, maxLevel);
+        if (yamlHeader != null && !yamlHeader.isEmpty()) {
+            return yamlHeader;
+        }
+
+        // 3. Fallback standard colors matching EcoEnchants default rarities
+        return getFallbackHeader(id, level, maxLevel);
+    }
+
+    private String formatHeaderWithLevel(String rawDisplayName, int level, int maxLevel) {
+        String clean = cleanEnchantmentName(rawDisplayName);
+        String roman = TextUtil.toRoman(level);
+
+        if (maxLevel <= 1 && level <= 1) {
+            if (rawDisplayName.startsWith("<") && rawDisplayName.contains(">")) {
+                String openTag = rawDisplayName.substring(0, rawDisplayName.indexOf(">") + 1);
+                String closeTag = "</" + openTag.substring(1);
+                return openTag + clean + closeTag;
+            }
+            return "<gray>" + clean + "</gray>";
+        }
+
+        // Check if rawDisplayName has a custom hex or color tag (e.g. <#FF00E5>, <#00E5FF>)
+        if (rawDisplayName.startsWith("<#") || rawDisplayName.startsWith("<gradient") || rawDisplayName.startsWith("<color")) {
+            String openTag = rawDisplayName.substring(0, rawDisplayName.indexOf(">") + 1);
+            String closeTag = "</" + openTag.substring(1);
+            return openTag + clean + " " + roman + closeTag;
+        } else if (rawDisplayName.startsWith("<") && !rawDisplayName.startsWith("<gray>") && !rawDisplayName.startsWith("<white>")) {
+            String openTag = rawDisplayName.substring(0, rawDisplayName.indexOf(">") + 1);
+            String closeTag = "</" + openTag.substring(1);
+            return openTag + clean + " " + roman + closeTag;
+        } else {
+            // Vanilla style: <gray>Name</gray> <#00E5FF>Roman</#00E5FF>
+            return "<gray>" + clean + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
+        }
+    }
+
+    private String getFallbackHeader(String id, int level, int maxLevel) {
+        String roman = TextUtil.toRoman(level);
+        return switch (id) {
+            case "blast_mining" -> "<#FF00E5>Blast Mining " + roman + "</#FF00E5>";
+            case "dynamite" -> "<#00E5FF>Dynamite " + roman + "</#00E5FF>";
+            case "drill" -> "<#FFAA00>Drill " + roman + "</#FFAA00>";
+            case "jackhammer" -> "<#FF5555>Jackhammer " + roman + "</#FF5555>";
+            case "laser" -> "<#FF0055>Laser " + roman + "</#FF0055>";
+            case "vein_miner" -> "<#00FF88>Vein Miner " + roman + "</#00FF88>";
+            case "telekinesis", "telepathy", "infernal_touch", "autosmelt" ->
+                (maxLevel > 1 || level > 1) ? "<gray>" + capitalize(id.replace("_", " ")) + "</gray> <#00E5FF>" + roman + "</#00E5FF>"
+                                            : "<gray>" + capitalize(id.replace("_", " ")) + "</gray>";
+            default ->
+                (maxLevel > 1 || level > 1) ? "<gray>" + capitalize(id.replace("_", " ")) + "</gray> <#00E5FF>" + roman + "</#00E5FF>"
+                                            : "<gray>" + capitalize(id.replace("_", " ")) + "</gray>";
+        };
+    }
+
+    private String findHeaderInEcoYaml(String id, String namespacedKeyStr, int level, int maxLevel) {
+        try {
+            List<File> searchDirs = getEcoSearchDirectories();
+            File matchedFile = null;
+            for (File dir : searchDirs) {
+                matchedFile = findYamlFile(dir, id, namespacedKeyStr);
+                if (matchedFile != null) break;
+            }
+
+            if (matchedFile != null) {
+                YamlConfiguration yaml = YamlConfiguration.loadConfiguration(matchedFile);
+                String dName = yaml.getString("display_name", yaml.getString("name", ""));
+                if (!dName.isEmpty()) {
+                    return formatHeaderWithLevel(dName, level, maxLevel);
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     public List<String> getEnchantmentDescription(Enchantment ench) {
         return getEnchantmentDescription(ench, 1);
     }
@@ -231,7 +348,6 @@ public class EcoEnchantsHook {
             Object ecoEnchantObj = null;
 
             if (ecoEnchantsClass != null) {
-                // Try static getByKey(NamespacedKey)
                 ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, key);
                 if (ecoEnchantObj == null) {
                     ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, new NamespacedKey("ecoenchants", id));
@@ -307,29 +423,33 @@ public class EcoEnchantsHook {
         return results;
     }
 
+    private List<File> getEcoSearchDirectories() {
+        List<File> searchDirs = new ArrayList<>();
+        Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("EcoEnchants");
+        if (ecoPlugin != null && ecoPlugin.getDataFolder().exists()) {
+            searchDirs.add(ecoPlugin.getDataFolder());
+            File enchantsDir = new File(ecoPlugin.getDataFolder(), "enchants");
+            if (enchantsDir.exists()) searchDirs.add(enchantsDir);
+        }
+
+        File pluginsDir = plugin.getDataFolder().getParentFile();
+        if (pluginsDir != null && pluginsDir.exists()) {
+            for (String dirName : new String[]{"EcoEnchants", "ecoenchants", "Eco", "eco"}) {
+                File d = new File(pluginsDir, dirName);
+                if (d.exists() && !searchDirs.contains(d)) {
+                    searchDirs.add(d);
+                    File eDir = new File(d, "enchants");
+                    if (eDir.exists() && !searchDirs.contains(eDir)) searchDirs.add(eDir);
+                }
+            }
+        }
+        return searchDirs;
+    }
+
     private List<String> fetchFromEcoEnchantsFiles(String id, String namespacedKeyStr, int level) {
         List<String> results = new ArrayList<>();
         try {
-            List<File> searchDirs = new ArrayList<>();
-            Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("EcoEnchants");
-            if (ecoPlugin != null && ecoPlugin.getDataFolder().exists()) {
-                searchDirs.add(ecoPlugin.getDataFolder());
-                File enchantsDir = new File(ecoPlugin.getDataFolder(), "enchants");
-                if (enchantsDir.exists()) searchDirs.add(enchantsDir);
-            }
-
-            File pluginsDir = plugin.getDataFolder().getParentFile();
-            if (pluginsDir != null && pluginsDir.exists()) {
-                for (String dirName : new String[]{"EcoEnchants", "ecoenchants", "Eco", "eco"}) {
-                    File d = new File(pluginsDir, dirName);
-                    if (d.exists() && !searchDirs.contains(d)) {
-                        searchDirs.add(d);
-                        File eDir = new File(d, "enchants");
-                        if (eDir.exists() && !searchDirs.contains(eDir)) searchDirs.add(eDir);
-                    }
-                }
-            }
-
+            List<File> searchDirs = getEcoSearchDirectories();
             File matchedFile = null;
             for (File dir : searchDirs) {
                 matchedFile = findYamlFile(dir, id, namespacedKeyStr);
@@ -657,14 +777,17 @@ public class EcoEnchantsHook {
     private List<String> getKnownDescription(String id, int level) {
         List<String> lines = new ArrayList<>();
         switch (id) {
-            case "efficiency" -> lines.add("Increases mining speed significantly.");
-            case "fortune" -> lines.add("Gives a boost to certain block drops.");
+            case "efficiency" -> lines.add("Increases mining speed by <green>" + (20 + (level - 1) * 5) + "%</green>");
+            case "fortune" -> {
+                lines.add("Gives a <green>" + (100 + level * 7) + "%</green> boost to certain");
+                lines.add("block drops");
+            }
             case "silk_touch" -> lines.add("Allows blocks to drop themselves when mined.");
             case "blast_mining" -> {
                 lines.add("<green>" + Math.min(100, Math.max(5, level * 5)) + "%</green> chance to mine blocks in");
-                lines.add("a <green>3x3</green> area");
+                lines.add("a 3x3 area");
             }
-            case "dynamite" -> lines.add("Mines blocks in a <green>" + (level <= 1 ? "3x3" : (level * 3 + 3) + "x" + (level * 3 + 3)) + "</green> area");
+            case "dynamite" -> lines.add("Mines blocks in a <green>" + (level <= 1 ? "3x3" : "9x9") + "</green> area");
             case "infernal_touch", "autosmelt" -> lines.add("Automatically smelts mined blocks");
             case "telekinesis", "telepathy" -> {
                 lines.add("Drops and experience go directly");
@@ -683,45 +806,7 @@ public class EcoEnchantsHook {
      * Extracts pure display name in English with authentic colors from EcoEnchants or defaults.
      */
     public String getEnchantmentDisplayName(Enchantment ench) {
-        if (ench == null || ench.getKey() == null) return "Enchantment";
-        String id = ench.getKey().getKey().toLowerCase();
-
-        // 1. Known authentic standard colors
-        switch (id) {
-            case "blast_mining" -> { return "<#FF00E5>Blast Mining</#FF00E5>"; }
-            case "dynamite" -> { return "<#00E5FF>Dynamite</#00E5FF>"; }
-            case "efficiency" -> { return "<#00E5FF>Efficiency</#00E5FF>"; }
-            case "fortune" -> { return "<#FFA500>Fortune</#FFA500>"; }
-            case "silk_touch" -> { return "<#9966FF>Silk Touch</#9966FF>"; }
-            case "infernal_touch", "autosmelt" -> { return "<gray>Infernal Touch</gray>"; }
-            case "telekinesis", "telepathy" -> { return "<gray>Telekinesis</gray>"; }
-            case "drill" -> { return "<#FFAA00>Drill</#FFAA00>"; }
-            case "jackhammer" -> { return "<#FF5555>Jackhammer</#FF5555>"; }
-            case "laser" -> { return "<#FF0055>Laser</#FF0055>"; }
-            case "vein_miner" -> { return "<#00FF88>Vein Miner</#00FF88>"; }
-        }
-
-        // 2. Try EcoEnchants API reflection
-        if (ecoEnchantsPresent) {
-            try {
-                Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
-                Object ecoEnchantObj = invokeMethodQuietly(ecoEnchantsClass, null, "getByKey", new Class<?>[]{NamespacedKey.class}, ench.getKey());
-                if (ecoEnchantObj != null) {
-                    Method getDName = ecoEnchantObj.getClass().getMethod("getDisplayName");
-                    Object nameRes = getDName.invoke(ecoEnchantObj);
-                    if (nameRes != null && !nameRes.toString().isEmpty()) {
-                        String clean = cleanEnchantmentName(nameRes.toString());
-                        if (nameRes.toString().startsWith("<") && nameRes.toString().contains(">")) {
-                            String tag = nameRes.toString().substring(0, nameRes.toString().indexOf(">") + 1);
-                            return tag + clean + "</" + tag.replace("<", "");
-                        }
-                        return "<gray>" + clean + "</gray>";
-                    }
-                }
-            } catch (Throwable ignored) {}
-        }
-
-        return "<gray>" + capitalize(id.replace("_", " ")) + "</gray>";
+        return getEnchantmentHeader(ench, 1);
     }
 
     public static String cleanEnchantmentName(String text) {
