@@ -85,25 +85,19 @@ progress-bar:
 pickaxe-lore:
   # Set to true if you want to override the item name. Default is false (keeps default/vanilla/anvil name).
   custom-display-name: false
-  display-name: "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient> <gray>[<yellow>Lv.%level%<gray>]"
+  display-name: "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient>"
   lore:
-    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<gray>Owner: <yellow>%player%</yellow>"
-    - "<gray>Pickaxe Level: <gold><b>%level%</b></gold><gray>/<yellow>%max_level%</yellow>"
-    - "<gray>XP Progress: %xp_bar% <aqua>%current_xp%</aqua><gray>/<aqua>%required_xp%</aqua>"
-    - "<gray>Blocks Mined: <yellow>%blocks_mined%</yellow>"
-    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<white><b>ENCHANTMENTS (<gold>%enchant_count%</gold><white>/</white><gold>%max_sockets%</gold>)</b></white>"
     - "%enchants_list%"
-    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<white><b>ACTIVE PERKS (<gold>%perks_count%</gold><white>/</white><gold>%max_perks%</gold>)</b></white>"
-    - "%perks_list%"
-    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<yellow><i>Shift + Right Click to open Menu</i></yellow>"
+    - "<dark_gray>---------------------</dark_gray>"
+    - "<gray>Level: <gold><b>%level%</b></gold></gray>"
+    - "<gray>Progress: %xp_bar%</gray>"
+    - "<gray>Mined Blocks: <yellow>%blocks_mined%</yellow></gray>"
+    - "<gray>Perks: <gold>%perks_count%</gold><gray>/</gray><gold>%max_perks%</gold></gray>"
 
 # Line formats inside the %enchants_list% and %perks_list% placeholders
 formats:
-  enchant-line: "  <gray>• <aqua>%enchant_name%</aqua> <yellow>%enchant_level%</yellow>"
-  no-enchants: "  <dark_gray><i>No enchantments applied</i></dark_gray>"
+  enchant-header: "<gray>%enchant_name%</gray> <aqua>%enchant_level%</aqua>"
+  enchant-header-single: "<gray>%enchant_name%</gray>"
+  no-enchants: ""
   perk-line: "  <gray>• <gold>%perk_name%</gold> <green>(Active)</green>"
-  no-perks: "  <dark_gray><i>No perks equipped</i></dark_gray>"
+  no-perks: ""

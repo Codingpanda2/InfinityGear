@@ -3,7 +3,6 @@ package com.infinitypickaxes.core.pickaxe;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.perk.PickaxePerk;
-import com.infinitypickaxes.utils.ItemBuilder;
 import com.infinitypickaxes.utils.ProgressBarUtil;
 import com.infinitypickaxes.utils.TextUtil;
 import net.kyori.adventure.text.Component;
@@ -39,6 +38,13 @@ public class PickaxeManager {
     /**
      * Creates a brand new Infinity Pickaxe item stack.
      */
+    public ItemStack createPickaxe(int startingLevel) {
+        return createPickaxe(null, null, startingLevel);
+    }
+
+    /**
+     * Creates a brand new Infinity Pickaxe item stack with optional metadata.
+     */
     public ItemStack createPickaxe(UUID ownerUuid, String ownerName, int startingLevel) {
         FileConfiguration config = plugin.getConfigManager().getConfig();
         Material material = Material.matchMaterial(config.getString("settings.default-material", "NETHERITE_PICKAXE"));
@@ -49,7 +55,7 @@ public class PickaxeManager {
                 item,
                 UUID.randomUUID(),
                 ownerUuid,
-                ownerName,
+                ownerName != null ? ownerName : "",
                 startingLevel,
                 0.0,
                 0L,
@@ -57,7 +63,6 @@ public class PickaxeManager {
                 new HashSet<>()
         );
 
-        // Save PDC and update lore & enchants
         syncPickaxe(pickaxe);
         return pickaxe.getItemStack();
     }
@@ -65,7 +70,7 @@ public class PickaxeManager {
     /**
      * Converts a vanilla pickaxe into an Infinity Pickaxe on the fly, preserving any existing enchantments.
      */
-    public InfinityPickaxe convertVanillaPickaxe(ItemStack item, Player owner) {
+    public InfinityPickaxe convertVanillaPickaxe(ItemStack item, Player player) {
         if (item == null || !isPickaxeMaterial(item.getType())) return null;
         if (PickaxeData.isInfinityPickaxe(item)) {
             return PickaxeData.fromItemStack(item);
@@ -83,8 +88,8 @@ public class PickaxeManager {
         InfinityPickaxe pickaxe = new InfinityPickaxe(
                 item,
                 UUID.randomUUID(),
-                owner != null ? owner.getUniqueId() : null,
-                owner != null ? owner.getName() : "Desconocido",
+                null,
+                "",
                 0,
                 0.0,
                 0L,
@@ -147,8 +152,7 @@ public class PickaxeManager {
             meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ATTRIBUTES);
         }
 
-        // 2. Real Enchantments synchronization (applies Bukkit/Eco enchantments to item so effects work)
-        // Clear old enchantments first
+        // 2. Real Enchantments synchronization (applies Bukkit/Eco enchantments to item so vanilla/eco effects work)
         for (Enchantment e : new ArrayList<>(meta.getEnchants().keySet())) {
             meta.removeEnchant(e);
         }
@@ -167,8 +171,7 @@ public class PickaxeManager {
         if (config.getBoolean("pickaxe-lore.custom-display-name", false)) {
             String nameTemplate = config.getString("pickaxe-lore.display-name", "");
             if (!nameTemplate.isEmpty()) {
-                nameTemplate = nameTemplate.replace("%level%", String.valueOf(pickaxe.getLevel()))
-                                           .replace("%player%", pickaxe.getOwnerName());
+                nameTemplate = nameTemplate.replace("%level%", String.valueOf(pickaxe.getLevel()));
                 meta.displayName(TextUtil.parse(nameTemplate));
             }
         }
@@ -185,55 +188,79 @@ public class PickaxeManager {
                 config.getString("progress-bar.uncompleted-color", "<#555555>")
         );
 
-        // 5. Enchantments List format
-        String enchantLineFormat = config.getString("formats.enchant-line", "  <gray>• <aqua>%enchant_name%</aqua> <yellow>%enchant_level%</yellow>");
-        String noEnchantsText = config.getString("formats.no-enchants", "  <dark_gray><i>Sin encantamientos aplicados</i></dark_gray>");
+        // 5. Enchantments List format (Matches visual style: Title + Roman Numerals + Descriptions)
         List<String> enchantLines = new ArrayList<>();
         if (pickaxe.getEnchantments().isEmpty()) {
-            enchantLines.add(noEnchantsText);
+            String noEnchantsText = config.getString("formats.no-enchants", "");
+            if (noEnchantsText != null && !noEnchantsText.trim().isEmpty()) {
+                enchantLines.add(noEnchantsText);
+            }
         } else {
             for (Map.Entry<String, Integer> entry : pickaxe.getEnchantments().entrySet()) {
                 String keyStr = entry.getKey();
+                int level = entry.getValue();
+                if (level <= 0) continue;
+
                 EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(keyStr);
                 if (socket == null && keyStr.contains(":")) {
                     socket = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
                 }
 
                 String dName;
+                int maxLevel = 1;
+                List<String> desc = new ArrayList<>();
+
                 if (socket != null) {
                     dName = socket.getDisplayName();
+                    maxLevel = socket.getMaxLevel();
+                    desc = socket.getDescription();
                 } else {
                     Enchantment ench = getEnchantment(keyStr);
                     if (ench != null) {
-                        try {
-                            Component comp = ench.displayName(1);
-                            dName = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp)
-                                    .replace(" I", "").replace(" 1", "");
-                        } catch (Throwable t) {
-                            String keyOnly = ench.getKey().getKey().replace("_", " ");
-                            dName = "<#00E5FF>" + capitalize(keyOnly) + "</#00E5FF>";
-                        }
+                        dName = plugin.getEnchantManager().getEcoHook().getEnchantmentDisplayName(ench);
+                        maxLevel = ench.getMaxLevel();
+                        desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench);
                     } else {
                         String raw = keyStr;
                         if (raw.contains(":")) raw = raw.substring(raw.indexOf(":") + 1);
-                        dName = "<#00E5FF>" + capitalize(raw.replace("_", " ")) + "</#00E5FF>";
+                        dName = "<gray>" + capitalize(raw.replace("_", " ")) + "</gray>";
                     }
                 }
 
-                String line = enchantLineFormat
-                        .replace("%enchant_name%", dName)
-                        .replace("%enchant_level%", TextUtil.toRoman(entry.getValue()))
-                        .replace("%enchant_raw_level%", String.valueOf(entry.getValue()));
-                enchantLines.add(line);
+                // Header line with Roman numeral if maxLevel > 1 or level > 1
+                String roman = TextUtil.toRoman(level);
+                String header;
+                if (maxLevel > 1 || level > 1) {
+                    if (dName.contains("<b>") && dName.contains("</b>")) {
+                        header = dName.replace("</b>", " " + roman + "</b>");
+                    } else {
+                        header = dName + " <aqua>" + roman + "</aqua>";
+                    }
+                } else {
+                    header = dName;
+                }
+
+                enchantLines.add(header);
+
+                // Add multi-line description underneath
+                if (desc != null && !desc.isEmpty()) {
+                    for (String d : desc) {
+                        if (d != null && !d.trim().isEmpty()) {
+                            enchantLines.add(d.startsWith("<") ? d : "<gray>" + d + "</gray>");
+                        }
+                    }
+                }
             }
         }
 
-        // 6. Perks List format
-        String perkLineFormat = config.getString("formats.perk-line", "  <gray>• <gold>%perk_name%</gold> <green>(Activo)</green>");
-        String noPerksText = config.getString("formats.no-perks", "  <dark_gray><i>Sin perks equipados</i></dark_gray>");
+        // 6. Perks List format (if used in custom lore templates)
+        String perkLineFormat = config.getString("formats.perk-line", "  <gray>• <gold>%perk_name%</gold> <green>(Active)</green>");
+        String noPerksText = config.getString("formats.no-perks", "");
         List<String> perkLines = new ArrayList<>();
         if (pickaxe.getEquippedPerks().isEmpty()) {
-            perkLines.add(noPerksText);
+            if (noPerksText != null && !noPerksText.trim().isEmpty()) {
+                perkLines.add(noPerksText);
+            }
         } else {
             for (String perkId : pickaxe.getEquippedPerks()) {
                 PickaxePerk perk = plugin.getPerkManager().getPerk(perkId);
@@ -261,7 +288,6 @@ public class PickaxeManager {
                 }
             } else {
                 String processed = template
-                        .replace("%player%", pickaxe.getOwnerName())
                         .replace("%level%", String.valueOf(pickaxe.getLevel()))
                         .replace("%max_level%", String.valueOf(plugin.getLevelManager().getMaxLevel()))
                         .replace("%current_xp%", String.format("%.0f", pickaxe.getXp()))
