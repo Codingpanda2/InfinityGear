@@ -9,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerItemHeldEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -52,14 +53,23 @@ public class PickaxeHeldListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(PlayerJoinEvent event) {
+        Bukkit.getScheduler().runTask(plugin, () -> refreshHeldPickaxe(event.getPlayer()));
+    }
+
     public void refreshAllHeldPickaxes() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            ItemStack mainHand = player.getInventory().getItemInMainHand();
-            if (PickaxeData.isInfinityPickaxe(mainHand)) {
-                InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(mainHand, player);
-                if (pickaxe != null) {
-                    plugin.getPickaxeManager().syncPickaxe(pickaxe);
-                }
+            refreshHeldPickaxe(player);
+        }
+    }
+
+    private void refreshHeldPickaxe(Player player) {
+        ItemStack mainHand = player.getInventory().getItemInMainHand();
+        if (PickaxeData.isInfinityPickaxe(mainHand)) {
+            InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(mainHand, player);
+            if (pickaxe != null) {
+                plugin.getPickaxeManager().syncPickaxe(pickaxe);
             }
         }
     }

@@ -2,6 +2,7 @@ package com.infinitypickaxes.listeners;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.GameMode;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -25,7 +26,14 @@ public class BlockBreakListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
+        if (!player.hasPermission("infinitypickaxes.use")) return;
         ItemStack held = player.getInventory().getItemInMainHand();
+
+        if (PickaxeData.isInfinityPickaxe(held) && !plugin.getDuplicateService().isUsable(held)) {
+            event.setCancelled(true);
+            plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
+            return;
+        }
 
         InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(held, player);
         if (pickaxe == null) return;

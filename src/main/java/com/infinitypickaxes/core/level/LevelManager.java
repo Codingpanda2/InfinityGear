@@ -3,6 +3,7 @@ package com.infinitypickaxes.core.level;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.api.events.PickaxeLevelUpEvent;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.utils.SoundUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -44,11 +45,8 @@ public class LevelManager {
         this.linear = config.getDouble("leveling.formula.linear", 50.0);
 
         this.soundEnabled = config.getBoolean("leveling.levelup-sound.enabled", true);
-        try {
-            this.levelupSound = Sound.valueOf(config.getString("leveling.levelup-sound.sound", "ENTITY_PLAYER_LEVELUP"));
-        } catch (Exception e) {
-            this.levelupSound = Sound.ENTITY_PLAYER_LEVELUP;
-        }
+        this.levelupSound = SoundUtil.resolve(config.getString(
+                "leveling.levelup-sound.sound", "ENTITY_PLAYER_LEVELUP"), Sound.ENTITY_PLAYER_LEVELUP);
         this.soundVolume = (float) config.getDouble("leveling.levelup-sound.volume", 1.0);
         this.soundPitch = (float) config.getDouble("leveling.levelup-sound.pitch", 1.2);
 

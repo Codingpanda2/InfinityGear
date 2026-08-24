@@ -3,6 +3,7 @@ package com.infinitypickaxes.hooks;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitypickaxes.utils.ProgressBarUtil;
 import com.infinitypickaxes.utils.TextUtil;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
@@ -46,7 +47,8 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
         Player player = offlinePlayer.getPlayer();
         if (player == null) return "";
 
-        InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(player);
+        // Placeholder resolution must be read-only; never auto-convert a vanilla item.
+        InfinityPickaxe pickaxe = PickaxeData.fromItemStack(player.getInventory().getItemInMainHand());
         if (pickaxe == null) {
             if (params.equalsIgnoreCase("is_holding")) return "false";
             return "0";
@@ -106,9 +108,6 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
             }
             case "max_perks" -> {
                 return String.valueOf(plugin.getLevelManager().getMaxPerksForLevel(pickaxe.getLevel()));
-            }
-            case "owner" -> {
-                return pickaxe.getOwnerName();
             }
         }
 

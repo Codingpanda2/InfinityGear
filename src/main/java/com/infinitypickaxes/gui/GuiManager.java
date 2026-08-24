@@ -25,6 +25,12 @@ public class GuiManager implements Listener {
         try {
             InventoryHolder holder = inv.getHolder();
             if (holder instanceof CustomGui gui) {
+                if (plugin.getDuplicateService().isRestricted(gui.getPickaxe().getUuid())) {
+                    event.setCancelled(true);
+                    gui.getPlayer().closeInventory();
+                    plugin.getMessageManager().sendMessage(gui.getPlayer(), "messages.pickaxe-quarantined");
+                    return;
+                }
                 gui.handleClick(event);
             }
         } catch (Throwable ignored) {}

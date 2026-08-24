@@ -119,6 +119,10 @@ public class PerkManager {
      */
     public boolean togglePerk(Player player, InfinityPickaxe pickaxe, PickaxePerk perk) {
         if (player == null || pickaxe == null || perk == null) return false;
+        if (plugin.getDuplicateService().isRestricted(pickaxe.getUuid())) {
+            plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
+            return false;
+        }
 
         // Check level requirement
         if (pickaxe.getLevel() < perk.getRequiredLevel()) {

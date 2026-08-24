@@ -31,9 +31,15 @@ public class PickaxeInteractListener implements Listener {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         Player player = event.getPlayer();
+        if (!player.hasPermission("infinitypickaxes.use")) return;
         if (!player.isSneaking()) return;
 
         ItemStack item = player.getInventory().getItemInMainHand();
+        if (PickaxeData.isInfinityPickaxe(item) && !plugin.getDuplicateService().isUsable(item)) {
+            event.setCancelled(true);
+            plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
+            return;
+        }
         InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(item, player);
         if (pickaxe == null) return;
 

@@ -1,12 +1,13 @@
 name: InfinityPickaxes
-version: '1.0.0'
+version: '${version}'
 main: com.infinitypickaxes.InfinityPickaxes
-api-version: '1.21'
+api-version: '26.2'
 author: aland
 description: Advanced Rival-style leveling pickaxes with EcoEnchants addon integration, interactive GUIs, sockets, and perks.
-softdepend:
+depend:
   - EcoEnchants
   - eco
+softdepend:
   - PlaceholderAPI
   - WorldGuard
 
@@ -14,8 +15,7 @@ commands:
   infinitypickaxes:
     description: Main command for InfinityPickaxes
     aliases: [pickaxe, ipickaxe, infinitypickaxe]
-    permission: infinitypickaxes.admin
-    usage: /<command> [give|reload|setlevel|addxp|gui|info]
+    usage: /<command> [give|reload|setlevel|addxp|gui|duplicate]
 
 permissions:
   infinitypickaxes.use:
@@ -23,4 +23,17 @@ permissions:
     default: true
   infinitypickaxes.admin:
     description: Full administrative access to InfinityPickaxes commands.
+    default: op
+    children:
+      infinitypickaxes.admin.duplicates.view: true
+      infinitypickaxes.admin.duplicates.scan: true
+      infinitypickaxes.admin.duplicates.quarantine: true
+      infinitypickaxes.admin.duplicates.resolve: true
+  infinitypickaxes.admin.duplicates.view:
+    default: op
+  infinitypickaxes.admin.duplicates.scan:
+    default: op
+  infinitypickaxes.admin.duplicates.quarantine:
+    default: op
+  infinitypickaxes.admin.duplicates.resolve:
     default: op

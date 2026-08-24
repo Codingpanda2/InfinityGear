@@ -4,6 +4,7 @@ import com.infinitypickaxes.commands.InfinityPickaxeCommand;
 import com.infinitypickaxes.config.ConfigManager;
 import com.infinitypickaxes.config.MessageManager;
 import com.infinitypickaxes.core.enchant.EnchantManager;
+import com.infinitypickaxes.core.duplicate.PickaxeDuplicateService;
 import com.infinitypickaxes.core.level.LevelManager;
 import com.infinitypickaxes.core.limitbreak.LimitBreakManager;
 import com.infinitypickaxes.core.perk.PerkManager;
@@ -35,6 +36,8 @@ public final class InfinityPickaxes extends JavaPlugin {
     private GuiManager guiManager;
     private PickaxeHeldListener heldListener;
     private PlaceholderAPIHook papiHook;
+    private PickaxeDuplicateService duplicateService;
+    private DuplicateDetectionListener duplicateListener;
 
     @Override
     public void onEnable() {
@@ -50,7 +53,7 @@ public final class InfinityPickaxes extends JavaPlugin {
         console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██║╚██╗██║██╔══╝  ██║██║╚██╗██║██║   ██║     ╚██╔╝  </gradient>"));
         console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██║ ╚████║██║     ██║██║ ╚████║██║   ██║      ██║   </gradient>"));
         console.sendMessage(TextUtil.parse("<gradient:#0077FE:#00E5FF>  ╚═╝╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   </gradient>"));
-        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>       ⛏️ INFINITY PICKAXES </b></gradient><gray>v<yellow>" + getDescription().getVersion() + "</yellow> <dark_gray>┃</dark_gray> <gray>Paper 1.21.4"));
+        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>       ⛏️ INFINITY PICKAXES </b></gradient><gray>v<yellow>" + getDescription().getVersion() + "</yellow> <dark_gray>┃</dark_gray> <gray>Paper 26.2"));
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
 
         // 1. Initialize Configuration & Locales
@@ -63,13 +66,20 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.enchantManager = new EnchantManager(this);
         this.limitBreakManager = new LimitBreakManager(this);
         this.perkManager = new PerkManager(this);
+        try {
+            this.duplicateService = new PickaxeDuplicateService(this);
+        } catch (Exception exception) {
+            getLogger().severe("Could not initialize duplicate protection: " + exception.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         this.pickaxeManager = new PickaxeManager(this);
         this.guiManager = new GuiManager(this);
 
         int socketsCount = enchantManager.getAllSockets().size();
         boolean ecoPresent = enchantManager.getEcoHook().isEcoEnchantsPresent();
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[2/6]</dark_gray> <white>EcoEnchants & LimitBreak:</white> " +
-                (ecoPresent ? "<green>Connected </green>" : "<yellow>Bukkit Mode </yellow>") +
+                (ecoPresent ? "<green>Connected </green>" : "<red>Unavailable </red>") +
                 "<dark_gray>(" + socketsCount + " sockets, LimitBreak +" + limitBreakManager.getMaxExtraLevels() + ")</dark_gray>"));
 
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[3/6]</dark_gray> <white>Leveling System:</white> <green>Ready </green><dark_gray>(Max Level: " + levelManager.getMaxLevel() + ")</dark_gray>"));
@@ -85,6 +95,8 @@ public final class InfinityPickaxes extends JavaPlugin {
 
         this.heldListener = new PickaxeHeldListener(this);
         pm.registerEvents(this.heldListener, this);
+        this.duplicateListener = new DuplicateDetectionListener(this);
+        pm.registerEvents(this.duplicateListener, this);
 
         // 4. Register PlaceholderAPI Hook if present
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
@@ -135,6 +147,7 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.levelManager.loadConfig();
         this.enchantManager.loadConfig();
         this.perkManager.loadConfig();
+        if (this.duplicateListener != null) this.duplicateListener.reload();
 
         // 5. Restart tick task and refresh all pickaxes currently held by players
         if (this.heldListener != null) {
@@ -159,6 +172,7 @@ public final class InfinityPickaxes extends JavaPlugin {
         if (heldListener != null) {
             heldListener.stopTickTask();
         }
+        if (duplicateListener != null) duplicateListener.stop();
 
         // 2. Close any open CustomGui inventories
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -176,6 +190,13 @@ public final class InfinityPickaxes extends JavaPlugin {
                 papiHook.unregister();
             } catch (Throwable ignored) {}
             papiHook = null;
+        }
+        if (duplicateService != null) {
+            try {
+                duplicateService.close();
+            } catch (Exception exception) {
+                getLogger().warning("Could not close duplicate registry cleanly: " + exception.getMessage());
+            }
         }
 
         ConsoleCommandSender console = Bukkit.getConsoleSender();
@@ -219,5 +240,9 @@ public final class InfinityPickaxes extends JavaPlugin {
 
     public GuiManager getGuiManager() {
         return guiManager;
+    }
+
+    public PickaxeDuplicateService getDuplicateService() {
+        return duplicateService;
     }
 }

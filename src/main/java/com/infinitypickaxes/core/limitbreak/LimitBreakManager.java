@@ -5,6 +5,7 @@ import com.infinitypickaxes.api.events.LimitBreakApplyEvent;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.ItemBuilder;
+import com.infinitypickaxes.utils.SoundUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -162,6 +163,10 @@ public class LimitBreakManager {
         if (player == null || pickaxe == null || socket == null || bookItem == null) {
             return false;
         }
+        if (plugin.getDuplicateService().isRestricted(pickaxe.getUuid())) {
+            plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
+            return false;
+        }
 
         if (!isLimitBreakBook(bookItem)) {
             return false;
@@ -192,6 +197,12 @@ public class LimitBreakManager {
         }
 
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
+        if (currentLvl == 0 && !plugin.getEnchantManager().getEcoHook().canApply(
+                pickaxe.getItemStack(), plugin.getEnchantManager().getEnchantment(socket.getKeyString()))) {
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
+                    "%enchant%", socket.getDisplayName());
+            return false;
+        }
         int baseMax = socket.getMaxLevel();
         int maxExtra = getMaxExtraLevels();
         int absoluteMax = baseMax + maxExtra;
@@ -232,9 +243,8 @@ public class LimitBreakManager {
             String sndName = config.getString("settings.sound.sound", "BLOCK_ENCHANTMENT_TABLE_USE");
             float vol = (float) config.getDouble("settings.sound.volume", 1.0);
             float pitch = (float) config.getDouble("settings.sound.pitch", 1.4);
-            try {
-                player.playSound(player.getLocation(), Sound.valueOf(sndName), vol, pitch);
-            } catch (IllegalArgumentException ignored) {}
+            Sound sound = SoundUtil.resolve(sndName, null);
+            if (sound != null) player.playSound(player.getLocation(), sound, vol, pitch);
         }
 
         if (config.getBoolean("settings.particles.enabled", true)) {

@@ -1,7 +1,7 @@
 # ⛏️ InfinityPickaxes
 
 <p align="center">
-  <b>Advanced Rival-style leveling pickaxes plugin for PaperMC (Java 21) with EcoEnchants addon integration, interactive book sockets, modular perks, and sleek GUIs.</b>
+  <b>Advanced Rival-style leveling pickaxes plugin for Paper 26.2 (Java 25) with EcoEnchants addon integration, interactive book sockets, modular perks, and sleek GUIs.</b>
 </p>
 
 ---
@@ -11,13 +11,10 @@
 * ⛏️ **Picos Irrompibles por Defecto:** Todos los picos generados o convertidos tienen la propiedad `Unbreakable: true`.
 * 🔄 **Detección y Conversión Vanilla Automática:** Saca cualquier pico de modo creativo, crafteo o `/give` y el plugin lo convertirá en un *Infinity Pickaxe* al instante manteniendo sus encantamientos existentes.
 * 📈 **Sistema de Nivel Progresivo (0 a 100):** Gana experiencia minando bloques configurables (`blocks.yml`). Incluye protección anti-exploit para bloques colocados por jugadores.
-* 🔮 **Integración Dinámica con EcoEnchants & Vanilla:**
-  * **Eficiencia:** Desbloqueada desde Nivel 0 con soporte escalable hasta **Nivel 25**.
-  * **Fortuna:** Desbloqueada desde Nivel 0 con tope inicial en **Nivel 3**.
-  * **EcoEnchants:** Soporte nativo para Telepatía, Explosivo, Autofundición, Taladro, Martillo y más.
-  * **`level-scaling`:** Límites máximos de encantamiento escalables por nivel de pico configurables.
+* 🔮 **Integración Nativa con EcoEnchants:** EcoEnchants 2026.33 es la única fuente de encantamientos, efectos, niveles máximos, nombres y descripciones.
 * 📖 **Mejora Interactiva por Libros:** Arrastra y suelta un libro del mismo nivel en el socket para subirlo de nivel.
 * ⚡ **Sistema Modular de Perks:** Desbloqueo de hasta 5 ranuras en niveles 10, 25, 50, 75 y 100 (*Haste Surge*, *AutoSmelt*, *Blast 3x3*, *Fortune Frenzy*, *Void Siphon*).
+* 🛡️ **Protección contra Duplicados:** Los UUID duplicados quedan en cuarentena hasta que un administrador conserva y reasigna el ejemplar legítimo.
 * 🎨 **Soporte para TexturePacks & Bridges:**
   * Compatible de forma nativa con `CustomModelData` y fuentes de texturas GUI en títulos.
   * Compatible con **zMenu**, **EcoMenus** y **DeluxeMenus** mediante bridge de comandos y PlaceholderAPI.
@@ -33,6 +30,7 @@
 | `/pickaxe setlevel <jugador> <nivel>` | `infinitypickaxes.admin` | Modifica directamente el nivel del pico sostenido. |
 | `/pickaxe addxp <jugador> <cantidad>` | `infinitypickaxes.admin` | Añade experiencia de minado al pico del jugador. |
 | `/pickaxe reload` | `infinitypickaxes.admin` | Recarga todas las configuraciones, menús y registros en caliente. |
+| `/pickaxe duplicate ...` | `infinitypickaxes.admin.duplicates.*` | Audita, pone en cuarentena y resuelve UUID duplicados. |
 
 ---
 
@@ -57,10 +55,10 @@
 
 ## 🛠️ Compilación
 
-Requiere **Java 21** y **Maven 3.8+**:
+Requiere **Java 25** y un servidor **Linux**. SQLite está incluido en el JAR con binarios nativos para Linux glibc y musl; no descarga dependencias durante el arranque. El wrapper de Gradle descarga la versión correcta automáticamente:
 
 ```bash
-mvn clean package
+./gradlew clean build
 ```
 
-El archivo compilado se generará en `target/InfinityPickaxes-1.0.0.jar`.
+El archivo compilado se genera en `build/libs/InfinityPickaxes-2.0.0-SNAPSHOT.jar`.

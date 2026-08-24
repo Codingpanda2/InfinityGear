@@ -3,6 +3,8 @@ package com.infinitypickaxes.core.enchant;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.api.events.PickaxeEnchantUpgradeEvent;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.utils.SoundUtil;
+import com.willfp.ecoenchants.enchant.EcoEnchant;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -39,106 +41,34 @@ public class EnchantManager {
         FileConfiguration config = plugin.getConfigManager().getEnchantsConfig();
 
         // Sound settings
-        try {
-            this.upgradeSound = Sound.valueOf(config.getString("settings.upgrade-sound.sound", "BLOCK_ANVIL_USE"));
-        } catch (Exception e) {
-            this.upgradeSound = Sound.BLOCK_ANVIL_USE;
-        }
+        this.upgradeSound = SoundUtil.resolve(config.getString(
+                "settings.upgrade-sound.sound", "BLOCK_ANVIL_USE"), Sound.BLOCK_ANVIL_USE);
         this.upgradeSoundVolume = (float) config.getDouble("settings.upgrade-sound.volume", 1.0);
         this.upgradeSoundPitch = (float) config.getDouble("settings.upgrade-sound.pitch", 1.1);
 
-        // Load sockets
-        ConfigurationSection enchantsSec = config.getConfigurationSection("enchants");
-        if (enchantsSec != null) {
-            for (String id : enchantsSec.getKeys(false)) {
-                ConfigurationSection sec = enchantsSec.getConfigurationSection(id);
-                if (sec == null) continue;
-
-                boolean enabled = sec.getBoolean("enabled", true);
-                String keyStr = sec.getString("key", "minecraft:" + id).toLowerCase();
-                String displayName = sec.getString("display-name", id);
-                Material icon = Material.matchMaterial(sec.getString("icon", "ENCHANTED_BOOK"));
-                if (icon == null) icon = Material.ENCHANTED_BOOK;
-                int slot = sec.getInt("slot", -1);
-                int unlockLevel = sec.getInt("unlock-pickaxe-level", 0);
-                int maxLevel = sec.getInt("max-level", 1);
-                List<String> desc = sec.getStringList("description");
-                Integer customModelData = sec.contains("custom-model-data") ? sec.getInt("custom-model-data") : null;
-
-                NavigableMap<Integer, Integer> scaling = new TreeMap<>();
-                if (sec.isConfigurationSection("level-scaling")) {
-                    for (String lvlKey : sec.getConfigurationSection("level-scaling").getKeys(false)) {
-                        try {
-                            int pickaxeLvl = Integer.parseInt(lvlKey);
-                            int enchantLvl = sec.getInt("level-scaling." + lvlKey);
-                            scaling.put(pickaxeLvl, enchantLvl);
-                        } catch (NumberFormatException ignored) {}
-                    }
-                }
-
-                NamespacedKey namespacedKey;
-                try {
-                    String[] parts = keyStr.split(":", 2);
-                    namespacedKey = (parts.length == 2) ? new NamespacedKey(parts[0], parts[1]) : NamespacedKey.minecraft(parts[0]);
-                } catch (Exception e) {
-                    namespacedKey = NamespacedKey.minecraft(id);
-                }
-
-                // Verify that the enchantment actually exists on the server
-                Enchantment realEnchant = Bukkit.getRegistry(Enchantment.class).get(namespacedKey);
-                if (realEnchant == null) {
-                    realEnchant = getEnchantment(keyStr);
-                }
-                if (realEnchant == null) {
-                    plugin.getLogger().info("Enchantment '" + keyStr + "' is not installed on server. Skipping socket.");
-                    continue;
-                }
-
-                EnchantSocket socket = new EnchantSocket(id, keyStr, namespacedKey, displayName, icon, slot, enabled, unlockLevel, maxLevel, scaling, desc, customModelData);
-                socketsById.put(id.toLowerCase(), socket);
-                socketsByKey.put(keyStr.toLowerCase(), socket);
-            }
-        }
-
-        // 2. Discover and dynamically register any compatible EcoEnchants
+        // EcoEnchants is the sole source of enchantment identity and metadata.
         discoverAndRegisterEcoEnchants();
 
         plugin.getLogger().info("Loaded " + socketsById.size() + " compatible enchantment sockets.");
     }
 
     public void discoverAndRegisterEcoEnchants() {
-        FileConfiguration config = plugin.getConfigManager().getConfig();
-        if (!config.getBoolean("settings.auto-register-ecoenchants", true)) {
-            return;
-        }
-
-        List<Enchantment> discovered = ecoHook.discoverPickaxeEnchants();
+        FileConfiguration policy = plugin.getConfigManager().getEnchantsConfig();
         int added = 0;
 
-        for (Enchantment ench : discovered) {
+        for (EcoEnchant ecoEnchant : ecoHook.getPickaxeEnchants()) {
+            Enchantment ench = ecoEnchant.getEnchantment();
             if (ench == null || ench.getKey() == null) continue;
             String keyStr = ench.getKey().toString().toLowerCase();
-            String id = ench.getKey().getKey().toLowerCase();
+            String id = ecoEnchant.getID().toLowerCase();
 
-            if (socketsByKey.containsKey(keyStr) || socketsById.containsKey(id)) {
-                continue;
-            }
+            if (policy.getStringList("policy.disabled").stream().anyMatch(id::equalsIgnoreCase)) continue;
 
-            // Derive real display name & description from EcoEnchants / Paper
             String displayName = ecoHook.getEnchantmentDisplayName(ench);
             List<String> desc = ecoHook.getEnchantmentDescription(ench);
-
-            int maxLevel = Math.max(1, ench.getMaxLevel());
-            int unlockLevel = 10;
-            if (maxLevel == 1) unlockLevel = 15;
-            else if (maxLevel >= 5) unlockLevel = 25;
-
-            NavigableMap<Integer, Integer> scaling = new TreeMap<>();
-            scaling.put(unlockLevel, 1);
-            if (maxLevel > 1) {
-                scaling.put(50, Math.max(2, maxLevel / 2));
-                scaling.put(75, maxLevel);
-            }
+            int maxLevel = Math.max(1, ecoEnchant.getMaximumLevel());
+            int unlockLevel = policy.getInt("policy.unlock-levels." + id,
+                    policy.getInt("policy.default-unlock-level", 0));
 
             EnchantSocket socket = new EnchantSocket(
                     id,
@@ -150,7 +80,7 @@ public class EnchantManager {
                     true,
                     unlockLevel,
                     maxLevel,
-                    scaling,
+                    new TreeMap<>(),
                     desc,
                     null
             );
@@ -161,7 +91,7 @@ public class EnchantManager {
         }
 
         if (added > 0) {
-            plugin.getLogger().info("Detected and registered " + added + " EcoEnchants into dynamic sockets.");
+            plugin.getLogger().info("Loaded " + added + " pickaxe enchantments from EcoEnchants.");
         }
     }
 
@@ -191,6 +121,10 @@ public class EnchantManager {
         if (player == null || pickaxe == null || socket == null || bookItem == null) {
             return false;
         }
+        if (plugin.getDuplicateService().isRestricted(pickaxe.getUuid())) {
+            plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
+            return false;
+        }
 
         // 1. Check if pickaxe level satisfies socket unlock
         if (!socket.isUnlocked(pickaxe.getLevel())) {
@@ -201,6 +135,13 @@ public class EnchantManager {
 
         int currentLevelOnPickaxe = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxAllowedForPickaxe = socket.getMaxAllowedLevel(pickaxe.getLevel());
+
+        Enchantment liveEnchantment = getEnchantment(socket.getKeyString());
+        if (currentLevelOnPickaxe == 0 && !ecoHook.canApply(pickaxe.getItemStack(), liveEnchantment)) {
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
+                    "%enchant%", socket.getDisplayName());
+            return false;
+        }
 
         // 2. Check if already reached maximum limit for current pickaxe level
         if (currentLevelOnPickaxe >= maxAllowedForPickaxe) {

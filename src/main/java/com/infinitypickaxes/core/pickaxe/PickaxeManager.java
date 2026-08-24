@@ -1,17 +1,12 @@
 package com.infinitypickaxes.core.pickaxe;
 
 import com.infinitypickaxes.InfinityPickaxes;
-import com.infinitypickaxes.core.enchant.EcoEnchantsHook;
-import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.perk.PickaxePerk;
 import com.infinitypickaxes.utils.ProgressBarUtil;
 import com.infinitypickaxes.utils.TextUtil;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -40,13 +35,6 @@ public class PickaxeManager {
      * Creates a brand new Infinity Pickaxe item stack.
      */
     public ItemStack createPickaxe(int startingLevel) {
-        return createPickaxe(null, null, startingLevel);
-    }
-
-    /**
-     * Creates a brand new Infinity Pickaxe item stack with optional metadata.
-     */
-    public ItemStack createPickaxe(UUID ownerUuid, String ownerName, int startingLevel) {
         FileConfiguration config = plugin.getConfigManager().getConfig();
         Material material = Material.matchMaterial(config.getString("settings.default-material", "NETHERITE_PICKAXE"));
         if (material == null) material = Material.NETHERITE_PICKAXE;
@@ -55,12 +43,9 @@ public class PickaxeManager {
         InfinityPickaxe pickaxe = new InfinityPickaxe(
                 item,
                 UUID.randomUUID(),
-                ownerUuid,
-                ownerName != null ? ownerName : "",
                 startingLevel,
                 0.0,
                 0L,
-                new LinkedHashMap<>(),
                 new HashSet<>()
         );
 
@@ -74,27 +59,16 @@ public class PickaxeManager {
     public InfinityPickaxe convertVanillaPickaxe(ItemStack item, Player player) {
         if (item == null || !isPickaxeMaterial(item.getType())) return null;
         if (PickaxeData.isInfinityPickaxe(item)) {
+            if (plugin.getDuplicateService() != null && !plugin.getDuplicateService().isUsable(item)) return null;
             return PickaxeData.fromItemStack(item);
-        }
-
-        Map<String, Integer> enchants = new LinkedHashMap<>();
-        if (item.hasItemMeta() && item.getItemMeta().hasEnchants()) {
-            for (Map.Entry<Enchantment, Integer> entry : item.getItemMeta().getEnchants().entrySet()) {
-                if (entry.getKey() != null && entry.getKey().getKey() != null) {
-                    enchants.put(entry.getKey().getKey().toString().toLowerCase(), entry.getValue());
-                }
-            }
         }
 
         InfinityPickaxe pickaxe = new InfinityPickaxe(
                 item,
                 UUID.randomUUID(),
-                null,
-                "",
                 0,
                 0.0,
                 0L,
-                enchants,
                 new HashSet<>()
         );
 
@@ -109,6 +83,7 @@ public class PickaxeManager {
         if (item == null || !isPickaxeMaterial(item.getType())) return null;
 
         if (PickaxeData.isInfinityPickaxe(item)) {
+            if (plugin.getDuplicateService() != null && !plugin.getDuplicateService().isUsable(item)) return null;
             return PickaxeData.fromItemStack(item);
         }
 
@@ -148,27 +123,16 @@ public class PickaxeManager {
         FileConfiguration config = plugin.getConfigManager().getConfig();
 
         // 1. Unbreakable & Flags
-        meta.setUnbreakable(true);
+        meta.setUnbreakable(config.getBoolean("settings.unbreakable", true));
+        // EcoEnchants uses a pre-existing HIDE_ENCHANTS flag as an explicit
+        // instruction to suppress its generated enchantment lore. Always clear
+        // our old flag and let EcoEnchants own enchant display and hiding.
+        meta.removeItemFlags(ItemFlag.HIDE_ENCHANTS);
         if (config.getBoolean("settings.hide-flags", true)) {
-            meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ATTRIBUTES);
+            meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_ATTRIBUTES);
         }
 
-        // 2. Real Enchantments synchronization (applies Bukkit/Eco enchantments to item so vanilla/eco effects work)
-        for (Enchantment e : new ArrayList<>(meta.getEnchants().keySet())) {
-            meta.removeEnchant(e);
-        }
-        for (Map.Entry<String, Integer> entry : pickaxe.getEnchantments().entrySet()) {
-            String keyStr = entry.getKey();
-            int level = entry.getValue();
-            if (level <= 0) continue;
-
-            Enchantment enchantment = getEnchantment(keyStr);
-            if (enchantment != null) {
-                meta.addEnchant(enchantment, level, true);
-            }
-        }
-
-        // 3. Display Name (Only modified if custom-display-name is enabled)
+        // 2. Display Name (Only modified if custom-display-name is enabled)
         if (config.getBoolean("pickaxe-lore.custom-display-name", false)) {
             String nameTemplate = config.getString("pickaxe-lore.display-name", "");
             if (!nameTemplate.isEmpty()) {
@@ -177,7 +141,7 @@ public class PickaxeManager {
             }
         }
 
-        // 4. Progress bar calculation
+        // 3. Progress bar calculation
         double reqXp = plugin.getLevelManager().getRequiredXp(pickaxe.getLevel());
         String bar = ProgressBarUtil.getProgressBar(
                 pickaxe.getXp(),
@@ -189,36 +153,7 @@ public class PickaxeManager {
                 config.getString("progress-bar.uncompleted-color", "<#555555>")
         );
 
-        // 5. Enchantments List format (Exact layout: Authentic Title/Numerals + Multi-line Dynamic Descriptions)
-        List<String> enchantLines = new ArrayList<>();
-        if (pickaxe.getEnchantments().isEmpty()) {
-            String noEnchantsText = config.getString("formats.no-enchants", "");
-            if (noEnchantsText != null && !noEnchantsText.trim().isEmpty()) {
-                enchantLines.add(noEnchantsText);
-            }
-        } else {
-            for (Map.Entry<String, Integer> entry : pickaxe.getEnchantments().entrySet()) {
-                String keyStr = entry.getKey();
-                int level = entry.getValue();
-                if (level <= 0) continue;
-
-                Enchantment ench = getEnchantment(keyStr);
-                String header = plugin.getEnchantManager().getEcoHook().getEnchantmentHeader(ench, level);
-                enchantLines.add(header);
-
-                // Add exact multi-line description underneath
-                List<String> desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
-                if (desc != null && !desc.isEmpty()) {
-                    for (String d : desc) {
-                        if (d != null && !d.trim().isEmpty()) {
-                            enchantLines.add(d);
-                        }
-                    }
-                }
-            }
-        }
-
-        // 6. Perks List format (if used in custom lore templates)
+        // 4. Perks List format (if used in custom lore templates)
         String perkLineFormat = config.getString("formats.perk-line", "  <gray>• <gold>%perk_name%</gold> <green>(Active)</green>");
         String noPerksText = config.getString("formats.no-perks", "");
         List<String> perkLines = new ArrayList<>();
@@ -235,18 +170,22 @@ public class PickaxeManager {
             }
         }
 
-        // 7. Assemble Lore
+        // 5. Assemble only InfinityPickaxes-owned lore. EcoEnchants owns enchantment display.
         List<String> loreTemplates = config.getStringList("pickaxe-lore.lore");
         List<Component> finalLore = new ArrayList<>();
+
+        if (plugin.getDuplicateService() != null && plugin.getDuplicateService().isRestricted(pickaxe.getUuid())) {
+            finalLore.add(TextUtil.parse("<red><b>QUARANTINED PICKAXE</b></red>"));
+            finalLore.add(TextUtil.parse("<gray>Duplicate UUID: <white>" + pickaxe.getUuid() + "</white></gray>"));
+            finalLore.add(TextUtil.parse("<yellow>Contact an administrator to resolve this item.</yellow>"));
+        }
 
         int maxSockets = config.getInt("settings.max-sockets", 10);
         int maxPerks = plugin.getLevelManager().getMaxPerksForLevel(pickaxe.getLevel());
 
         for (String template : loreTemplates) {
             if (template.contains("%enchants_list%")) {
-                for (String eLine : enchantLines) {
-                    finalLore.add(TextUtil.parse(eLine));
-                }
+                continue; // Legacy token: EcoEnchants owns and renders this section.
             } else if (template.contains("%perks_list%")) {
                 for (String pLine : perkLines) {
                     finalLore.add(TextUtil.parse(pLine));
@@ -271,16 +210,6 @@ public class PickaxeManager {
         item.setItemMeta(meta);
     }
 
-    private Enchantment getEnchantment(String keyStr) {
-        try {
-            String[] parts = keyStr.split(":", 2);
-            NamespacedKey key = (parts.length == 2) ? new NamespacedKey(parts[0], parts[1]) : NamespacedKey.minecraft(parts[0]);
-            return Bukkit.getRegistry(Enchantment.class).get(key);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     /**
      * Checks if the item held by a player in main hand is an Infinity Pickaxe (or converts vanilla) and returns the model.
      */
@@ -290,14 +219,4 @@ public class PickaxeManager {
         return getOrCreatePickaxe(held, player);
     }
 
-    private String capitalize(String text) {
-        if (text == null || text.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (String part : text.split(" ")) {
-            if (!part.isEmpty()) {
-                sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1).toLowerCase()).append(" ");
-            }
-        }
-        return sb.toString().trim();
-    }
 }
