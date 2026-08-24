@@ -84,6 +84,16 @@ public class EnchantManager {
                     namespacedKey = NamespacedKey.minecraft(id);
                 }
 
+                // Verify that the enchantment actually exists on the server
+                Enchantment realEnchant = Bukkit.getRegistry(Enchantment.class).get(namespacedKey);
+                if (realEnchant == null) {
+                    realEnchant = getEnchantment(keyStr);
+                }
+                if (realEnchant == null) {
+                    plugin.getLogger().info("El encantamiento '" + keyStr + "' no está instalado en el servidor. Omitiendo socket.");
+                    continue;
+                }
+
                 EnchantSocket socket = new EnchantSocket(id, keyStr, namespacedKey, displayName, icon, slot, enabled, unlockLevel, maxLevel, scaling, desc, customModelData);
                 socketsById.put(id.toLowerCase(), socket);
                 socketsByKey.put(keyStr.toLowerCase(), socket);

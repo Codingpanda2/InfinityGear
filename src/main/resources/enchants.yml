@@ -2,10 +2,10 @@
 #                  INFINITY PICKAXES - ENCHANTMENTS CONFIGURATION
 # ==============================================================================
 # Dynamic socket limits and scaling per pickaxe level.
-# EcoEnchants compatible enchantments are automatically registered and can be configured here.
+# Only REAL enchantments present on the server will be loaded.
 
 settings:
-  # Automatically detect and register newly discovered EcoEnchants on startup
+  # Automatically detect and register any compatible EcoEnchants pickaxe enchantments present on the server
   auto-register-ecoenchants: true
   # Sound when upgrading an enchantment socket successfully
   upgrade-sound:
@@ -17,7 +17,7 @@ settings:
 enchants:
 
   # ----------------------------------------------------------------------------
-  # VANILLA / BASIC ENCHANTMENTS (Disponibles desde Nivel 0)
+  # VANILLA BASIC ENCHANTMENTS
   # ----------------------------------------------------------------------------
   efficiency:
     key: "minecraft:efficiency"
@@ -29,7 +29,6 @@ enchants:
     max-level: 25
     description:
       - "<gray>Aumenta considerablemente la velocidad de minado."
-    # Dynamic scaling of max allowed enchant level based on pickaxe level:
     level-scaling:
       0: 5
       10: 10
@@ -63,124 +62,3 @@ enchants:
     max-level: 1
     description:
       - "<gray>Permite recolectar bloques en su forma original."
-
-  # ----------------------------------------------------------------------------
-  # ECOENCHANTS / ADVANCED ENCHANTMENTS (Desbloqueo Progresivo 10 a 100)
-  # ----------------------------------------------------------------------------
-  telepathy:
-    key: "ecoenchants:telepathy"
-    display-name: "<#33CCFF><b>Telepatía</b></#33CCFF>"
-    icon: ENCHANTED_BOOK
-    slot: 19
-    enabled: true
-    unlock-pickaxe-level: 10
-    max-level: 1
-    description:
-      - "<gray>Envía los bloques minados directamente a tu inventario."
-
-  autosmelt:
-    key: "ecoenchants:autosmelt"
-    display-name: "<#FF6600><b>Autofundición</b></#FF6600>"
-    icon: ENCHANTED_BOOK
-    slot: 20
-    enabled: true
-    unlock-pickaxe-level: 20
-    max-level: 3
-    description:
-      - "<gray>Funde automáticamente los minerales extraídos."
-    level-scaling:
-      20: 1
-      40: 2
-      60: 3
-
-  explosive:
-    key: "ecoenchants:explosive"
-    display-name: "<#FF2200><b>Explosivo</b></#FF2200>"
-    icon: ENCHANTED_BOOK
-    slot: 21
-    enabled: true
-    unlock-pickaxe-level: 30
-    max-level: 5
-    description:
-      - "<gray>Detona y destruye un área de bloques al minar."
-    level-scaling:
-      30: 1
-      50: 2
-      70: 3
-      85: 4
-      100: 5
-
-  jackhammer:
-    key: "ecoenchants:jackhammer"
-    display-name: "<#FFFF33><b>Martillo Neumático</b></#FFFF33>"
-    icon: ENCHANTED_BOOK
-    slot: 22
-    enabled: true
-    unlock-pickaxe-level: 45
-    max-level: 5
-    description:
-      - "<gray>Rompe capas enteras de bloques de un solo golpe."
-    level-scaling:
-      45: 1
-      65: 2
-      80: 3
-      95: 4
-      100: 5
-
-  drill:
-    key: "ecoenchants:drill"
-    display-name: "<#FFCC00><b>Taladro</b></#FFCC00>"
-    icon: ENCHANTED_BOOK
-    slot: 23
-    enabled: true
-    unlock-pickaxe-level: 50
-    max-level: 5
-    description:
-      - "<gray>Perfora túneles largos en la dirección en que miras."
-    level-scaling:
-      50: 1
-      65: 2
-      80: 3
-      100: 5
-
-  token_miner:
-    key: "ecoenchants:token_miner"
-    display-name: "<#00FFCC><b>Minero de Tokens</b></#00FFCC>"
-    icon: ENCHANTED_BOOK
-    slot: 24
-    enabled: true
-    unlock-pickaxe-level: 60
-    max-level: 5
-    description:
-      - "<gray>Genera tokens y monedas especiales al minar bloques."
-    level-scaling:
-      60: 1
-      75: 2
-      90: 3
-      100: 5
-
-  laser:
-    key: "ecoenchants:laser"
-    display-name: "<#FF0055><b>Rayo Láser</b></#FF0055>"
-    icon: ENCHANTED_BOOK
-    slot: 25
-    enabled: true
-    unlock-pickaxe-level: 75
-    max-level: 3
-    description:
-      - "<gray>Dispara un rayo continuo que desintegra bloques a distancia."
-    level-scaling:
-      75: 1
-      90: 2
-      100: 3
-
-  god_touch:
-    key: "ecoenchants:god_touch"
-    display-name: "<gradient:#FF00FF:#00FFFF><b>Toque Divino</b></gradient>"
-    icon: NETHER_STAR
-    slot: 31
-    enabled: true
-    unlock-pickaxe-level: 100
-    max-level: 1
-    description:
-      - "<gray>El pináculo del poder: Multiplica todos los recursos y XP obtenidos."
