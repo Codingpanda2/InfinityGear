@@ -217,12 +217,47 @@ public class EnchantSocketsGui extends CustomGui {
 
     @Override
     public void handleClick(InventoryClickEvent event) {
+        int rawSlot = event.getRawSlot();
+
+        // 1. Player clicked in their OWN player inventory (Bottom Inventory)
+        if (rawSlot >= inventory.getSize() || event.getClickedInventory() == event.getView().getBottomInventory()) {
+            if (event.isShiftClick()) {
+                // If shift-clicking an enchanted book from inventory, attempt auto-applying to socket
+                event.setCancelled(true);
+                ItemStack clickedItem = event.getCurrentItem();
+                if (clickedItem != null && !clickedItem.getType().isAir()) {
+                    Map<String, Integer> bookEnchants = plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(clickedItem);
+                    boolean upgraded = false;
+                    for (String keyStr : bookEnchants.keySet()) {
+                        EnchantSocket s = plugin.getEnchantManager().getSocketByKey(keyStr);
+                        if (s == null && keyStr.contains(":")) {
+                            s = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
+                        }
+                        if (s != null) {
+                            if (plugin.getEnchantManager().handleSocketUpgrade(player, pickaxe, s, clickedItem)) {
+                                upgraded = true;
+                                setupItems();
+                                break;
+                            }
+                        }
+                    }
+                    if (!upgraded && bookEnchants.isEmpty()) {
+                        // Not an enchant book, keep cancelled to prevent dumping items into menu
+                    }
+                }
+            } else {
+                // Normal click in player inventory: ALLOW picking up / moving books freely!
+                event.setCancelled(false);
+            }
+            return;
+        }
+
+        // 2. Player clicked in the GUI TOP Inventory
         event.setCancelled(true);
-        int slot = event.getRawSlot();
-        if (slot < 0 || slot >= inventory.getSize()) return;
+        if (rawSlot < 0 || rawSlot >= inventory.getSize()) return;
 
         int backSlot = getBackSlot();
-        if (slot == backSlot) {
+        if (rawSlot == backSlot) {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
             new MainPickaxeGui(plugin, player, pickaxe).open();
             return;
@@ -230,7 +265,7 @@ public class EnchantSocketsGui extends CustomGui {
 
         // Previous Page
         int prevSlot = getPrevSlot();
-        if (slot == prevSlot && currentPage > 0) {
+        if (rawSlot == prevSlot && currentPage > 0) {
             currentPage--;
             player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.2f);
             setupItems();
@@ -245,14 +280,15 @@ public class EnchantSocketsGui extends CustomGui {
             if (s.isEnabled()) allSockets.add(s);
         }
         int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / Math.max(1, usableSlots.size())));
-        if (slot == nextSlot && currentPage < totalPages - 1) {
+        if (rawSlot == nextSlot && currentPage < totalPages - 1) {
             currentPage++;
             player.playSound(player.getLocation(), Sound.ITEM_BOOK_PAGE_TURN, 0.7f, 1.2f);
             setupItems();
             return;
         }
 
-        EnchantSocket socket = slotToSocket.get(slot);
+        // Socket Click
+        EnchantSocket socket = slotToSocket.get(rawSlot);
         if (socket != null) {
             ItemStack cursorItem = event.getCursor();
             if (cursorItem != null && !cursorItem.getType().isAir()) {
