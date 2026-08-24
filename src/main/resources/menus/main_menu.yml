@@ -2,7 +2,7 @@
 #                  INFINITY PICKAXES - MAIN MENU GUI
 # ==============================================================================
 
-title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Principal"
+title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Main Menu"
 size: 36
 
 # Decorative filler glass
@@ -21,45 +21,45 @@ items:
   enchants-button:
     slot: 20
     material: ENCHANTED_BOOK
-    name: "<#00E5FF><b>Sockets de Encantamientos</b></#00E5FF>"
+    name: "<#00E5FF><b>Enchantment Sockets</b></#00E5FF>"
     lore:
-      - "<gray>Gestiona y mejora los encantamientos"
-      - "<gray>compatibles con tu Infinity Pickaxe."
+      - "<gray>Manage and upgrade enchantments"
+      - "<gray>compatible with your Infinity Pickaxe."
       - ""
-      - "<gray>Sockets Ocupados: <gold>%enchant_count%</gold><gray>/<yellow>%max_sockets%</yellow>"
+      - "<gray>Sockets Used: <gold>%enchant_count%</gold><gray>/<yellow>%max_sockets%</yellow>"
       - ""
-      - "<yellow>▶ Haz click para abrir el menú de sockets</yellow>"
+      - "<yellow>▶ Click to open sockets menu</yellow>"
 
   # Navigation Button: Perks Menu
   perks-button:
     slot: 24
     material: NETHER_STAR
-    name: "<#FFA500><b>Habilidades y Perks</b></#FFA500>"
+    name: "<#FFA500><b>Abilities & Perks</b></#FFA500>"
     lore:
-      - "<gray>Desbloquea y equipa habilidades pasivas"
-      - "<gray>y activas para potenciar tu minería."
+      - "<gray>Unlock and equip passive and active"
+      - "<gray>abilities to boost your mining."
       - ""
-      - "<gray>Perks Equipados: <gold>%perks_count%</gold><gray>/<yellow>%max_perks%</yellow>"
+      - "<gray>Perks Equipped: <gold>%perks_count%</gold><gray>/<yellow>%max_perks%</yellow>"
       - ""
-      - "<yellow>▶ Haz click para abrir el menú de perks</yellow>"
+      - "<yellow>▶ Click to open perks menu</yellow>"
 
   # Statistics Summary Item
   stats-info:
     slot: 22
     material: BOOK
-    name: "<#00FF88><b>Estadísticas de Minería</b></#00FF88>"
+    name: "<#00FF88><b>Mining Statistics</b></#00FF88>"
     lore:
       - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-      - "<gray>Nivel del Pico: <gold><b>%level%</b></gold><gray>/100"
-      - "<gray>XP Actual: <aqua>%current_xp%</aqua><gray>/<aqua>%required_xp%</aqua>"
-      - "<gray>Progreso: %xp_bar%"
-      - "<gray>Total Minado: <yellow>%blocks_mined%</yellow> bloques"
+      - "<gray>Pickaxe Level: <gold><b>%level%</b></gold><gray>/100"
+      - "<gray>Current XP: <aqua>%current_xp%</aqua><gray>/<aqua>%required_xp%</aqua>"
+      - "<gray>Progress: %xp_bar%"
+      - "<gray>Total Mined: <yellow>%blocks_mined%</yellow> blocks"
       - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
   # Close Button
   close-button:
     slot: 31
     material: BARRIER
-    name: "<red><b>Cerrar Menú</b></red>"
+    name: "<red><b>Close Menu</b></red>"
     lore:
-      - "<gray>Haz click para volver al juego."
+      - "<gray>Click to return to the game."

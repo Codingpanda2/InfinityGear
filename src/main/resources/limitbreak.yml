@@ -31,16 +31,16 @@ specific-book:
   display-name: "<gradient:#FF0055:#FFAA00><b>LimitBreak: %enchant_name% +1</b></gradient>"
   lore:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<gray>Tipo: <light_purple><b>Tomo de Ruptura de Límite</b></light_purple>"
-    - "<gray>Encantamiento: <aqua>%enchant_name%</aqua>"
+    - "<gray>Type: <light_purple><b>LimitBreak Tome</b></light_purple>"
+    - "<gray>Target: <aqua>%enchant_name%</aqua>"
     - ""
-    - "<white><b>EFECTO ESPECIAL:</b></white>"
-    - "<yellow>• Aumenta exactamente <gold>+1 Nivel</gold> a este encantamiento."
-    - "<yellow>• Funciona sin importar qué tan alto sea el nivel actual."
-    - "<yellow>• Permite sobrepasar el nivel máximo hasta <light_purple>+%max_extra% niveles</light_purple>."
+    - "<white><b>SPECIAL EFFECT:</b></white>"
+    - "<yellow>• Instantly increases <gold>+1 Level</gold> to this enchantment."
+    - "<yellow>• Works regardless of how high the current level is."
+    - "<yellow>• Breaks past the maximum level up to <light_purple>+%max_extra% extra levels</light_purple>."
     - ""
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<green><i>¡Haz clic sobre el socket en /pickaxe o arrástralo sobre tu pico!</i></green>"
+    - "<green><i>Click socket in /pickaxe or drag onto your pickaxe!</i></green>"
 
 # ------------------------------------------------------------------------------
 # Universal Super Book (Omni Tome) Template
@@ -49,16 +49,16 @@ universal-book:
   material: ENCHANTED_BOOK
   custom-model-data: 10002
   glowing: true
-  display-name: "<gradient:#FF00FF:#00FFFF><b>✦ SÚPER LIBRO UNIVERSAL +1 ✦</b></gradient>"
+  display-name: "<gradient:#FF00FF:#00FFFF><b>✦ UNIVERSAL SUPER BOOK +1 ✦</b></gradient>"
   lore:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<gray>Tipo: <gradient:#FF00FF:#00FFFF><b>Tomo Arcano Primordial</b></gradient>"
-    - "<gray>Objetivo: <white><b>Cualquier Encantamiento de Pico</b></white>"
+    - "<gray>Type: <gradient:#FF00FF:#00FFFF><b>Primordial Arcane Tome</b></gradient>"
+    - "<gray>Target: <white><b>Any Pickaxe Enchantment</b></white>"
     - ""
-    - "<white><b>EFECTO LEGENDARIO:</b></white>"
-    - "<yellow>• Aumenta <gold>+1 Nivel</gold> al encantamiento que tú elijas."
-    - "<yellow>• Compatible con cualquier socket registrado en tu pico."
-    - "<yellow>• Activa el <light_purple>LimitBreak</light_purple> hasta <light_purple>+%max_extra% niveles extra</light_purple>."
+    - "<white><b>LEGENDARY EFFECT:</b></white>"
+    - "<yellow>• Grants <gold>+1 Level</gold> to any enchantment you choose."
+    - "<yellow>• Compatible with every socket registered on your pickaxe."
+    - "<yellow>• Activates <light_purple>LimitBreak</light_purple> up to <light_purple>+%max_extra% extra levels</light_purple>."
     - ""
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<green><i>¡Haz clic en cualquier socket en /pickaxe para aplicar la mejora!</i></green>"
+    - "<green><i>Click any socket in /pickaxe to apply upgrade!</i></green>"

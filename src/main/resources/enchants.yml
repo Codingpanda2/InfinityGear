@@ -21,14 +21,14 @@ enchants:
   # ----------------------------------------------------------------------------
   efficiency:
     key: "minecraft:efficiency"
-    display-name: "<#00E5FF><b>Eficiencia</b></#00E5FF>"
+    display-name: "<#00E5FF><b>Efficiency</b></#00E5FF>"
     icon: ENCHANTED_BOOK
     slot: 10
     enabled: true
     unlock-pickaxe-level: 0
     max-level: 25
     description:
-      - "<gray>Aumenta considerablemente la velocidad de minado."
+      - "<gray>Increases mining speed significantly."
     level-scaling:
       0: 5
       10: 10
@@ -38,14 +38,14 @@ enchants:
 
   fortune:
     key: "minecraft:fortune"
-    display-name: "<#FFA500><b>Fortuna</b></#FFA500>"
+    display-name: "<#FFA500><b>Fortune</b></#FFA500>"
     icon: ENCHANTED_BOOK
     slot: 11
     enabled: true
     unlock-pickaxe-level: 0
     max-level: 10
     description:
-      - "<gray>Multiplica los minerales y gemas soltados."
+      - "<gray>Multiplies mineral and gem drops while mining."
     level-scaling:
       0: 3
       25: 5
@@ -54,11 +54,11 @@ enchants:
 
   silk_touch:
     key: "minecraft:silk_touch"
-    display-name: "<#9966FF><b>Toque de Seda</b></#9966FF>"
+    display-name: "<#9966FF><b>Silk Touch</b></#9966FF>"
     icon: ENCHANTED_BOOK
     slot: 12
     enabled: true
     unlock-pickaxe-level: 15
     max-level: 1
     description:
-      - "<gray>Permite recolectar bloques en su forma original."
+      - "<gray>Allows blocks to drop themselves when mined."

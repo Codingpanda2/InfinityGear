@@ -12,56 +12,56 @@ slots-milestones:
 
 perks:
   haste_surge:
-    display-name: "<#FFD700><b>Furia de Prisa (Haste)</b></#FFD700>"
+    display-name: "<#FFD700><b>Haste Surge</b></#FFD700>"
     icon: GOLDEN_PICKAXE
     slot: 11
     enabled: true
     required-level: 10
     description:
-      - "<gray>Otorga el efecto de <yellow>Prisa Minera II</yellow> permanente"
-      - "<gray>mientras sostienes este pico en la mano principal."
+      - "<gray>Grants permanent <yellow>Haste II</yellow> effect"
+      - "<gray>while holding this pickaxe in main hand."
     amplifier: 1
 
   autosmelt:
-    display-name: "<#FF4500><b>Fundición Instantánea</b></#FF4500>"
+    display-name: "<#FF4500><b>Auto Smelt</b></#FF4500>"
     icon: LAVA_BUCKET
     slot: 12
     enabled: true
     required-level: 25
     description:
-      - "<gray>Convierte automáticamente los minerales de hierro,"
-      - "<gray>oro, cobre y comida en sus lingotes/versiones fundidas."
+      - "<gray>Automatically smelts iron, gold, copper,"
+      - "<gray>and food into their refined versions."
 
   blast_radius:
-    display-name: "<#DC143C><b>Onda Expansiva (3x3)</b></#DC143C>"
+    display-name: "<#DC143C><b>Blast Radius (3x3)</b></#DC143C>"
     icon: TNT
     slot: 13
     enabled: true
     required-level: 50
     description:
-      - "<gray>Probabilidad de detonar y minar un área cúbica de <red>3x3</red>"
-      - "<gray>alrededor del bloque minado."
+      - "<gray>Chance to detonate and mine a <red>3x3</red> area"
+      - "<gray>around the broken block."
     chance: 15.0 # 15% chance per block
 
   fortune_frenzy:
-    display-name: "<#00FA9A><b>Frenesí de Fortuna</b></#00FA9A>"
+    display-name: "<#00FA9A><b>Fortune Frenzy</b></#00FA9A>"
     icon: EMERALD
     slot: 14
     enabled: true
     required-level: 75
     description:
-      - "<gray>Otorga un multiplicador aleatorio de <green>x2 a x4</green>"
-      - "<gray>en todos los minerales minados."
+      - "<gray>Grants a random multiplier of <green>x2 to x4</green>"
+      - "<gray>on all mined ores and gems."
     chance: 25.0
     multiplier: 3
 
   void_siphon:
-    display-name: "<gradient:#9400D3:#4B0082><b>Sifón del Vacío</b></gradient>"
+    display-name: "<gradient:#9400D3:#4B0082><b>Void Siphon</b></gradient>"
     icon: END_CRYSTAL
     slot: 15
     enabled: true
     required-level: 100
     description:
-      - "<gray>El poder supremo: Multiplica la ganancia de experiencia"
-      - "<gray>y duplica la probabilidad de todos los demás perks."
+      - "<gray>Supreme power: Multiplies experience gain"
+      - "<gray>and doubles the activation chance of all other perks."
     xp-multiplier: 2.0

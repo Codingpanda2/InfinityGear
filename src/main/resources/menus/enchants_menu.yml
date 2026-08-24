@@ -2,7 +2,7 @@
 #                  INFINITY PICKAXES - ENCHANTS & SOCKETS MENU GUI
 # ==============================================================================
 
-title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Encantamientos"
+title: "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Enchantments"
 size: 54
 
 fill-item:
@@ -11,38 +11,38 @@ fill-item:
 
 # Format for each enchantment item displayed in the menu
 enchant-format:
-  unlocked-name: "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]"
-  locked-name: "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Bloqueado)</red>"
+  unlocked-name: "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]"
+  locked-name: "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Locked)</red>"
 
   lore-unlocked:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
     - "%enchant_description%"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<gray>Nivel Actual: <yellow>%current_level%</yellow><gray>/<gold>%max_level%</gold>"
-    - "<gray>Límite por Nivel de Pico: <aqua>Nv. %current_max_for_pickaxe%</aqua>"
+    - "<gray>Current Level: <yellow>%current_level%</yellow><gray>/<gold>%max_level%</gold>"
+    - "<gray>Limit for Pickaxe Level: <aqua>Lv. %current_max_for_pickaxe%</aqua>"
     - ""
-    - "<white><b>Requisito de Mejora:</b></white>"
-    - "<yellow>• Libro de %enchant_display_name% <gold>Nv. %required_book_level%</gold></yellow>"
+    - "<white><b>Upgrade Requirement:</b></white>"
+    - "<yellow>• Book of %enchant_display_name% <gold>Lv. %required_book_level%</gold></yellow>"
     - ""
-    - "<green>▶ Arrastra y suelta el libro aquí o</green>"
-    - "<green>  haz click teniendo el libro en tu cursor.</green>"
+    - "<green>▶ Drag & drop matching book or</green>"
+    - "<green>  click socket with book on cursor.</green>"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
   lore-maxed:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
     - "%enchant_description%"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<gold><b>¡NIVEL MÁXIMO ALCANZADO!</b></gold>"
-    - "<gray>Nivel Actual: <green>%current_level%</green><gray>/<gold>%max_level%</gold>"
+    - "<gold><b>MAXIMUM LEVEL REACHED!</b></gold>"
+    - "<gray>Current Level: <green>%current_level%</green><gray>/<gold>%max_level%</gold>"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
   lore-locked:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
     - "%enchant_description%"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<red><b>SOCKET BLOQUEADO</b></red>"
-    - "<gray>Requiere que tu pico sea <yellow>Nivel %unlock_level%</yellow>."
-    - "<gray>Nivel actual de tu pico: <aqua>%pickaxe_level%</aqua>"
+    - "<red><b>LOCKED SOCKET</b></red>"
+    - "<gray>Requires your pickaxe to be <yellow>Level %unlock_level%</yellow>."
+    - "<gray>Current pickaxe level: <aqua>%pickaxe_level%</aqua>"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
 items:
@@ -50,19 +50,19 @@ items:
   info-book:
     slot: 4
     material: KNOWLEDGE_BOOK
-    name: "<#00FF88><b>¿Cómo Mejorar Sockets?</b></#00FF88>"
+    name: "<#00FF88><b>How to Upgrade Sockets?</b></#00FF88>"
     lore:
-      - "<gray>Para subir el nivel de un encantamiento:"
-      - "<white>1.</white> <gray>Consigue un libro encantado del <yellow>mismo nivel</yellow>"
-      - "   <gray>que tiene tu pico actualmente."
-      - "<white>2.</white> <gray>Haz click en el socket o arrastra el libro"
-      - "   <gray>directamente sobre el slot deseado."
-      - "<white>3.</white> <gray>¡El libro se consumirá y el pico mejorará!"
+      - "<gray>To level up an enchantment:"
+      - "<white>1.</white> <gray>Obtain an enchanted book of the <yellow>same level</yellow>"
+      - "   <gray>your pickaxe currently has."
+      - "<white>2.</white> <gray>Click the socket or drag the book"
+      - "   <gray>directly onto the desired slot."
+      - "<white>3.</white> <gray>The book will be consumed and pickaxe upgraded!"
 
   # Back Button to Main Menu
   back-button:
     slot: 49
     material: ARROW
-    name: "<yellow><b>Volver al Menú Principal</b></yellow>"
+    name: "<yellow><b>Back to Main Menu</b></yellow>"
     lore:
-      - "<gray>Haz click para regresar."
+      - "<gray>Click to return."
