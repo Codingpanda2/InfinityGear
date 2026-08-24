@@ -287,4 +287,15 @@ public class EnchantManager {
 
         return true;
     }
+
+    public Enchantment getEnchantment(String keyStr) {
+        if (keyStr == null || keyStr.isEmpty()) return null;
+        try {
+            String[] parts = keyStr.split(":", 2);
+            NamespacedKey key = (parts.length == 2) ? new NamespacedKey(parts[0], parts[1]) : NamespacedKey.minecraft(parts[0]);
+            return Bukkit.getRegistry(Enchantment.class).get(key);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }
