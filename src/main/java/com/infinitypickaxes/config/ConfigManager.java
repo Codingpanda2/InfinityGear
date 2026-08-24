@@ -68,10 +68,12 @@ public class ConfigManager {
 
         this.enchantsFile = loadAndSyncFile("enchants.yml");
         this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
+        migrateEnchantsFile();
         updateMissingKeys(enchantsFile, "enchants.yml", (YamlConfiguration) this.enchantsConfig);
 
         this.perksFile = loadAndSyncFile("perks.yml");
         this.perksConfig = YamlConfiguration.loadConfiguration(perksFile);
+        migratePerksFile();
         updateMissingKeys(perksFile, "perks.yml", (YamlConfiguration) this.perksConfig);
 
         this.blocksFile = loadAndSyncFile("blocks.yml");
@@ -84,15 +86,15 @@ public class ConfigManager {
         // 4. Menus
         this.mainMenuFile = loadAndSyncFile("menus/main_menu.yml");
         this.mainMenuConfig = YamlConfiguration.loadConfiguration(mainMenuFile);
-        updateMissingKeys(mainMenuFile, "menus/main_menu.yml", (YamlConfiguration) this.mainMenuConfig);
+        migrateMenuFile(mainMenuFile, "menus/main_menu.yml", (YamlConfiguration) this.mainMenuConfig, "Sockets de Encantamientos");
 
         this.enchantsMenuFile = loadAndSyncFile("menus/enchants_menu.yml");
         this.enchantsMenuConfig = YamlConfiguration.loadConfiguration(enchantsMenuFile);
-        updateMissingKeys(enchantsMenuFile, "menus/enchants_menu.yml", (YamlConfiguration) this.enchantsMenuConfig);
+        migrateMenuFile(enchantsMenuFile, "menus/enchants_menu.yml", (YamlConfiguration) this.enchantsMenuConfig, "¿Cómo Mejorar Sockets?");
 
         this.perksMenuFile = loadAndSyncFile("menus/perks_menu.yml");
         this.perksMenuConfig = YamlConfiguration.loadConfiguration(perksMenuFile);
-        updateMissingKeys(perksMenuFile, "menus/perks_menu.yml", (YamlConfiguration) this.perksMenuConfig);
+        migrateMenuFile(perksMenuFile, "menus/perks_menu.yml", (YamlConfiguration) this.perksMenuConfig, "Ranuras de Habilidades");
     }
 
     private void migratePickaxeLore() {
@@ -117,9 +119,45 @@ public class ConfigManager {
             this.config.set("pickaxe-lore.lore", newLore);
             try {
                 ((YamlConfiguration) this.config).save(configFile);
-                plugin.getLogger().info("Pickaxe lore template migrated automatically to new clean layout.");
+                plugin.getLogger().info("Pickaxe lore template migrated automatically to new clean English layout.");
             } catch (Exception ignored) {}
         }
+    }
+
+    private void migrateEnchantsFile() {
+        String effName = this.enchantsConfig.getString("enchants.efficiency.display-name", "");
+        if (effName.contains("Eficiencia") || effName.contains("Fortuna")) {
+            overwriteFromResource(enchantsFile, "enchants.yml");
+            this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
+            plugin.getLogger().info("enchants.yml migrated to standard English.");
+        }
+    }
+
+    private void migratePerksFile() {
+        String pName = this.perksConfig.getString("perks.haste_surge.display-name", "");
+        if (pName.contains("Furia de Prisa") || pName.contains("Fundición")) {
+            overwriteFromResource(perksFile, "perks.yml");
+            this.perksConfig = YamlConfiguration.loadConfiguration(perksFile);
+            plugin.getLogger().info("perks.yml migrated to standard English.");
+        }
+    }
+
+    private void migrateMenuFile(File file, String resourcePath, YamlConfiguration menuYaml, String spanishKeyword) {
+        String raw = menuYaml.saveToString();
+        if (raw.contains(spanishKeyword)) {
+            overwriteFromResource(file, resourcePath);
+            plugin.getLogger().info(resourcePath + " migrated to standard English.");
+        }
+    }
+
+    private void overwriteFromResource(File targetFile, String resourcePath) {
+        try (InputStream in = plugin.getResource(resourcePath)) {
+            if (in == null) return;
+            try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                YamlConfiguration def = YamlConfiguration.loadConfiguration(reader);
+                def.save(targetFile);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void loadLocales() {

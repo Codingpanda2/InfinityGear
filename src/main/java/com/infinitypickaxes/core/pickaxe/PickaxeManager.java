@@ -207,55 +207,46 @@ public class PickaxeManager {
                     socket = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
                 }
 
-                String rawDName;
-                int maxLevel = 1;
-                List<String> desc = new ArrayList<>();
                 Enchantment ench = getEnchantment(keyStr);
-
+                int maxLevel = 1;
                 if (socket != null) {
-                    rawDName = socket.getDisplayName();
                     maxLevel = socket.getMaxLevel();
-                    desc = socket.getDescription();
                 } else if (ench != null) {
-                    rawDName = plugin.getEnchantManager().getEcoHook().getEnchantmentDisplayName(ench);
                     maxLevel = ench.getMaxLevel();
-                    desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
-                } else {
-                    String raw = keyStr;
-                    if (raw.contains(":")) raw = raw.substring(raw.indexOf(":") + 1);
-                    rawDName = "<gray>" + capitalize(raw.replace("_", " ")) + "</gray>";
                 }
 
-                // If socket has descriptions from ecohook
-                if ((desc == null || desc.isEmpty()) && ench != null) {
-                    desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
-                }
-
-                // Strip any duplicated Roman suffix from the base name
-                String cleanBaseName = EcoEnchantsHook.stripRomanSuffix(rawDName);
+                String baseNameWithColor = plugin.getEnchantManager().getEcoHook().getEnchantmentDisplayName(ench);
                 String roman = TextUtil.toRoman(level);
                 String header;
 
                 if (maxLevel > 1 || level > 1) {
-                    if (cleanBaseName.contains("<b>") && cleanBaseName.contains("</b>")) {
-                        header = cleanBaseName.replace("</b>", " " + roman + "</b>");
-                    } else if (cleanBaseName.startsWith("<") && cleanBaseName.contains(">") && !cleanBaseName.startsWith("<gray>")) {
-                        // Colored custom enchant like <#FF00E5>Blast Mining</#FF00E5>
-                        header = cleanBaseName + " <#00E5FF>" + roman + "</#00E5FF>";
+                    if (baseNameWithColor.startsWith("<#") || baseNameWithColor.startsWith("<gradient")) {
+                        int closeTag = baseNameWithColor.lastIndexOf("</");
+                        if (closeTag > 0) {
+                            String openTag = baseNameWithColor.substring(0, baseNameWithColor.indexOf(">") + 1);
+                            String closeTagStr = baseNameWithColor.substring(closeTag);
+                            String content = baseNameWithColor.substring(openTag.length(), closeTag);
+                            header = openTag + content + " " + roman + closeTagStr;
+                        } else {
+                            header = baseNameWithColor + " <#00E5FF>" + roman + "</#00E5FF>";
+                        }
                     } else {
-                        header = "<gray>" + TextUtil.stripFormatting(cleanBaseName) + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
+                        String clean = EcoEnchantsHook.cleanEnchantmentName(baseNameWithColor);
+                        header = "<gray>" + clean + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
                     }
                 } else {
-                    header = "<gray>" + TextUtil.stripFormatting(cleanBaseName) + "</gray>";
+                    String clean = EcoEnchantsHook.cleanEnchantmentName(baseNameWithColor);
+                    header = "<gray>" + clean + "</gray>";
                 }
 
                 enchantLines.add(header);
 
                 // Add multi-line description underneath
+                List<String> desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
                 if (desc != null && !desc.isEmpty()) {
                     for (String d : desc) {
                         if (d != null && !d.trim().isEmpty()) {
-                            enchantLines.add(d.startsWith("<") ? d : "<gray>" + d + "</gray>");
+                            enchantLines.add(d);
                         }
                     }
                 }

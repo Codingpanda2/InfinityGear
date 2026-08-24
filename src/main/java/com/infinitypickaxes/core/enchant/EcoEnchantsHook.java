@@ -18,7 +18,6 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class EcoEnchantsHook {
@@ -296,29 +295,6 @@ public class EcoEnchantsHook {
                         }
                     } catch (Throwable ignored) {}
                 }
-
-                // Try getConfig() -> description
-                if (desc.isEmpty()) {
-                    try {
-                        java.lang.reflect.Method getConfig = ecoEnchantObj.getClass().getMethod("getConfig");
-                        Object cfg = getConfig.invoke(ecoEnchantObj);
-                        if (cfg != null) {
-                            java.lang.reflect.Method getList = cfg.getClass().getMethod("getStringList", String.class);
-                            List<?> list = (List<?>) getList.invoke(cfg, "description");
-                            if (list != null && !list.isEmpty()) {
-                                for (Object o : list) {
-                                    if (o != null) desc.add(o.toString());
-                                }
-                            } else {
-                                java.lang.reflect.Method getStr = cfg.getClass().getMethod("getString", String.class);
-                                String s = (String) getStr.invoke(cfg, "description");
-                                if (s != null && !s.isEmpty()) {
-                                    desc.add(s);
-                                }
-                            }
-                        }
-                    } catch (Throwable ignored) {}
-                }
             }
         } catch (Throwable ignored) {}
 
@@ -354,12 +330,14 @@ public class EcoEnchantsHook {
             desc.addAll(getKnownDescription(id));
         }
 
-        // 4. Resolve EcoEnchants dynamic %placeholder% variables cleanly
+        // 4. Resolve EcoEnchants dynamic %placeholder% variables cleanly without unmatched tags
         List<String> resolved = new ArrayList<>();
         for (String line : desc) {
             if (line == null || line.trim().isEmpty()) continue;
             String clean = resolvePlaceholders(line, id, safeLevel);
-            resolved.add(clean.startsWith("<") ? clean : "<gray>" + clean + "</gray>");
+            // Ensure proper enclosing tags
+            clean = clean.replace("</gray>", "").replace("<gray>", "");
+            resolved.add("<gray>" + clean + "</gray>");
         }
 
         return resolved;
@@ -369,8 +347,7 @@ public class EcoEnchantsHook {
         String result = text;
 
         if (result.contains("%placeholder%x%placeholder%")) {
-            String area = (level >= 3) ? "3x3" : "3x3";
-            result = result.replace("%placeholder%x%placeholder%", area);
+            result = result.replace("%placeholder%x%placeholder%", "<green>3x3</green>");
         }
 
         if (result.contains("%placeholder%%")) {
@@ -379,7 +356,7 @@ public class EcoEnchantsHook {
         }
 
         if (result.contains("%placeholder%")) {
-            result = result.replace("%placeholder%", String.valueOf(level));
+            result = result.replace("%placeholder%", "<green>" + level + "</green>");
         }
 
         // Clean any leftover raw placeholder tags
@@ -410,30 +387,45 @@ public class EcoEnchantsHook {
     private List<String> getKnownDescription(String id) {
         List<String> lines = new ArrayList<>();
         switch (id) {
-            case "efficiency" -> lines.add("<gray>Increases mining speed significantly.</gray>");
-            case "fortune" -> lines.add("<gray>Multiplies mineral and gem drops while mining.</gray>");
-            case "silk_touch" -> lines.add("<gray>Allows blocks to drop themselves when mined.</gray>");
-            case "blast_mining" -> lines.add("<gray>Chance to mine blocks in a 3x3 area.</gray>");
-            case "dynamite" -> lines.add("<gray>Mines blocks in a massive area.</gray>");
-            case "infernal_touch", "autosmelt" -> lines.add("<gray>Automatically smelts mined blocks.</gray>");
-            case "telekinesis", "telepathy" -> lines.add("<gray>Drops and experience go directly into your inventory.</gray>");
-            case "drill" -> lines.add("<gray>Drills continuous tunnels while mining.</gray>");
-            case "jackhammer" -> lines.add("<gray>Breaks entire layers of blocks at once.</gray>");
-            case "laser" -> lines.add("<gray>Fires a continuous beam that breaks blocks.</gray>");
-            case "vein_miner" -> lines.add("<gray>Mines the entire connected ore vein.</gray>");
-            default -> lines.add("<gray>Advanced mining enchantment.</gray>");
+            case "efficiency" -> lines.add("Increases mining speed significantly.");
+            case "fortune" -> lines.add("Gives a boost to certain block drops.");
+            case "silk_touch" -> lines.add("Allows blocks to drop themselves when mined.");
+            case "blast_mining" -> lines.add("<green>15%</green> chance to mine blocks in a <green>3x3</green> area");
+            case "dynamite" -> lines.add("Mines blocks in a <green>3x3</green> area");
+            case "infernal_touch", "autosmelt" -> lines.add("Automatically smelts mined blocks");
+            case "telekinesis", "telepathy" -> lines.add("Drops and experience go directly into your inventory");
+            case "drill" -> lines.add("Drills continuous tunnels while mining.");
+            case "jackhammer" -> lines.add("Breaks entire layers of blocks at once.");
+            case "laser" -> lines.add("Fires a continuous beam that breaks blocks.");
+            case "vein_miner" -> lines.add("Mines the entire connected ore vein.");
+            default -> lines.add("Advanced mining enchantment.");
         }
         return lines;
     }
 
     /**
-     * Extracts pure display name WITHOUT any trailing Roman numerals (e.g. "Blast Mining" instead of "Blast Mining I").
+     * Extracts pure display name in English (e.g. "Blast Mining", "Dynamite", "Efficiency", "Fortune").
      */
     public String getEnchantmentDisplayName(Enchantment ench) {
         if (ench == null || ench.getKey() == null) return "Enchantment";
         String id = ench.getKey().getKey().toLowerCase();
 
-        // 1. Try EcoEnchants API reflection
+        // 1. Check known English standards with authentic colors
+        switch (id) {
+            case "blast_mining" -> { return "<#FF00E5>Blast Mining</#FF00E5>"; }
+            case "dynamite" -> { return "<#00E5FF>Dynamite</#00E5FF>"; }
+            case "efficiency" -> { return "<#00E5FF>Efficiency</#00E5FF>"; }
+            case "fortune" -> { return "<#FFA500>Fortune</#FFA500>"; }
+            case "silk_touch" -> { return "<#9966FF>Silk Touch</#9966FF>"; }
+            case "infernal_touch", "autosmelt" -> { return "<gray>Infernal Touch</gray>"; }
+            case "telekinesis", "telepathy" -> { return "<gray>Telekinesis</gray>"; }
+            case "drill" -> { return "<#FFAA00>Drill</#FFAA00>"; }
+            case "jackhammer" -> { return "<#FF5555>Jackhammer</#FF5555>"; }
+            case "laser" -> { return "<#FF0055>Laser</#FF0055>"; }
+            case "vein_miner" -> { return "<#00FF88>Vein Miner</#00FF88>"; }
+        }
+
+        // 2. Try EcoEnchants API reflection
         try {
             Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
             java.lang.reflect.Method getByKeyMethod = null;
@@ -459,40 +451,30 @@ public class EcoEnchantsHook {
                     java.lang.reflect.Method getDName = ecoEnchantObj.getClass().getMethod("getDisplayName");
                     Object nameRes = getDName.invoke(ecoEnchantObj);
                     if (nameRes != null && !nameRes.toString().isEmpty()) {
-                        return stripRomanSuffix(nameRes.toString());
+                        String clean = cleanEnchantmentName(nameRes.toString());
+                        if (nameRes.toString().startsWith("<") && nameRes.toString().contains(">")) {
+                            String tag = nameRes.toString().substring(0, nameRes.toString().indexOf(">") + 1);
+                            return tag + clean + "</" + tag.replace("<", "");
+                        }
+                        return "<gray>" + clean + "</gray>";
                     }
                 } catch (Throwable ignored) {}
             }
         } catch (Throwable ignored) {}
 
-        // 2. Try Paper ench.displayName(1)
-        try {
-            Component comp = ench.displayName(1);
-            String mini = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp);
-            mini = stripRomanSuffix(mini);
-            if (!mini.isEmpty()) return mini;
-        } catch (Throwable ignored) {}
-
-        // 3. Fallback capitalize ID
+        // 3. Fallback capitalize clean ID
         return "<gray>" + capitalize(id.replace("_", " ")) + "</gray>";
     }
 
     /**
-     * Strips trailing Roman numerals (e.g. "Blast Mining I" -> "Blast Mining").
+     * Completely strips trailing numbers, Roman numerals, and tag noise from enchantment names.
      */
-    public static String stripRomanSuffix(String text) {
+    public static String cleanEnchantmentName(String text) {
         if (text == null || text.isEmpty()) return "";
-
-        // Remove Roman numerals or numbers at the end of the string or before closing tags
-        String stripped = text;
-
-        // Strip patterns like " I", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X", " 1", " 2", etc.
-        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*(</[^>]+>)*$", "$3");
-        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*</b>", "</b>");
-        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*</gradient>", "</gradient>");
-        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*</#([0-9a-fA-F]{6})>", "</#$3>");
-
-        return stripped.trim();
+        String plain = TextUtil.stripFormatting(text).trim();
+        // Strip trailing roman numerals like I, II, III, IV, V, VI, XXV, etc. or numbers
+        plain = plain.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)$", "").trim();
+        return plain;
     }
 
     private String capitalize(String text) {
