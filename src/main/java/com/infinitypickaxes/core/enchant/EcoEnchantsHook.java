@@ -18,6 +18,7 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class EcoEnchantsHook {
@@ -45,9 +46,9 @@ public class EcoEnchantsHook {
         this.ecoFrameworkPresent = Bukkit.getPluginManager().isPluginEnabled("eco");
 
         if (ecoEnchantsPresent) {
-            plugin.getLogger().info("EcoEnchants detectado exitosamente. Habilitando compatibilidad con encantamientos custom.");
+            plugin.getLogger().info("EcoEnchants detected successfully. Compatibility enabled.");
         } else {
-            plugin.getLogger().info("EcoEnchants no está presente. Operando en modo Vanilla/Bukkit Registry estándar.");
+            plugin.getLogger().info("EcoEnchants not detected. Operating in standard Bukkit mode.");
         }
     }
 
@@ -147,6 +148,8 @@ public class EcoEnchantsHook {
                                 .replace("libro", "")
                                 .replace("encantado", "")
                                 .replace("de", "")
+                                .replace("book", "")
+                                .replace("enchanted", "")
                                 .trim();
 
         String[] tokens = remainder.split("\\s+");
@@ -224,14 +227,19 @@ public class EcoEnchantsHook {
         return pickaxeEnchants;
     }
 
-    /**
-     * Extracts authentic description of an enchantment from EcoEnchants API, YAML files or known fallbacks.
-     */
     public List<String> getEnchantmentDescription(Enchantment ench) {
+        return getEnchantmentDescription(ench, 1);
+    }
+
+    /**
+     * Extracts and resolves authentic description of an enchantment, replacing dynamic level formulas and placeholders.
+     */
+    public List<String> getEnchantmentDescription(Enchantment ench, int level) {
         List<String> desc = new ArrayList<>();
         if (ench == null || ench.getKey() == null) return desc;
 
         String id = ench.getKey().getKey().toLowerCase();
+        int safeLevel = Math.max(1, level);
 
         // 1. Try EcoEnchants API reflection
         try {
@@ -255,18 +263,39 @@ public class EcoEnchantsHook {
             }
 
             if (ecoEnchantObj != null) {
-                // Try getDescription()
+                // Try getFormattedDescription(level)
                 try {
-                    java.lang.reflect.Method getDesc = ecoEnchantObj.getClass().getMethod("getDescription");
-                    Object descResult = getDesc.invoke(ecoEnchantObj);
-                    if (descResult instanceof List<?> list) {
+                    java.lang.reflect.Method getFormatted = ecoEnchantObj.getClass().getMethod("getFormattedDescription", int.class);
+                    Object res = getFormatted.invoke(ecoEnchantObj, safeLevel);
+                    if (res instanceof List<?> list) {
                         for (Object o : list) {
-                            if (o != null) desc.add("<gray>" + o.toString());
+                            if (o != null) desc.add(o.toString());
                         }
-                    } else if (descResult instanceof String s && !s.isEmpty()) {
-                        desc.add("<gray>" + s);
                     }
                 } catch (Throwable ignored) {}
+
+                // Try getDescription(level) or getDescription()
+                if (desc.isEmpty()) {
+                    try {
+                        java.lang.reflect.Method getDesc = null;
+                        try {
+                            getDesc = ecoEnchantObj.getClass().getMethod("getDescription", int.class);
+                        } catch (NoSuchMethodException e) {
+                            getDesc = ecoEnchantObj.getClass().getMethod("getDescription");
+                        }
+
+                        if (getDesc != null) {
+                            Object descResult = (getDesc.getParameterCount() == 1) ? getDesc.invoke(ecoEnchantObj, safeLevel) : getDesc.invoke(ecoEnchantObj);
+                            if (descResult instanceof List<?> list) {
+                                for (Object o : list) {
+                                    if (o != null) desc.add(o.toString());
+                                }
+                            } else if (descResult instanceof String s && !s.isEmpty()) {
+                                desc.add(s);
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                }
 
                 // Try getConfig() -> description
                 if (desc.isEmpty()) {
@@ -278,13 +307,13 @@ public class EcoEnchantsHook {
                             List<?> list = (List<?>) getList.invoke(cfg, "description");
                             if (list != null && !list.isEmpty()) {
                                 for (Object o : list) {
-                                    if (o != null) desc.add("<gray>" + o.toString());
+                                    if (o != null) desc.add(o.toString());
                                 }
                             } else {
                                 java.lang.reflect.Method getStr = cfg.getClass().getMethod("getString", String.class);
                                 String s = (String) getStr.invoke(cfg, "description");
                                 if (s != null && !s.isEmpty()) {
-                                    desc.add("<gray>" + s);
+                                    desc.add(s);
                                 }
                             }
                         }
@@ -306,12 +335,12 @@ public class EcoEnchantsHook {
                             List<String> list = yaml.getStringList("description");
                             if (!list.isEmpty()) {
                                 for (String s : list) {
-                                    desc.add("<gray>" + s);
+                                    desc.add(s);
                                 }
                             } else {
                                 String single = yaml.getString("description");
                                 if (single != null && !single.isEmpty()) {
-                                    desc.add("<gray>" + single);
+                                    desc.add(single);
                                 }
                             }
                         }
@@ -320,12 +349,43 @@ public class EcoEnchantsHook {
             } catch (Throwable ignored) {}
         }
 
-        // 3. Known Standard / Fallback descriptions
+        // 3. Known Standard Fallback descriptions (Pure English by default)
         if (desc.isEmpty()) {
             desc.addAll(getKnownDescription(id));
         }
 
-        return desc;
+        // 4. Resolve EcoEnchants dynamic %placeholder% variables cleanly
+        List<String> resolved = new ArrayList<>();
+        for (String line : desc) {
+            if (line == null || line.trim().isEmpty()) continue;
+            String clean = resolvePlaceholders(line, id, safeLevel);
+            resolved.add(clean.startsWith("<") ? clean : "<gray>" + clean + "</gray>");
+        }
+
+        return resolved;
+    }
+
+    private String resolvePlaceholders(String text, String enchantId, int level) {
+        String result = text;
+
+        if (result.contains("%placeholder%x%placeholder%")) {
+            String area = (level >= 3) ? "3x3" : "3x3";
+            result = result.replace("%placeholder%x%placeholder%", area);
+        }
+
+        if (result.contains("%placeholder%%")) {
+            int chance = Math.min(100, Math.max(5, level * 5));
+            result = result.replace("%placeholder%%", "<green>" + chance + "%</green>");
+        }
+
+        if (result.contains("%placeholder%")) {
+            result = result.replace("%placeholder%", String.valueOf(level));
+        }
+
+        // Clean any leftover raw placeholder tags
+        result = result.replaceAll("%[a-zA-Z0-9_]+%", String.valueOf(level));
+
+        return result;
     }
 
     private File findYamlFile(File dir, String id) {
@@ -350,24 +410,27 @@ public class EcoEnchantsHook {
     private List<String> getKnownDescription(String id) {
         List<String> lines = new ArrayList<>();
         switch (id) {
-            case "efficiency" -> lines.add("<gray>Aumenta considerablemente la velocidad de minado.");
-            case "fortune" -> lines.add("<gray>Multiplica los minerales y gemas soltados al picar.");
-            case "silk_touch" -> lines.add("<gray>Permite recolectar bloques en su forma original.");
-            case "blast_mining" -> lines.add("<gray>Otorga probabilidad de minar en un área de 3x3.");
-            case "dynamite" -> lines.add("<gray>Mina y destruye un área masiva de bloques.");
-            case "infernal_touch", "autosmelt" -> lines.add("<gray>Funde automáticamente los minerales extraídos.");
-            case "telekinesis", "telepathy" -> lines.add("<gray>Envía los ítems y experiencia directo a tu inventario.");
-            case "drill" -> lines.add("<gray>Perfora túneles continuos al minar.");
-            case "jackhammer" -> lines.add("<gray>Rompe capas enteras de bloques de un golpe.");
-            case "laser" -> lines.add("<gray>Dispara un rayo continuo que desintegra bloques.");
-            case "vein_miner" -> lines.add("<gray>Mina toda la veta de mineral conectada.");
-            default -> lines.add("<gray>Encantamiento de minería avanzado.");
+            case "efficiency" -> lines.add("<gray>Increases mining speed significantly.</gray>");
+            case "fortune" -> lines.add("<gray>Multiplies mineral and gem drops while mining.</gray>");
+            case "silk_touch" -> lines.add("<gray>Allows blocks to drop themselves when mined.</gray>");
+            case "blast_mining" -> lines.add("<gray>Chance to mine blocks in a 3x3 area.</gray>");
+            case "dynamite" -> lines.add("<gray>Mines blocks in a massive area.</gray>");
+            case "infernal_touch", "autosmelt" -> lines.add("<gray>Automatically smelts mined blocks.</gray>");
+            case "telekinesis", "telepathy" -> lines.add("<gray>Drops and experience go directly into your inventory.</gray>");
+            case "drill" -> lines.add("<gray>Drills continuous tunnels while mining.</gray>");
+            case "jackhammer" -> lines.add("<gray>Breaks entire layers of blocks at once.</gray>");
+            case "laser" -> lines.add("<gray>Fires a continuous beam that breaks blocks.</gray>");
+            case "vein_miner" -> lines.add("<gray>Mines the entire connected ore vein.</gray>");
+            default -> lines.add("<gray>Advanced mining enchantment.</gray>");
         }
         return lines;
     }
 
+    /**
+     * Extracts pure display name WITHOUT any trailing Roman numerals (e.g. "Blast Mining" instead of "Blast Mining I").
+     */
     public String getEnchantmentDisplayName(Enchantment ench) {
-        if (ench == null || ench.getKey() == null) return "Encantamiento";
+        if (ench == null || ench.getKey() == null) return "Enchantment";
         String id = ench.getKey().getKey().toLowerCase();
 
         // 1. Try EcoEnchants API reflection
@@ -396,7 +459,7 @@ public class EcoEnchantsHook {
                     java.lang.reflect.Method getDName = ecoEnchantObj.getClass().getMethod("getDisplayName");
                     Object nameRes = getDName.invoke(ecoEnchantObj);
                     if (nameRes != null && !nameRes.toString().isEmpty()) {
-                        return nameRes.toString();
+                        return stripRomanSuffix(nameRes.toString());
                     }
                 } catch (Throwable ignored) {}
             }
@@ -406,12 +469,30 @@ public class EcoEnchantsHook {
         try {
             Component comp = ench.displayName(1);
             String mini = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp);
-            mini = mini.replace(" I", "").replace(" 1", "");
+            mini = stripRomanSuffix(mini);
             if (!mini.isEmpty()) return mini;
         } catch (Throwable ignored) {}
 
         // 3. Fallback capitalize ID
-        return "<#00E5FF><b>" + capitalize(id.replace("_", " ")) + "</b></#00E5FF>";
+        return "<gray>" + capitalize(id.replace("_", " ")) + "</gray>";
+    }
+
+    /**
+     * Strips trailing Roman numerals (e.g. "Blast Mining I" -> "Blast Mining").
+     */
+    public static String stripRomanSuffix(String text) {
+        if (text == null || text.isEmpty()) return "";
+
+        // Remove Roman numerals or numbers at the end of the string or before closing tags
+        String stripped = text;
+
+        // Strip patterns like " I", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X", " 1", " 2", etc.
+        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*(</[^>]+>)*$", "$3");
+        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*</b>", "</b>");
+        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*</gradient>", "</gradient>");
+        stripped = stripped.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)\\s*</#([0-9a-fA-F]{6})>", "</#$3>");
+
+        return stripped.trim();
     }
 
     private String capitalize(String text) {

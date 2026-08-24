@@ -25,18 +25,31 @@ public class MessageManager {
         this.plugin = plugin;
     }
 
-    public String getPrefix() {
-        return plugin.getConfigManager().getMessagesConfig().getString("prefix", "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> ");
+    private FileConfiguration getSenderConfig(CommandSender sender) {
+        if (sender instanceof Player player) {
+            String lang = player.locale().getLanguage();
+            return plugin.getConfigManager().getLocaleConfig(lang);
+        }
+        return plugin.getConfigManager().getMessagesConfig();
+    }
+
+    public String getPrefix(CommandSender sender) {
+        return getSenderConfig(sender).getString("prefix", "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> ");
     }
 
     public void sendMessage(CommandSender sender, String key, String... placeholders) {
         if (sender == null) return;
-        FileConfiguration config = plugin.getConfigManager().getMessagesConfig();
+        FileConfiguration config = getSenderConfig(sender);
         String message = config.getString(key);
+        if (message == null || message.isEmpty()) {
+            // Fallback to English
+            config = plugin.getConfigManager().getLocaleConfig("en");
+            message = config.getString(key);
+        }
         if (message == null || message.isEmpty()) return;
 
         message = applyPlaceholders(message, placeholders);
-        sender.sendMessage(TextUtil.parse(getPrefix() + message));
+        sender.sendMessage(TextUtil.parse(getPrefix(sender) + message));
     }
 
     public void sendRawMessage(CommandSender sender, String rawMessage, String... placeholders) {
@@ -46,7 +59,7 @@ public class MessageManager {
 
     public void sendMiningActionbar(Player player, InfinityPickaxe pickaxe, double gainedXp) {
         if (player == null || pickaxe == null) return;
-        FileConfiguration messagesConfig = plugin.getConfigManager().getMessagesConfig();
+        FileConfiguration messagesConfig = getSenderConfig(player);
         FileConfiguration config = plugin.getConfigManager().getConfig();
 
         if (!messagesConfig.getBoolean("mining-actionbar.enabled", true)) {
@@ -69,7 +82,7 @@ public class MessageManager {
         lastMinedTime.put(uuid, now);
 
         String template = messagesConfig.getString("mining-actionbar.message",
-                "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Nv.%level%<dark_gray>)");
+                "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Lv.%level%<dark_gray>)");
 
         double reqXp = plugin.getLevelManager().getRequiredXp(pickaxe.getLevel());
         String bar = ProgressBarUtil.getProgressBar(
@@ -96,22 +109,21 @@ public class MessageManager {
 
     public void sendLevelUp(Player player, InfinityPickaxe pickaxe, int oldLevel, int newLevel) {
         if (player == null || pickaxe == null) return;
-        FileConfiguration config = plugin.getConfigManager().getMessagesConfig();
+        FileConfiguration config = getSenderConfig(player);
 
         // 1. Chat Message
         List<String> chatLines = config.getStringList("messages.level-up-chat");
         for (String line : chatLines) {
             String processed = line.replace("%level%", String.valueOf(newLevel))
                                    .replace("%old_level%", String.valueOf(oldLevel))
-                                   .replace("%player%", player.getName())
-                                   .replace("%unlocks_summary%", "<center><green>Nuevos límites de encantamiento y habilidades disponibles</green></center>");
+                                   .replace("%player%", player.getName());
             player.sendMessage(TextUtil.parse(processed));
         }
 
         // 2. Title & Subtitle
-        String titleStr = config.getString("messages.level-up-title", "<gradient:#00FF88:#00E5FF><b>¡NIVEL %level%!</b></gradient>")
+        String titleStr = config.getString("messages.level-up-title", "<gradient:#00FF88:#00E5FF><b>LEVEL %level%!</b></gradient>")
                 .replace("%level%", String.valueOf(newLevel));
-        String subtitleStr = config.getString("messages.level-up-subtitle", "<gray>¡Nuevos sockets y habilidades desbloqueados!</gray>")
+        String subtitleStr = config.getString("messages.level-up-subtitle", "<gray>New sockets and abilities unlocked!</gray>")
                 .replace("%level%", String.valueOf(newLevel));
 
         Title title = Title.title(
@@ -122,7 +134,7 @@ public class MessageManager {
         player.showTitle(title);
 
         // 3. Actionbar
-        String actionbarStr = config.getString("messages.level-up-actionbar", "<green>+1 Nivel de Pico <dark_gray>(<yellow>Nv.%level%<dark_gray>)</green>")
+        String actionbarStr = config.getString("messages.level-up-actionbar", "<green>+1 Pickaxe Level <dark_gray>(<yellow>Lv.%level%<dark_gray>)</green>")
                 .replace("%level%", String.valueOf(newLevel));
         player.sendActionBar(TextUtil.parse(actionbarStr));
     }

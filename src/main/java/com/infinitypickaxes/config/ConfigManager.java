@@ -8,33 +8,42 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 
 public class ConfigManager {
 
     private final InfinityPickaxes plugin;
 
+    private File configFile;
     private FileConfiguration config;
+
+    private File limitbreakFile;
     private FileConfiguration limitbreakConfig;
+
+    private File enchantsFile;
     private FileConfiguration enchantsConfig;
+
+    private File perksFile;
     private FileConfiguration perksConfig;
+
+    private File blocksFile;
     private FileConfiguration blocksConfig;
-    private FileConfiguration messagesConfig;
+
+    private File mainMenuFile;
     private FileConfiguration mainMenuConfig;
+
+    private File enchantsMenuFile;
     private FileConfiguration enchantsMenuConfig;
+
+    private File perksMenuFile;
     private FileConfiguration perksMenuConfig;
 
-    private File configFile;
-    private File limitbreakFile;
-    private File enchantsFile;
-    private File perksFile;
-    private File blocksFile;
-    private File messagesFile;
-    private File mainMenuFile;
-    private File enchantsMenuFile;
-    private File perksMenuFile;
-
-    private String currentLanguage = "en";
+    private final Map<String, YamlConfiguration> localeConfigs = new HashMap<>();
+    private String defaultLanguage = "en";
 
     public ConfigManager(InfinityPickaxes plugin) {
         this.plugin = plugin;
@@ -47,8 +56,10 @@ public class ConfigManager {
         this.config = YamlConfiguration.loadConfiguration(configFile);
         updateMissingKeys(configFile, "config.yml", (YamlConfiguration) this.config);
 
-        // Read active language
-        this.currentLanguage = this.config.getString("language", "en").toLowerCase();
+        // Auto-migrate lore template if contains outdated Spanish/ownership keys
+        migratePickaxeLore();
+
+        this.defaultLanguage = this.config.getString("language", "en").toLowerCase();
 
         // 2. Custom core files
         this.limitbreakFile = loadAndSyncFile("limitbreak.yml");
@@ -84,34 +95,57 @@ public class ConfigManager {
         updateMissingKeys(perksMenuFile, "menus/perks_menu.yml", (YamlConfiguration) this.perksMenuConfig);
     }
 
+    private void migratePickaxeLore() {
+        List<String> currentLore = this.config.getStringList("pickaxe-lore.lore");
+        boolean needsMigration = false;
+        for (String line : currentLore) {
+            if (line.contains("Dueño") || line.contains("%player%") || line.contains("ENCANTAMIENTOS")
+                    || line.contains("PERKS ACTIVOS") || line.contains("Progreso XP:") || line.contains("Nivel del Pico")) {
+                needsMigration = true;
+                break;
+            }
+        }
+        if (needsMigration || currentLore.isEmpty()) {
+            List<String> newLore = Arrays.asList(
+                    "%enchants_list%",
+                    "<dark_gray>---------------------</dark_gray>",
+                    "<gray>Level: <gold><b>%level%</b></gold></gray>",
+                    "<gray>Progress: %xp_bar%</gray>",
+                    "<gray>Mined Blocks: <yellow>%blocks_mined%</yellow></gray>",
+                    "<gray>Perks: <gold>%perks_count%</gold><gray>/</gray><gold>%max_perks%</gold></gray>"
+            );
+            this.config.set("pickaxe-lore.lore", newLore);
+            try {
+                ((YamlConfiguration) this.config).save(configFile);
+                plugin.getLogger().info("Pickaxe lore template migrated automatically to new clean layout.");
+            } catch (Exception ignored) {}
+        }
+    }
+
     private void loadLocales() {
+        localeConfigs.clear();
+
         // Ensure default locales exist on disk
         loadAndSyncFile("locales/en.yml");
         loadAndSyncFile("locales/es.yml");
 
-        // Sync missing keys in default locales
-        File enFile = new File(plugin.getDataFolder(), "locales/en.yml");
-        if (enFile.exists()) {
-            YamlConfiguration enYaml = YamlConfiguration.loadConfiguration(enFile);
-            updateMissingKeys(enFile, "locales/en.yml", enYaml);
-        }
-        File esFile = new File(plugin.getDataFolder(), "locales/es.yml");
-        if (esFile.exists()) {
-            YamlConfiguration esYaml = YamlConfiguration.loadConfiguration(esFile);
-            updateMissingKeys(esFile, "locales/es.yml", esYaml);
-        }
-
-        // Load active locale file
-        String localePath = "locales/" + currentLanguage + ".yml";
-        this.messagesFile = new File(plugin.getDataFolder(), localePath);
-
-        if (!messagesFile.exists()) {
-            // Fallback to en.yml if requested language does not exist
-            plugin.getLogger().warning("Idioma '" + currentLanguage + "' no encontrado en locales/. Usando 'en.yml' por defecto.");
-            this.messagesFile = new File(plugin.getDataFolder(), "locales/en.yml");
+        File localesDir = new File(plugin.getDataFolder(), "locales");
+        if (localesDir.exists() && localesDir.isDirectory()) {
+            File[] files = localesDir.listFiles((dir, name) -> name.endsWith(".yml"));
+            if (files != null) {
+                for (File f : files) {
+                    String langKey = f.getName().replace(".yml", "").toLowerCase();
+                    YamlConfiguration yaml = YamlConfiguration.loadConfiguration(f);
+                    updateMissingKeys(f, "locales/" + f.getName(), yaml);
+                    localeConfigs.put(langKey, yaml);
+                }
+            }
         }
 
-        this.messagesConfig = YamlConfiguration.loadConfiguration(messagesFile);
+        if (!localeConfigs.containsKey("en")) {
+            File enFile = new File(plugin.getDataFolder(), "locales/en.yml");
+            localeConfigs.put("en", YamlConfiguration.loadConfiguration(enFile));
+        }
     }
 
     private File loadAndSyncFile(String resourcePath) {
@@ -121,15 +155,12 @@ public class ConfigManager {
             try {
                 plugin.saveResource(resourcePath, false);
             } catch (Exception e) {
-                plugin.getLogger().log(Level.WARNING, "No se pudo guardar el recurso por defecto: " + resourcePath, e);
+                plugin.getLogger().log(Level.WARNING, "Could not save default resource: " + resourcePath, e);
             }
         }
         return file;
     }
 
-    /**
-     * Recursively verifies and injects any missing default keys from embedded JAR resources into existing user configs.
-     */
     private void updateMissingKeys(File file, String resourcePath, YamlConfiguration currentConfig) {
         try (InputStream in = plugin.getResource(resourcePath)) {
             if (in == null) return;
@@ -144,7 +175,6 @@ public class ConfigManager {
                     }
                 }
 
-                // If default version differs or keys were added, save file
                 if (defaultConfig.contains("config-version")) {
                     String defaultVer = defaultConfig.getString("config-version", "1.0.0");
                     String currentVer = currentConfig.getString("config-version", "");
@@ -156,12 +186,9 @@ public class ConfigManager {
 
                 if (missingCount > 0) {
                     currentConfig.save(file);
-                    plugin.getLogger().info("Archivo '" + resourcePath + "' actualizado automáticamente con " + missingCount + " nuevas opciones por defecto.");
                 }
             }
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Error al sincronizar claves de configuración para " + resourcePath, e);
-        }
+        } catch (Exception ignored) {}
     }
 
     public void reload() {
@@ -189,7 +216,17 @@ public class ConfigManager {
     }
 
     public FileConfiguration getMessagesConfig() {
-        return messagesConfig;
+        return getLocaleConfig(defaultLanguage);
+    }
+
+    public FileConfiguration getLocaleConfig(String lang) {
+        if (lang == null) lang = defaultLanguage;
+        lang = lang.toLowerCase();
+        if (lang.contains("_")) lang = lang.substring(0, lang.indexOf("_"));
+        if (localeConfigs.containsKey(lang)) {
+            return localeConfigs.get(lang);
+        }
+        return localeConfigs.getOrDefault(defaultLanguage, localeConfigs.getOrDefault("en", new YamlConfiguration()));
     }
 
     public FileConfiguration getMainMenuConfig() {
@@ -205,6 +242,6 @@ public class ConfigManager {
     }
 
     public String getCurrentLanguage() {
-        return currentLanguage;
+        return defaultLanguage;
     }
 }

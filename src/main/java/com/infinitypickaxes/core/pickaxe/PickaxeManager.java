@@ -1,6 +1,7 @@
 package com.infinitypickaxes.core.pickaxe;
 
 import com.infinitypickaxes.InfinityPickaxes;
+import com.infinitypickaxes.core.enchant.EcoEnchantsHook;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.perk.PickaxePerk;
 import com.infinitypickaxes.utils.ProgressBarUtil;
@@ -188,7 +189,7 @@ public class PickaxeManager {
                 config.getString("progress-bar.uncompleted-color", "<#555555>")
         );
 
-        // 5. Enchantments List format (Matches visual style: Title + Roman Numerals + Descriptions)
+        // 5. Enchantments List format (Exact layout: Title + Roman Numerals + Multi-line Descriptions)
         List<String> enchantLines = new ArrayList<>();
         if (pickaxe.getEnchantments().isEmpty()) {
             String noEnchantsText = config.getString("formats.no-enchants", "");
@@ -206,38 +207,46 @@ public class PickaxeManager {
                     socket = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
                 }
 
-                String dName;
+                String rawDName;
                 int maxLevel = 1;
                 List<String> desc = new ArrayList<>();
+                Enchantment ench = getEnchantment(keyStr);
 
                 if (socket != null) {
-                    dName = socket.getDisplayName();
+                    rawDName = socket.getDisplayName();
                     maxLevel = socket.getMaxLevel();
                     desc = socket.getDescription();
+                } else if (ench != null) {
+                    rawDName = plugin.getEnchantManager().getEcoHook().getEnchantmentDisplayName(ench);
+                    maxLevel = ench.getMaxLevel();
+                    desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
                 } else {
-                    Enchantment ench = getEnchantment(keyStr);
-                    if (ench != null) {
-                        dName = plugin.getEnchantManager().getEcoHook().getEnchantmentDisplayName(ench);
-                        maxLevel = ench.getMaxLevel();
-                        desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench);
-                    } else {
-                        String raw = keyStr;
-                        if (raw.contains(":")) raw = raw.substring(raw.indexOf(":") + 1);
-                        dName = "<gray>" + capitalize(raw.replace("_", " ")) + "</gray>";
-                    }
+                    String raw = keyStr;
+                    if (raw.contains(":")) raw = raw.substring(raw.indexOf(":") + 1);
+                    rawDName = "<gray>" + capitalize(raw.replace("_", " ")) + "</gray>";
                 }
 
-                // Header line with Roman numeral if maxLevel > 1 or level > 1
+                // If socket has descriptions from ecohook
+                if ((desc == null || desc.isEmpty()) && ench != null) {
+                    desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(ench, level);
+                }
+
+                // Strip any duplicated Roman suffix from the base name
+                String cleanBaseName = EcoEnchantsHook.stripRomanSuffix(rawDName);
                 String roman = TextUtil.toRoman(level);
                 String header;
+
                 if (maxLevel > 1 || level > 1) {
-                    if (dName.contains("<b>") && dName.contains("</b>")) {
-                        header = dName.replace("</b>", " " + roman + "</b>");
+                    if (cleanBaseName.contains("<b>") && cleanBaseName.contains("</b>")) {
+                        header = cleanBaseName.replace("</b>", " " + roman + "</b>");
+                    } else if (cleanBaseName.startsWith("<") && cleanBaseName.contains(">") && !cleanBaseName.startsWith("<gray>")) {
+                        // Colored custom enchant like <#FF00E5>Blast Mining</#FF00E5>
+                        header = cleanBaseName + " <#00E5FF>" + roman + "</#00E5FF>";
                     } else {
-                        header = dName + " <aqua>" + roman + "</aqua>";
+                        header = "<gray>" + TextUtil.stripFormatting(cleanBaseName) + "</gray> <#00E5FF>" + roman + "</#00E5FF>";
                     }
                 } else {
-                    header = dName;
+                    header = "<gray>" + TextUtil.stripFormatting(cleanBaseName) + "</gray>";
                 }
 
                 enchantLines.add(header);
