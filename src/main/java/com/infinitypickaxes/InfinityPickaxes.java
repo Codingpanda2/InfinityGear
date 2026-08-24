@@ -8,7 +8,11 @@ import com.infinitypickaxes.core.level.LevelManager;
 import com.infinitypickaxes.core.perk.PerkManager;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
 import com.infinitypickaxes.gui.GuiManager;
+import com.infinitypickaxes.hooks.PlaceholderAPIHook;
 import com.infinitypickaxes.listeners.*;
+import com.infinitypickaxes.utils.TextUtil;
+import org.bukkit.Bukkit;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -29,13 +33,24 @@ public final class InfinityPickaxes extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
-
         long start = System.currentTimeMillis();
-        getLogger().info("Iniciando InfinityPickaxes...");
+        ConsoleCommandSender console = Bukkit.getConsoleSender();
+
+        // Print header banner
+        console.sendMessage(TextUtil.parse(""));
+        console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██╗███╗   ██╗███████╗██╗███╗   ██╗██╗████████╗██╗   ██╗</gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║████╗  ██║██╔════╝██║████╗  ██║██║╚══██╔══╝╚██╗ ██╔╝</gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██╔██╗ ██║█████╗  ██║██╔██╗ ██║██║   ██║    ╚████╔╝ </gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██║╚██╗██║██╔══╝  ██║██║╚██╗██║██║   ██║     ╚██╔╝  </gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██║ ╚████║██║     ██║██║ ╚████║██║   ██║      ██║   </gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#0077FE:#00E5FF>  ╚═╝╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   </gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>       ⛏️ INFINITY PICKAXES </b></gradient><gray>v<yellow>" + getDescription().getVersion() + "</yellow> <dark_gray>┃</dark_gray> <gray>Paper 1.21.4"));
+        console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
 
         // 1. Initialize Configuration & Messages
         this.configManager = new ConfigManager(this);
         this.messageManager = new MessageManager(this);
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[1/6]</dark_gray> <white>Archivos de Configuración:</white> <green>Cargados exitosamente.</green>"));
 
         // 2. Initialize Core Subsystems
         this.levelManager = new LevelManager(this);
@@ -43,6 +58,15 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.perkManager = new PerkManager(this);
         this.pickaxeManager = new PickaxeManager(this);
         this.guiManager = new GuiManager(this);
+
+        int socketsCount = enchantManager.getAllSockets().size();
+        boolean ecoPresent = enchantManager.getEcoHook().isEcoEnchantsPresent();
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[2/6]</dark_gray> <white>EcoEnchants Addon:</white> " +
+                (ecoPresent ? "<green>Conectado </green>" : "<yellow>Modo Bukkit </yellow>") +
+                "<dark_gray>(" + socketsCount + " sockets de picos activos)</dark_gray>"));
+
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[3/6]</dark_gray> <white>Sistema de Niveles:</white> <green>Listo </green><dark_gray>(Nivel Máximo: " + levelManager.getMaxLevel() + ")</dark_gray>"));
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[4/6]</dark_gray> <white>Sistema de Habilidades:</white> <gold>5 Perks modulares registrados.</gold>"));
 
         // 3. Register Event Listeners
         PluginManager pm = getServer().getPluginManager();
@@ -57,8 +81,10 @@ public final class InfinityPickaxes extends JavaPlugin {
 
         // 4. Register PlaceholderAPI Hook if present
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            new com.infinitypickaxes.hooks.PlaceholderAPIHook(this).register();
-            getLogger().info("PlaceholderAPI detectado. Placeholders de InfinityPickaxes registrados para zMenu/DeluxeMenus.");
+            new PlaceholderAPIHook(this).register();
+            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[5/6]</dark_gray> <white>PlaceholderAPI Bridge:</white> <green>Expansión vinculada para zMenu/DeluxeMenus.</green>"));
+        } else {
+            console.sendMessage(TextUtil.parse("<yellow>  ℹ <dark_gray>[5/6]</dark_gray> <white>PlaceholderAPI Bridge:</white> <dark_gray>No detectado (Opcional).</dark_gray>"));
         }
 
         // 5. Register Commands
@@ -67,10 +93,13 @@ public final class InfinityPickaxes extends JavaPlugin {
             InfinityPickaxeCommand executor = new InfinityPickaxeCommand(this);
             cmd.setExecutor(executor);
             cmd.setTabCompleter(executor);
+            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Comandos & Eventos:</white> <green>Registrados (/pickaxe, /pickaxe reload, etc.).</green>"));
         }
 
         long elapsed = System.currentTimeMillis() - start;
-        getLogger().info("InfinityPickaxes v" + getDescription().getVersion() + " habilitado correctamente en " + elapsed + "ms.");
+        console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>  ✨ ¡InfinityPickaxes habilitado y listo para usar en " + elapsed + "ms! ✨</b></gradient>"));
+        console.sendMessage(TextUtil.parse(""));
     }
 
     @Override
@@ -78,7 +107,10 @@ public final class InfinityPickaxes extends JavaPlugin {
         if (heldListener != null) {
             heldListener.stopTickTask();
         }
-        getLogger().info("InfinityPickaxes deshabilitado.");
+        ConsoleCommandSender console = Bukkit.getConsoleSender();
+        console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
+        console.sendMessage(TextUtil.parse("<red>  ✖ </red><gradient:#FF5555:#FF0055><b>INFINITY PICKAXES</b></gradient> <dark_gray>»</dark_gray> <gray>Tareas detenidas y plugin deshabilitado correctamente.</gray>"));
+        console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
         instance = null;
     }
 
