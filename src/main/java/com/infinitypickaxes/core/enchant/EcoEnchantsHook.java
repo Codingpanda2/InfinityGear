@@ -2,8 +2,11 @@ package com.infinitypickaxes.core.enchant;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.utils.TextUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
@@ -11,6 +14,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.*;
 
 public class EcoEnchantsHook {
@@ -63,7 +68,7 @@ public class EcoEnchantsHook {
         if (ecoEnchantsPresent) {
             try {
                 Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
-                java.lang.reflect.Method getEnchantsOnItem = ecoEnchantsClass.getMethod("getEnchantmentsOnItem", ItemStack.class);
+                Method getEnchantsOnItem = ecoEnchantsClass.getMethod("getEnchantmentsOnItem", ItemStack.class);
                 Object enchantsMapObj = getEnchantsOnItem.invoke(null, bookItem);
 
                 if (enchantsMapObj instanceof Map<?, ?> ecoMap) {
@@ -76,7 +81,7 @@ public class EcoEnchantsHook {
                             if (keyObj instanceof Enchantment ench) {
                                 keyStr = ench.getKey().toString().toLowerCase();
                             } else {
-                                java.lang.reflect.Method getKeyMethod = keyObj.getClass().getMethod("getKey");
+                                Method getKeyMethod = keyObj.getClass().getMethod("getKey");
                                 Object namespacedKeyObj = getKeyMethod.invoke(keyObj);
                                 keyStr = namespacedKeyObj.toString().toLowerCase();
                             }
@@ -116,18 +121,15 @@ public class EcoEnchantsHook {
         // 1. Query EcoEnchants API if available
         if (ecoEnchantsPresent) {
             try {
-                Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
-                java.lang.reflect.Method getValues = ecoEnchantsClass.getMethod("values");
-                Object[] values = (Object[]) getValues.invoke(null);
-
+                Object[] values = getEcoEnchantValues();
                 if (values != null) {
                     for (Object ecoEnchantObj : values) {
                         try {
-                            java.lang.reflect.Method getTargetMethod = ecoEnchantObj.getClass().getMethod("getTarget");
+                            Method getTargetMethod = ecoEnchantObj.getClass().getMethod("getTarget");
                             Object targetObj = getTargetMethod.invoke(ecoEnchantObj);
                             String targetStr = targetObj != null ? targetObj.toString().toLowerCase() : "";
 
-                            java.lang.reflect.Method getKeyMethod = ecoEnchantObj.getClass().getMethod("getKey");
+                            Method getKeyMethod = ecoEnchantObj.getClass().getMethod("getKey");
                             NamespacedKey key = (NamespacedKey) getKeyMethod.invoke(ecoEnchantObj);
 
                             if (targetStr.contains("pickaxe") || targetStr.contains("tool") || targetStr.contains("digger") || targetStr.contains("breaker") || targetStr.contains("mining") || targetStr.contains("all")) {
@@ -167,15 +169,12 @@ public class EcoEnchantsHook {
                name.contains("layer") || name.contains("cuboid") || name.contains("excavat");
     }
 
-    /**
-     * Fetches enchantment description lines safely in English with clean formatting.
-     */
     public List<String> getEnchantmentDescription(Enchantment ench) {
         return getEnchantmentDescription(ench, 1);
     }
 
     /**
-     * Fetches enchantment description lines safely in English with clean formatting.
+     * Fetches enchantment description lines directly from EcoEnchants (API or YAML) with exact evaluated placeholders.
      */
     public List<String> getEnchantmentDescription(Enchantment ench, int level) {
         List<String> desc = new ArrayList<>();
@@ -184,41 +183,25 @@ public class EcoEnchantsHook {
         String id = ench.getKey().getKey().toLowerCase();
         int safeLevel = Math.max(1, level);
 
-        // 1. Try EcoEnchants API reflection
-        try {
-            Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
-            java.lang.reflect.Method getByKeyMethod = null;
-            try {
-                getByKeyMethod = ecoEnchantsClass.getMethod("getByKey", NamespacedKey.class);
-            } catch (NoSuchMethodException e) {
-                try {
-                    getByKeyMethod = ecoEnchantsClass.getMethod("getByID", String.class);
-                } catch (NoSuchMethodException ignored) {}
-            }
-
-            Object ecoEnchantObj = null;
-            if (getByKeyMethod != null) {
-                if (getByKeyMethod.getParameterTypes()[0].equals(NamespacedKey.class)) {
-                    ecoEnchantObj = getByKeyMethod.invoke(null, ench.getKey());
-                } else {
-                    ecoEnchantObj = getByKeyMethod.invoke(null, id);
-                }
-            }
-
+        // 1. Try Direct EcoEnchants API evaluation
+        if (ecoEnchantsPresent) {
+            Object ecoEnchantObj = findEcoEnchantObject(ench);
             if (ecoEnchantObj != null) {
+                // A. Try getFormattedDescription(level)
                 try {
-                    java.lang.reflect.Method getFormatted = ecoEnchantObj.getClass().getMethod("getFormattedDescription", int.class);
+                    Method getFormatted = ecoEnchantObj.getClass().getMethod("getFormattedDescription", int.class);
                     Object res = getFormatted.invoke(ecoEnchantObj, safeLevel);
-                    if (res instanceof List<?> list) {
+                    if (res instanceof List<?> list && !list.isEmpty()) {
                         for (Object o : list) {
-                            if (o != null) desc.add(o.toString());
+                            if (o != null) desc.add(convertObjectToString(o));
                         }
                     }
                 } catch (Throwable ignored) {}
 
+                // B. Try getDescription(level) or getDescription()
                 if (desc.isEmpty()) {
                     try {
-                        java.lang.reflect.Method getDesc = null;
+                        Method getDesc = null;
                         try {
                             getDesc = ecoEnchantObj.getClass().getMethod("getDescription", int.class);
                         } catch (NoSuchMethodException e) {
@@ -227,9 +210,9 @@ public class EcoEnchantsHook {
 
                         if (getDesc != null) {
                             Object descResult = (getDesc.getParameterCount() == 1) ? getDesc.invoke(ecoEnchantObj, safeLevel) : getDesc.invoke(ecoEnchantObj);
-                            if (descResult instanceof List<?> list) {
+                            if (descResult instanceof List<?> list && !list.isEmpty()) {
                                 for (Object o : list) {
-                                    if (o != null) desc.add(o.toString());
+                                    if (o != null) desc.add(convertObjectToString(o));
                                 }
                             } else if (descResult instanceof String s && !s.isEmpty()) {
                                 desc.add(s);
@@ -238,28 +221,36 @@ public class EcoEnchantsHook {
                     } catch (Throwable ignored) {}
                 }
             }
-        } catch (Throwable ignored) {}
+        }
 
-        // 2. Try EcoEnchants Plugin YAML files on disk
+        // 2. Try Exact EcoEnchants Plugin YAML files on server disk
         if (desc.isEmpty()) {
             try {
                 Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("EcoEnchants");
                 if (ecoPlugin != null && ecoPlugin.getDataFolder().exists()) {
                     File enchantsFolder = new File(ecoPlugin.getDataFolder(), "enchants");
-                    if (enchantsFolder.exists() && enchantsFolder.isDirectory()) {
-                        File ymlFile = findYamlFile(enchantsFolder, id);
-                        if (ymlFile != null) {
-                            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(ymlFile);
-                            List<String> list = yaml.getStringList("description");
-                            if (!list.isEmpty()) {
-                                for (String s : list) {
-                                    desc.add(s);
-                                }
-                            } else {
-                                String single = yaml.getString("description");
-                                if (single != null && !single.isEmpty()) {
-                                    desc.add(single);
-                                }
+                    File ymlFile = findYamlFile(enchantsFolder, id);
+                    if (ymlFile != null) {
+                        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(ymlFile);
+                        List<String> rawLines = new ArrayList<>();
+                        if (yaml.isList("description")) {
+                            rawLines.addAll(yaml.getStringList("description"));
+                        } else if (yaml.isString("description")) {
+                            rawLines.add(yaml.getString("description"));
+                        }
+
+                        // Read placeholders mapping from YAML
+                        Map<String, String> placeholdersMap = new HashMap<>();
+                        if (yaml.isConfigurationSection("placeholders")) {
+                            ConfigurationSection pSec = yaml.getConfigurationSection("placeholders");
+                            for (String pKey : pSec.getKeys(false)) {
+                                placeholdersMap.put(pKey.toLowerCase(), pSec.getString(pKey, ""));
+                            }
+                        }
+
+                        for (String raw : rawLines) {
+                            if (raw != null && !raw.trim().isEmpty()) {
+                                desc.add(evaluateEcoPlaceholders(raw, placeholdersMap, safeLevel));
                             }
                         }
                     }
@@ -267,62 +258,266 @@ public class EcoEnchantsHook {
             } catch (Throwable ignored) {}
         }
 
-        // 3. Known Standard Fallback descriptions (Pure English by default)
+        // 3. Fallback to standard clean English descriptions
         if (desc.isEmpty()) {
-            desc.addAll(getKnownDescription(id));
+            desc.addAll(getKnownDescription(id, safeLevel));
         }
 
-        // 4. Resolve EcoEnchants dynamic %placeholder% variables cleanly without unmatched tags
+        // 4. Final Clean Sanitize: Balance tags cleanly and ensure valid MiniMessage
         List<String> resolved = new ArrayList<>();
         for (String line : desc) {
             if (line == null || line.trim().isEmpty()) continue;
-            // Fully sanitize line by stripping all existing color/closing tags and legacy codes
-            String clean = sanitizeDescriptionRaw(line);
-            // Resolve placeholders
-            clean = resolvePlaceholders(clean, id, safeLevel);
-            // Re-clean any rogue closing tags
-            clean = clean.replaceAll("(?i)</?gr[ae]y>", "").trim();
-            // Wrap cleanly with <gray>
-            resolved.add("<gray>" + clean + "</gray>");
+            String clean = cleanAndBalanceLine(line);
+            if (!clean.isEmpty()) {
+                resolved.add(clean);
+            }
         }
 
         return resolved;
     }
 
-    public static String sanitizeDescriptionRaw(String raw) {
-        if (raw == null) return "";
-        // Strip legacy codes
-        String s = raw.replaceAll("(?i)[&§][0-9a-fk-or]", "");
-        // Strip any rogue </gray>, </grey>, <gray>, etc.
-        s = s.replaceAll("(?i)</?(gray|grey|white|yellow|gold|green|red|blue|aqua|dark_[a-z]+|light_purple|b|i|u|st|obf|reset|color|colour)(:[^>]+)?>", "");
-        s = s.replaceAll("(?i)</?#[0-9a-fA-F]{6}>", "");
-        s = s.replaceAll("(?i)</?gradient(:#[0-9a-fA-F]{6})+>", "");
-        return s.trim();
+    private String convertObjectToString(Object obj) {
+        if (obj == null) return "";
+        if (obj instanceof Component comp) {
+            return MiniMessage.miniMessage().serialize(comp);
+        }
+        return obj.toString();
     }
 
-    private String resolvePlaceholders(String text, String enchantId, int level) {
-        String result = text;
+    private Object findEcoEnchantObject(Enchantment ench) {
+        try {
+            Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
+            String id = ench.getKey().getKey().toLowerCase();
 
+            // Check static getByKey
+            try {
+                Method m = ecoEnchantsClass.getMethod("getByKey", NamespacedKey.class);
+                Object res = m.invoke(null, ench.getKey());
+                if (res != null) return res;
+            } catch (Throwable ignored) {}
+
+            // Check static getByID
+            try {
+                Method m = ecoEnchantsClass.getMethod("getByID", String.class);
+                Object res = m.invoke(null, id);
+                if (res != null) return res;
+            } catch (Throwable ignored) {}
+
+            // Check Kotlin INSTANCE object
+            try {
+                Field instanceField = ecoEnchantsClass.getField("INSTANCE");
+                Object instance = instanceField.get(null);
+                if (instance != null) {
+                    try {
+                        Method m = instance.getClass().getMethod("getByKey", NamespacedKey.class);
+                        Object res = m.invoke(instance, ench.getKey());
+                        if (res != null) return res;
+                    } catch (Throwable ignored) {}
+                    try {
+                        Method m = instance.getClass().getMethod("getByID", String.class);
+                        Object res = m.invoke(instance, id);
+                        if (res != null) return res;
+                    } catch (Throwable ignored) {}
+                }
+            } catch (Throwable ignored) {}
+
+            // Check Eco Core Enchantments class
+            try {
+                Class<?> coreEnchants = Class.forName("com.willfp.eco.core.enchantments.Enchantments");
+                Method m = coreEnchants.getMethod("getByKey", NamespacedKey.class);
+                Object res = m.invoke(null, ench.getKey());
+                if (res != null) return res;
+            } catch (Throwable ignored) {}
+
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    private Object[] getEcoEnchantValues() {
+        try {
+            Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
+            try {
+                Method m = ecoEnchantsClass.getMethod("values");
+                Object res = m.invoke(null);
+                if (res instanceof Object[] arr) return arr;
+                if (res instanceof Collection<?> col) return col.toArray();
+            } catch (Throwable ignored) {}
+
+            Field instanceField = ecoEnchantsClass.getField("INSTANCE");
+            Object instance = instanceField.get(null);
+            if (instance != null) {
+                Method m = instance.getClass().getMethod("values");
+                Object res = m.invoke(instance);
+                if (res instanceof Object[] arr) return arr;
+                if (res instanceof Collection<?> col) return col.toArray();
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    private String evaluateEcoPlaceholders(String rawLine, Map<String, String> placeholdersMap, int level) {
+        String result = rawLine;
+
+        // Strip rogue closing tags that EcoEnchants puts at the end of its YAML lines
+        result = result.replaceAll("(?i)</?gr[ae]y>", "").trim();
+
+        // 1. Evaluate specific placeholder keys from YAML
+        for (Map.Entry<String, String> entry : placeholdersMap.entrySet()) {
+            String pKey = entry.getKey();
+            String formula = entry.getValue();
+            String evaluatedVal;
+
+            if (formula.contains("%level%") || formula.matches(".*[0-9+*/^()-].*")) {
+                double val = evaluateMath(formula, level);
+                evaluatedVal = (val % 1 == 0) ? String.valueOf((long) val) : String.format(Locale.US, "%.1f", val);
+            } else {
+                evaluatedVal = formula.replace("%level%", String.valueOf(level));
+            }
+
+            result = result.replace("%" + pKey + "%", "<green>" + evaluatedVal + "</green>");
+        }
+
+        // 2. Built-in defaults for common EcoEnchants placeholder names if not mapped
         if (result.contains("%placeholder%x%placeholder%")) {
             result = result.replace("%placeholder%x%placeholder%", "<green>3x3</green>");
         }
-        if (result.contains("3x3")) {
-            result = result.replaceAll("(?i)\\b3x3\\b", "<green>3x3</green>");
-        }
-
         if (result.contains("%placeholder%%")) {
-            int chance = Math.min(100, Math.max(5, level * 5));
-            result = result.replace("%placeholder%%", "<green>" + chance + "%</green>");
+            int val = Math.min(100, Math.max(5, level * 5));
+            result = result.replace("%placeholder%%", "<green>" + val + "%</green>");
         }
-
         if (result.contains("%placeholder%")) {
             result = result.replace("%placeholder%", "<green>" + level + "</green>");
         }
 
-        // Clean any leftover raw placeholder tags
-        result = result.replaceAll("%[a-zA-Z0-9_]+%", String.valueOf(level));
+        // Replace any %level% remaining
+        result = result.replace("%level%", String.valueOf(level));
 
         return result;
+    }
+
+    public static double evaluateMath(String expression, int level) {
+        if (expression == null || expression.trim().isEmpty()) return level;
+        String expr = expression.replace("%level%", String.valueOf(level))
+                                .replace("%enchant_level%", String.valueOf(level))
+                                .replace("%lvl%", String.valueOf(level))
+                                .trim();
+
+        try {
+            return new Object() {
+                int pos = -1, ch;
+
+                void nextChar() {
+                    ch = (++pos < expr.length()) ? expr.charAt(pos) : -1;
+                }
+
+                boolean eat(int charToEat) {
+                    while (ch == ' ') nextChar();
+                    if (ch == charToEat) {
+                        nextChar();
+                        return true;
+                    }
+                    return false;
+                }
+
+                double parse() {
+                    nextChar();
+                    double x = parseExpression();
+                    if (pos < expr.length()) throw new RuntimeException("Unexpected: " + (char) ch);
+                    return x;
+                }
+
+                double parseExpression() {
+                    double x = parseTerm();
+                    for (;;) {
+                        if (eat('+')) x += parseTerm();
+                        else if (eat('-')) x -= parseTerm();
+                        else return x;
+                    }
+                }
+
+                double parseTerm() {
+                    double x = parseFactor();
+                    for (;;) {
+                        if (eat('*')) x *= parseFactor();
+                        else if (eat('/')) x /= parseFactor();
+                        else if (eat('%')) x %= parseFactor();
+                        else return x;
+                    }
+                }
+
+                double parseFactor() {
+                    if (eat('+')) return +parseFactor();
+                    if (eat('-')) return -parseFactor();
+
+                    double x;
+                    int startPos = this.pos;
+                    if (eat('(')) {
+                        x = parseExpression();
+                        eat(')');
+                    } else if ((ch >= '0' && ch <= '9') || ch == '.') {
+                        while ((ch >= '0' && ch <= '9') || ch == '.') nextChar();
+                        x = Double.parseDouble(expr.substring(startPos, this.pos));
+                    } else if (ch >= 'a' && ch <= 'z') {
+                        while (ch >= 'a' && ch <= 'z') nextChar();
+                        String func = expr.substring(startPos, this.pos);
+                        if (eat('(')) {
+                            double arg1 = parseExpression();
+                            double arg2 = 0;
+                            if (eat(',')) {
+                                arg2 = parseExpression();
+                            }
+                            eat(')');
+                            x = switch (func) {
+                                case "min" -> Math.min(arg1, arg2);
+                                case "max" -> Math.max(arg1, arg2);
+                                case "sqrt" -> Math.sqrt(arg1);
+                                case "floor" -> Math.floor(arg1);
+                                case "ceil" -> Math.ceil(arg1);
+                                case "round" -> Math.round(arg1);
+                                case "abs" -> Math.abs(arg1);
+                                default -> arg1;
+                            };
+                        } else {
+                            x = 0;
+                        }
+                    } else {
+                        x = 0;
+                    }
+
+                    if (eat('^')) x = Math.pow(x, parseFactor());
+
+                    return x;
+                }
+            }.parse();
+        } catch (Throwable e) {
+            try {
+                return Double.parseDouble(expr.replaceAll("[^0-9.]", ""));
+            } catch (Throwable ignored) {
+                return level;
+            }
+        }
+    }
+
+    private String cleanAndBalanceLine(String line) {
+        if (line == null) return "";
+        String s = line.trim();
+
+        // Strip legacy codes
+        s = s.replaceAll("(?i)[&§][0-9a-fk-or]", "");
+
+        // Remove rogue closing tags like </gray> or </white> at the start or end
+        s = s.replaceAll("(?i)^</?(gray|grey)>", "").replaceAll("(?i)</?(gray|grey)>$", "").trim();
+
+        if (s.isEmpty()) return "";
+
+        // If line has no color tag at start, wrap in <gray>
+        if (!s.startsWith("<")) {
+            s = "<gray>" + s + "</gray>";
+        } else if (!s.endsWith(">")) {
+            s = s + "</gray>";
+        }
+
+        return s;
     }
 
     private File findYamlFile(File dir, String id) {
@@ -344,13 +539,13 @@ public class EcoEnchantsHook {
         return null;
     }
 
-    private List<String> getKnownDescription(String id) {
+    private List<String> getKnownDescription(String id, int level) {
         List<String> lines = new ArrayList<>();
         switch (id) {
             case "efficiency" -> lines.add("Increases mining speed significantly.");
             case "fortune" -> lines.add("Gives a boost to certain block drops.");
             case "silk_touch" -> lines.add("Allows blocks to drop themselves when mined.");
-            case "blast_mining" -> lines.add("<green>15%</green> chance to mine blocks in a <green>3x3</green> area");
+            case "blast_mining" -> lines.add("<green>" + Math.min(100, Math.max(5, level * 5)) + "%</green> chance to mine blocks in a <green>3x3</green> area");
             case "dynamite" -> lines.add("Mines blocks in a <green>3x3</green> area");
             case "infernal_touch", "autosmelt" -> lines.add("Automatically smelts mined blocks");
             case "telekinesis", "telepathy" -> lines.add("Drops and experience go directly into your inventory");
@@ -364,13 +559,13 @@ public class EcoEnchantsHook {
     }
 
     /**
-     * Extracts pure display name in English (e.g. "Blast Mining", "Dynamite", "Efficiency", "Fortune").
+     * Extracts pure display name in English with authentic colors from EcoEnchants or defaults.
      */
     public String getEnchantmentDisplayName(Enchantment ench) {
         if (ench == null || ench.getKey() == null) return "Enchantment";
         String id = ench.getKey().getKey().toLowerCase();
 
-        // 1. Check known English standards with authentic colors
+        // 1. Known authentic standard colors
         switch (id) {
             case "blast_mining" -> { return "<#FF00E5>Blast Mining</#FF00E5>"; }
             case "dynamite" -> { return "<#00E5FF>Dynamite</#00E5FF>"; }
@@ -386,29 +581,11 @@ public class EcoEnchantsHook {
         }
 
         // 2. Try EcoEnchants API reflection
-        try {
-            Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
-            java.lang.reflect.Method getByKeyMethod = null;
-            try {
-                getByKeyMethod = ecoEnchantsClass.getMethod("getByKey", NamespacedKey.class);
-            } catch (NoSuchMethodException e) {
-                try {
-                    getByKeyMethod = ecoEnchantsClass.getMethod("getByID", String.class);
-                } catch (NoSuchMethodException ignored) {}
-            }
-
-            Object ecoEnchantObj = null;
-            if (getByKeyMethod != null) {
-                if (getByKeyMethod.getParameterTypes()[0].equals(NamespacedKey.class)) {
-                    ecoEnchantObj = getByKeyMethod.invoke(null, ench.getKey());
-                } else {
-                    ecoEnchantObj = getByKeyMethod.invoke(null, id);
-                }
-            }
-
+        if (ecoEnchantsPresent) {
+            Object ecoEnchantObj = findEcoEnchantObject(ench);
             if (ecoEnchantObj != null) {
                 try {
-                    java.lang.reflect.Method getDName = ecoEnchantObj.getClass().getMethod("getDisplayName");
+                    Method getDName = ecoEnchantObj.getClass().getMethod("getDisplayName");
                     Object nameRes = getDName.invoke(ecoEnchantObj);
                     if (nameRes != null && !nameRes.toString().isEmpty()) {
                         String clean = cleanEnchantmentName(nameRes.toString());
@@ -420,19 +597,14 @@ public class EcoEnchantsHook {
                     }
                 } catch (Throwable ignored) {}
             }
-        } catch (Throwable ignored) {}
+        }
 
-        // 3. Fallback capitalize clean ID
         return "<gray>" + capitalize(id.replace("_", " ")) + "</gray>";
     }
 
-    /**
-     * Completely strips trailing numbers, Roman numerals, and tag noise from enchantment names.
-     */
     public static String cleanEnchantmentName(String text) {
         if (text == null || text.isEmpty()) return "";
         String plain = TextUtil.stripFormatting(text).trim();
-        // Strip trailing roman numerals like I, II, III, IV, V, VI, XXV, etc. or numbers
         plain = plain.replaceAll("(?i)\\s+(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{1,3})|[0-9]+)$", "").trim();
         return plain;
     }
