@@ -10,7 +10,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
-import org.jetbrains.annotations.NotNull;
 
 public abstract class CustomGui implements InventoryHolder {
 
@@ -39,7 +38,6 @@ public abstract class CustomGui implements InventoryHolder {
         player.openInventory(inventory);
     }
 
-    @NotNull
     @Override
     public Inventory getInventory() {
         return inventory;
