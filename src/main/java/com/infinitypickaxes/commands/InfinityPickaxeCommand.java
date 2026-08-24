@@ -62,7 +62,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage("§cUso: /" + label + " give <jugador> [nivel]");
+                    sender.sendMessage("§cUsage: /" + label + " give <player> [level]");
                     return true;
                 }
                 Player target = Bukkit.getPlayer(args[1]);
@@ -92,7 +92,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage("§cUso: /" + label + " book <encantamiento|universal> [cantidad] [jugador]");
+                    sender.sendMessage("§cUsage: /" + label + " book <enchant|universal> [amount] [player]");
                     return true;
                 }
 
@@ -131,7 +131,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                         socket = plugin.getEnchantManager().getSocketByKey(enchantArg);
                     }
                     if (socket == null) {
-                        sender.sendMessage("§cEl encantamiento '" + enchantArg + "' no fue encontrado.");
+                        sender.sendMessage("§cEnchantment '" + enchantArg + "' was not found.");
                         return true;
                     }
                     bookItem = plugin.getLimitBreakManager().createSpecificBook(socket, amount);
@@ -168,7 +168,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 3) {
-                    sender.sendMessage("§cUso: /" + label + " setlevel <jugador> <nivel>");
+                    sender.sendMessage("§cUsage: /" + label + " setlevel <player> <level>");
                     return true;
                 }
                 Player target = Bukkit.getPlayer(args[1]);
@@ -178,7 +178,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 }
                 InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(target);
                 if (pickaxe == null) {
-                    sender.sendMessage("§cEl jugador no sostiene un Infinity Pickaxe.");
+                    sender.sendMessage("§cPlayer is not holding an Infinity Pickaxe.");
                     return true;
                 }
                 try {
@@ -188,7 +188,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     plugin.getMessageManager().sendMessage(sender, "messages.set-level-success",
                             "%level%", String.valueOf(targetLevel));
                 } catch (NumberFormatException e) {
-                    sender.sendMessage("§cEl nivel especificado no es un número válido.");
+                    sender.sendMessage("§cThe specified level is not a valid number.");
                 }
             }
 
@@ -198,7 +198,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 3) {
-                    sender.sendMessage("§cUso: /" + label + " addxp <jugador> <cantidad>");
+                    sender.sendMessage("§cUsage: /" + label + " addxp <player> <amount>");
                     return true;
                 }
                 Player target = Bukkit.getPlayer(args[1]);
@@ -208,7 +208,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 }
                 InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(target);
                 if (pickaxe == null) {
-                    sender.sendMessage("§cEl jugador no sostiene un Infinity Pickaxe.");
+                    sender.sendMessage("§cPlayer is not holding an Infinity Pickaxe.");
                     return true;
                 }
                 try {
@@ -218,7 +218,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                             "%xp%", String.format("%.0f", amount),
                             "%player%", target.getName());
                 } catch (NumberFormatException e) {
-                    sender.sendMessage("§cLa cantidad de XP especificada no es un número válido.");
+                    sender.sendMessage("§cThe specified XP amount is not a valid number.");
                 }
             }
 
@@ -230,14 +230,14 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-        sender.sendMessage("§b§lInfinityPickaxes §7- Comandos Disponibles:");
-        sender.sendMessage("§e/pickaxe §7- Abre el menú del pico que sostienes.");
+        sender.sendMessage("§b§lInfinityPickaxes §7- Available Commands:");
+        sender.sendMessage("§e/pickaxe §7- Opens the menu for your held pickaxe.");
         if (sender.hasPermission("infinitypickaxes.admin")) {
-            sender.sendMessage("§e/pickaxe give <jugador> [nivel] §7- Entrega un pico.");
-            sender.sendMessage("§e/pickaxe book <encantamiento|universal> [cant] [jugador] §7- Entrega libros LimitBreak.");
-            sender.sendMessage("§e/pickaxe setlevel <jugador> <nivel> §7- Modifica el nivel del pico.");
-            sender.sendMessage("§e/pickaxe addxp <jugador> <xp> §7- Añade XP al pico.");
-            sender.sendMessage("§e/pickaxe reload §7- Recarga configuraciones y menús.");
+            sender.sendMessage("§e/pickaxe give <player> [level] §7- Gives an Infinity Pickaxe.");
+            sender.sendMessage("§e/pickaxe book <enchant|universal> [amount] [player] §7- Gives LimitBreak books.");
+            sender.sendMessage("§e/pickaxe setlevel <player> <level> §7- Sets pickaxe level.");
+            sender.sendMessage("§e/pickaxe addxp <player> <amount> §7- Adds XP to pickaxe.");
+            sender.sendMessage("§e/pickaxe reload §7- Reloads configurations and menus.");
         }
         sender.sendMessage("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }

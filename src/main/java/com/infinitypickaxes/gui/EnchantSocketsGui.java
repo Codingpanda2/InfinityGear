@@ -25,7 +25,7 @@ public class EnchantSocketsGui extends CustomGui {
                 plugin,
                 player,
                 pickaxe,
-                TextUtil.parse(plugin.getConfigManager().getEnchantsMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Encantamientos")),
+                TextUtil.parse(plugin.getConfigManager().getEnchantsMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Enchantments")),
                 plugin.getConfigManager().getEnchantsMenuConfig().getInt("size", 54)
         );
         this.menuConfig = plugin.getConfigManager().getEnchantsMenuConfig();
@@ -77,7 +77,7 @@ public class EnchantSocketsGui extends CustomGui {
         int infoSlot = menuConfig.getInt("items.info-book.slot", 4);
         if (infoSlot >= 0 && infoSlot < invSize) {
             Material infoMat = Material.matchMaterial(menuConfig.getString("items.info-book.material", "KNOWLEDGE_BOOK"));
-            String infoName = menuConfig.getString("items.info-book.name", "<#00FF88><b>¿Cómo Mejorar Sockets?</b></#00FF88>");
+            String infoName = menuConfig.getString("items.info-book.name", "<#00FF88><b>How to Upgrade Sockets?</b></#00FF88>");
             List<String> infoLore = menuConfig.getStringList("items.info-book.lore");
             inventory.setItem(infoSlot, new ItemBuilder(infoMat != null ? infoMat : Material.KNOWLEDGE_BOOK)
                     .name(infoName)
@@ -89,7 +89,7 @@ public class EnchantSocketsGui extends CustomGui {
         int backSlot = getBackSlot();
         if (backSlot >= 0 && backSlot < invSize) {
             Material backMat = Material.matchMaterial(menuConfig.getString("items.back-button.material", "ARROW"));
-            String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Volver al Menú Principal</b></yellow>");
+            String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Back to Main Menu</b></yellow>");
             List<String> backLore = menuConfig.getStringList("items.back-button.lore");
             inventory.setItem(backSlot, new ItemBuilder(backMat != null ? backMat : Material.ARROW)
                     .name(backName)
@@ -116,12 +116,12 @@ public class EnchantSocketsGui extends CustomGui {
         int nextSlot = getNextSlot();
         if (currentPage > 0 && prevSlot >= 0 && prevSlot < invSize) {
             inventory.setItem(prevSlot, new ItemBuilder(Material.SPECTRAL_ARROW)
-                    .name("<yellow><b>« Página Anterior (" + currentPage + "/" + totalPages + ")</b></yellow>")
+                    .name("<yellow><b>« Previous Page (" + currentPage + "/" + totalPages + ")</b></yellow>")
                     .build());
         }
         if (currentPage < totalPages - 1 && nextSlot >= 0 && nextSlot < invSize) {
             inventory.setItem(nextSlot, new ItemBuilder(Material.SPECTRAL_ARROW)
-                    .name("<yellow><b>Página Siguiente (" + (currentPage + 2) + "/" + totalPages + ") »</b></yellow>")
+                    .name("<yellow><b>Next Page (" + (currentPage + 2) + "/" + totalPages + ") »</b></yellow>")
                     .build());
         }
 
@@ -166,12 +166,12 @@ public class EnchantSocketsGui extends CustomGui {
         }
 
         if (!unlocked) {
-            String name = menuConfig.getString("enchant-format.locked-name", "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Bloqueado)</red>")
+            String name = menuConfig.getString("enchant-format.locked-name", "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Locked)</red>")
                     .replace("%enchant_display_name%", socket.getDisplayName());
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-locked");
             builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl >= absoluteMax) {
-            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
+            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax))
@@ -180,7 +180,7 @@ public class EnchantSocketsGui extends CustomGui {
             builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl > globalMax) {
             int extra = currentLvl - globalMax;
-            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
+            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax))
@@ -188,14 +188,14 @@ public class EnchantSocketsGui extends CustomGui {
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
             builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl >= maxForPickaxe && maxForPickaxe > 0) {
-            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
+            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
             builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else {
-            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
+            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
@@ -212,7 +212,11 @@ public class EnchantSocketsGui extends CustomGui {
 
         for (String line : rawLore) {
             if (line.contains("%enchant_description%")) {
-                formatted.addAll(socket.getDescription());
+                List<String> desc = socket.getDescription();
+                if (desc == null || desc.isEmpty()) {
+                    desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(plugin.getEnchantManager().getEnchantment(socket.getKeyString()), currentLvl);
+                }
+                formatted.addAll(desc);
             } else {
                 formatted.add(line
                         .replace("%enchant_display_name%", socket.getDisplayName())
@@ -265,7 +269,6 @@ public class EnchantSocketsGui extends CustomGui {
 
                     // Otherwise regular book auto-apply
                     Map<String, Integer> bookEnchants = plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(clickedItem);
-                    boolean upgraded = false;
                     for (String keyStr : bookEnchants.keySet()) {
                         EnchantSocket s = plugin.getEnchantManager().getSocketByKey(keyStr);
                         if (s == null && keyStr.contains(":")) {
@@ -273,7 +276,6 @@ public class EnchantSocketsGui extends CustomGui {
                         }
                         if (s != null) {
                             if (plugin.getEnchantManager().handleSocketUpgrade(player, pickaxe, s, clickedItem)) {
-                                upgraded = true;
                                 setupItems();
                                 break;
                             }

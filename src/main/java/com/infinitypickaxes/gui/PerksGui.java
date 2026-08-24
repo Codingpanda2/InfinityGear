@@ -24,7 +24,7 @@ public class PerksGui extends CustomGui {
                 plugin,
                 player,
                 pickaxe,
-                TextUtil.parse(plugin.getConfigManager().getPerksMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Perks & Habilidades")),
+                TextUtil.parse(plugin.getConfigManager().getPerksMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Perks & Abilities")),
                 plugin.getConfigManager().getPerksMenuConfig().getInt("size", 36)
         );
         this.menuConfig = plugin.getConfigManager().getPerksMenuConfig();
@@ -46,7 +46,7 @@ public class PerksGui extends CustomGui {
         // 2. Info Item
         int infoSlot = menuConfig.getInt("items.info-item.slot", 4);
         Material infoMat = Material.matchMaterial(menuConfig.getString("items.info-item.material", "NETHER_STAR"));
-        String infoName = menuConfig.getString("items.info-item.name", "<#FFA500><b>Ranuras de Habilidades (Perks)</b></#FFA500>");
+        String infoName = menuConfig.getString("items.info-item.name", "<#FFA500><b>Ability Perk Slots</b></#FFA500>");
         List<String> infoLore = menuConfig.getStringList("items.info-item.lore");
         inventory.setItem(infoSlot, new ItemBuilder(infoMat != null ? infoMat : Material.NETHER_STAR)
                 .name(infoName)
@@ -56,7 +56,7 @@ public class PerksGui extends CustomGui {
         // 3. Back Button
         int backSlot = menuConfig.getInt("items.back-button.slot", 31);
         Material backMat = Material.matchMaterial(menuConfig.getString("items.back-button.material", "ARROW"));
-        String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Volver al Menú Principal</b></yellow>");
+        String backName = menuConfig.getString("items.back-button.name", "<yellow><b>Back to Main Menu</b></yellow>");
         List<String> backLore = menuConfig.getStringList("items.back-button.lore");
         inventory.setItem(backSlot, new ItemBuilder(backMat != null ? backMat : Material.ARROW)
                 .name(backName)
@@ -84,17 +84,17 @@ public class PerksGui extends CustomGui {
         ItemBuilder builder = new ItemBuilder(perk.getIcon());
 
         if (!unlocked) {
-            String name = menuConfig.getString("perk-format.locked-name", "<dark_gray>🔒</dark_gray> %perk_display_name% <red>(Bloqueado)</red>")
+            String name = menuConfig.getString("perk-format.locked-name", "<dark_gray>🔒</dark_gray> %perk_display_name% <red>(Locked)</red>")
                     .replace("%perk_display_name%", perk.getDisplayName());
             List<String> rawLore = menuConfig.getStringList("perk-format.lore-locked");
             builder.name(name).lore(formatPerkLore(rawLore, perk));
         } else if (active) {
-            String name = menuConfig.getString("perk-format.active-name", "%perk_display_name% <green>(Equipado)</green>")
+            String name = menuConfig.getString("perk-format.active-name", "%perk_display_name% <green>(Equipped)</green>")
                     .replace("%perk_display_name%", perk.getDisplayName());
             List<String> rawLore = menuConfig.getStringList("perk-format.lore-active");
             builder.name(name).lore(formatPerkLore(rawLore, perk));
         } else {
-            String name = menuConfig.getString("perk-format.inactive-name", "%perk_display_name% <yellow>(Disponible)</yellow>")
+            String name = menuConfig.getString("perk-format.inactive-name", "%perk_display_name% <yellow>(Available)</yellow>")
                     .replace("%perk_display_name%", perk.getDisplayName());
             List<String> rawLore = menuConfig.getStringList("perk-format.lore-inactive");
             builder.name(name).lore(formatPerkLore(rawLore, perk));

@@ -33,7 +33,7 @@ public class PerkManager {
             // 1. Haste Surge
             if (sec.isConfigurationSection("haste_surge")) {
                 ConfigurationSection s = sec.getConfigurationSection("haste_surge");
-                String name = s.getString("display-name", "<#FFD700><b>Furia de Prisa</b></#FFD700>");
+                String name = s.getString("display-name", "<#FFD700><b>Haste Surge</b></#FFD700>");
                 Material icon = Material.matchMaterial(s.getString("icon", "GOLDEN_PICKAXE"));
                 int slot = s.getInt("slot", 11);
                 boolean enabled = s.getBoolean("enabled", true);
@@ -46,7 +46,7 @@ public class PerkManager {
             // 2. AutoSmelt
             if (sec.isConfigurationSection("autosmelt")) {
                 ConfigurationSection s = sec.getConfigurationSection("autosmelt");
-                String name = s.getString("display-name", "<#FF4500><b>Fundición Instantánea</b></#FF4500>");
+                String name = s.getString("display-name", "<#FF4500><b>Auto Smelt</b></#FF4500>");
                 Material icon = Material.matchMaterial(s.getString("icon", "LAVA_BUCKET"));
                 int slot = s.getInt("slot", 12);
                 boolean enabled = s.getBoolean("enabled", true);
@@ -58,7 +58,7 @@ public class PerkManager {
             // 3. Blast Radius
             if (sec.isConfigurationSection("blast_radius")) {
                 ConfigurationSection s = sec.getConfigurationSection("blast_radius");
-                String name = s.getString("display-name", "<#DC143C><b>Onda Expansiva (3x3)</b></#DC143C>");
+                String name = s.getString("display-name", "<#DC143C><b>Blast Radius (3x3)</b></#DC143C>");
                 Material icon = Material.matchMaterial(s.getString("icon", "TNT"));
                 int slot = s.getInt("slot", 13);
                 boolean enabled = s.getBoolean("enabled", true);
@@ -71,7 +71,7 @@ public class PerkManager {
             // 4. Fortune Frenzy
             if (sec.isConfigurationSection("fortune_frenzy")) {
                 ConfigurationSection s = sec.getConfigurationSection("fortune_frenzy");
-                String name = s.getString("display-name", "<#00FA9A><b>Frenesí de Fortuna</b></#00FA9A>");
+                String name = s.getString("display-name", "<#00FA9A><b>Fortune Frenzy</b></#00FA9A>");
                 Material icon = Material.matchMaterial(s.getString("icon", "EMERALD"));
                 int slot = s.getInt("slot", 14);
                 boolean enabled = s.getBoolean("enabled", true);
@@ -85,7 +85,7 @@ public class PerkManager {
             // 5. Void Siphon
             if (sec.isConfigurationSection("void_siphon")) {
                 ConfigurationSection s = sec.getConfigurationSection("void_siphon");
-                String name = s.getString("display-name", "<gradient:#9400D3:#4B0082><b>Sifón del Vacío</b></gradient>");
+                String name = s.getString("display-name", "<gradient:#9400D3:#4B0082><b>Void Siphon</b></gradient>");
                 Material icon = Material.matchMaterial(s.getString("icon", "END_CRYSTAL"));
                 int slot = s.getInt("slot", 15);
                 boolean enabled = s.getBoolean("enabled", true);
@@ -96,7 +96,7 @@ public class PerkManager {
             }
         }
 
-        plugin.getLogger().info("Cargados " + perks.size() + " perks de picos.");
+        plugin.getLogger().info("Loaded " + perks.size() + " pickaxe perks.");
     }
 
     public void registerPerk(PickaxePerk perk) {
@@ -168,7 +168,7 @@ public class PerkManager {
                 try {
                     perk.onBlockBreak(event, pickaxe, player);
                 } catch (Exception e) {
-                    plugin.getLogger().warning("Error al ejecutar perk " + perkId + ": " + e.getMessage());
+                    plugin.getLogger().warning("Error executing perk " + perkId + ": " + e.getMessage());
                 }
             }
         }

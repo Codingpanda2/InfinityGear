@@ -24,7 +24,7 @@ public class MainPickaxeGui extends CustomGui {
                 plugin,
                 player,
                 pickaxe,
-                TextUtil.parse(plugin.getConfigManager().getMainMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Principal")),
+                TextUtil.parse(plugin.getConfigManager().getMainMenuConfig().getString("title", "<gradient:#00E5FF:#0077FE><b>Infinity Pickaxe</b></gradient> <dark_gray>»</dark_gray> <gray>Main Menu")),
                 plugin.getConfigManager().getMainMenuConfig().getInt("size", 36)
         );
         this.menuConfig = plugin.getConfigManager().getMainMenuConfig();
@@ -51,7 +51,7 @@ public class MainPickaxeGui extends CustomGui {
         // 3. Enchants Button
         int enchantSlot = menuConfig.getInt("items.enchants-button.slot", 20);
         Material enchMat = Material.matchMaterial(menuConfig.getString("items.enchants-button.material", "ENCHANTED_BOOK"));
-        String enchName = menuConfig.getString("items.enchants-button.name", "<#00E5FF><b>Sockets de Encantamientos</b></#00E5FF>");
+        String enchName = menuConfig.getString("items.enchants-button.name", "<#00E5FF><b>Enchantment Sockets</b></#00E5FF>");
         List<String> enchLore = processPlaceholders(menuConfig.getStringList("items.enchants-button.lore"));
         inventory.setItem(enchantSlot, new ItemBuilder(enchMat != null ? enchMat : Material.ENCHANTED_BOOK)
                 .name(enchName)
@@ -61,7 +61,7 @@ public class MainPickaxeGui extends CustomGui {
         // 4. Perks Button
         int perkSlot = menuConfig.getInt("items.perks-button.slot", 24);
         Material perkMat = Material.matchMaterial(menuConfig.getString("items.perks-button.material", "NETHER_STAR"));
-        String perkName = menuConfig.getString("items.perks-button.name", "<#FFA500><b>Habilidades y Perks</b></#FFA500>");
+        String perkName = menuConfig.getString("items.perks-button.name", "<#FFA500><b>Abilities & Perks</b></#FFA500>");
         List<String> perkLore = processPlaceholders(menuConfig.getStringList("items.perks-button.lore"));
         inventory.setItem(perkSlot, new ItemBuilder(perkMat != null ? perkMat : Material.NETHER_STAR)
                 .name(perkName)
@@ -71,7 +71,7 @@ public class MainPickaxeGui extends CustomGui {
         // 5. Stats Info
         int statsSlot = menuConfig.getInt("items.stats-info.slot", 22);
         Material statsMat = Material.matchMaterial(menuConfig.getString("items.stats-info.material", "BOOK"));
-        String statsName = menuConfig.getString("items.stats-info.name", "<#00FF88><b>Estadísticas de Minería</b></#00FF88>");
+        String statsName = menuConfig.getString("items.stats-info.name", "<#00FF88><b>Mining Statistics</b></#00FF88>");
         List<String> statsLore = processPlaceholders(menuConfig.getStringList("items.stats-info.lore"));
         inventory.setItem(statsSlot, new ItemBuilder(statsMat != null ? statsMat : Material.BOOK)
                 .name(statsName)
@@ -81,7 +81,7 @@ public class MainPickaxeGui extends CustomGui {
         // 6. Close Button
         int closeSlot = menuConfig.getInt("items.close-button.slot", 31);
         Material closeMat = Material.matchMaterial(menuConfig.getString("items.close-button.material", "BARRIER"));
-        String closeName = menuConfig.getString("items.close-button.name", "<red><b>Cerrar Menú</b></red>");
+        String closeName = menuConfig.getString("items.close-button.name", "<red><b>Close Menu</b></red>");
         List<String> closeLore = menuConfig.getStringList("items.close-button.lore");
         inventory.setItem(closeSlot, new ItemBuilder(closeMat != null ? closeMat : Material.BARRIER)
                 .name(closeName)
@@ -129,7 +129,7 @@ public class MainPickaxeGui extends CustomGui {
 
         for (String line : lines) {
             result.add(line
-                    .replace("%player%", pickaxe.getOwnerName())
+                    .replace("%player%", player.getName())
                     .replace("%level%", String.valueOf(pickaxe.getLevel()))
                     .replace("%max_level%", String.valueOf(plugin.getLevelManager().getMaxLevel()))
                     .replace("%current_xp%", String.format("%.0f", pickaxe.getXp()))

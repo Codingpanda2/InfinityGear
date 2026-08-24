@@ -90,7 +90,7 @@ public class EnchantManager {
                     realEnchant = getEnchantment(keyStr);
                 }
                 if (realEnchant == null) {
-                    plugin.getLogger().info("El encantamiento '" + keyStr + "' no está instalado en el servidor. Omitiendo socket.");
+                    plugin.getLogger().info("Enchantment '" + keyStr + "' is not installed on server. Skipping socket.");
                     continue;
                 }
 
@@ -103,7 +103,7 @@ public class EnchantManager {
         // 2. Discover and dynamically register any compatible EcoEnchants
         discoverAndRegisterEcoEnchants();
 
-        plugin.getLogger().info("Cargados " + socketsById.size() + " sockets de encantamientos compatibles.");
+        plugin.getLogger().info("Loaded " + socketsById.size() + " compatible enchantment sockets.");
     }
 
     public void discoverAndRegisterEcoEnchants() {
@@ -161,19 +161,8 @@ public class EnchantManager {
         }
 
         if (added > 0) {
-            plugin.getLogger().info("Se detectaron y agregaron " + added + " encantamientos de EcoEnchants al menú dinámico.");
+            plugin.getLogger().info("Detected and registered " + added + " EcoEnchants into dynamic sockets.");
         }
-    }
-
-    private String capitalize(String text) {
-        if (text == null || text.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (String part : text.split(" ")) {
-            if (!part.isEmpty()) {
-                sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1).toLowerCase()).append(" ");
-            }
-        }
-        return sb.toString().trim();
     }
 
     public EnchantSocket getSocket(String id) {
