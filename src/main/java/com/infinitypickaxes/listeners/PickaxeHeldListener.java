@@ -5,7 +5,10 @@ import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -35,6 +38,30 @@ public class PickaxeHeldListener implements Listener {
                 }
             }
         }, 20L, 20L);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onItemHeld(PlayerItemHeldEvent event) {
+        Player player = event.getPlayer();
+        ItemStack newItem = player.getInventory().getItem(event.getNewSlot());
+        if (PickaxeData.isInfinityPickaxe(newItem)) {
+            InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(newItem, player);
+            if (pickaxe != null) {
+                plugin.getPickaxeManager().syncPickaxe(pickaxe);
+            }
+        }
+    }
+
+    public void refreshAllHeldPickaxes() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            ItemStack mainHand = player.getInventory().getItemInMainHand();
+            if (PickaxeData.isInfinityPickaxe(mainHand)) {
+                InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(mainHand, player);
+                if (pickaxe != null) {
+                    plugin.getPickaxeManager().syncPickaxe(pickaxe);
+                }
+            }
+        }
     }
 
     public void stopTickTask() {

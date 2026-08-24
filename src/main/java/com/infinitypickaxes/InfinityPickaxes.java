@@ -136,9 +136,10 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.enchantManager.loadConfig();
         this.perkManager.loadConfig();
 
-        // 5. Restart tick task
+        // 5. Restart tick task and refresh all pickaxes currently held by players
         if (this.heldListener != null) {
             this.heldListener.startTickTask();
+            this.heldListener.refreshAllHeldPickaxes();
         }
 
         // 6. Ensure PlaceholderAPI hook is registered

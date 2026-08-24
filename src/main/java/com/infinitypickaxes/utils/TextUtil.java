@@ -50,36 +50,58 @@ public final class TextUtil {
         }
 
         // Convert legacy color codes if present
-        if (text.contains("&")) {
-            text = text.replace("&0", "<black>")
-                       .replace("&1", "<dark_blue>")
-                       .replace("&2", "<dark_green>")
-                       .replace("&3", "<dark_aqua>")
-                       .replace("&4", "<dark_red>")
-                       .replace("&5", "<dark_purple>")
-                       .replace("&6", "<gold>")
-                       .replace("&7", "<gray>")
-                       .replace("&8", "<dark_gray>")
-                       .replace("&9", "<blue>")
-                       .replace("&a", "<green>")
-                       .replace("&b", "<aqua>")
-                       .replace("&c", "<red>")
-                       .replace("&d", "<light_purple>")
-                       .replace("&e", "<yellow>")
-                       .replace("&f", "<white>")
-                       .replace("&l", "<b>")
-                       .replace("&o", "<i>")
-                       .replace("&n", "<u>")
-                       .replace("&m", "<st>")
-                       .replace("&k", "<obf>")
-                       .replace("&r", "<reset>");
+        if (text.contains("&") || text.contains("§")) {
+            text = convertLegacyCodes(text);
         }
+
+        // Fix any stray or unmatched closing tags
+        text = fixRogueTags(text);
 
         try {
             return MINI_MESSAGE.deserialize(text);
         } catch (Exception e) {
-            return LEGACY_SERIALIZER.deserialize(text);
+            try {
+                String plain = stripFormatting(text);
+                return MINI_MESSAGE.deserialize("<gray>" + plain + "</gray>");
+            } catch (Exception ex) {
+                return Component.text(stripFormatting(text));
+            }
         }
+    }
+
+    private static String convertLegacyCodes(String text) {
+        return text.replaceAll("(?i)[&§]0", "<black>")
+                   .replaceAll("(?i)[&§]1", "<dark_blue>")
+                   .replaceAll("(?i)[&§]2", "<dark_green>")
+                   .replaceAll("(?i)[&§]3", "<dark_aqua>")
+                   .replaceAll("(?i)[&§]4", "<dark_red>")
+                   .replaceAll("(?i)[&§]5", "<dark_purple>")
+                   .replaceAll("(?i)[&§]6", "<gold>")
+                   .replaceAll("(?i)[&§]7", "<gray>")
+                   .replaceAll("(?i)[&§]8", "<dark_gray>")
+                   .replaceAll("(?i)[&§]9", "<blue>")
+                   .replaceAll("(?i)[&§]a", "<green>")
+                   .replaceAll("(?i)[&§]b", "<aqua>")
+                   .replaceAll("(?i)[&§]c", "<red>")
+                   .replaceAll("(?i)[&§]d", "<light_purple>")
+                   .replaceAll("(?i)[&§]e", "<yellow>")
+                   .replaceAll("(?i)[&§]f", "<white>")
+                   .replaceAll("(?i)[&§]l", "<b>")
+                   .replaceAll("(?i)[&§]o", "<i>")
+                   .replaceAll("(?i)[&§]n", "<u>")
+                   .replaceAll("(?i)[&§]m", "<st>")
+                   .replaceAll("(?i)[&§]k", "<obf>")
+                   .replaceAll("(?i)[&§]r", "<reset>");
+    }
+
+    private static String fixRogueTags(String text) {
+        if (text == null) return "";
+        // Clean double closing tags or trailing </gray> that don't match
+        String s = text;
+        if (s.endsWith("</gray></gray>")) {
+            s = s.substring(0, s.length() - 7);
+        }
+        return s;
     }
 
     /**
@@ -111,7 +133,6 @@ public final class TextUtil {
 
     public static String center(String text) {
         if (text == null || text.isEmpty()) return "";
-        // Strip XML / MiniMessage tags and legacy codes to calculate actual character lengths
         String stripped = text.replaceAll("<[^>]*>", "").replaceAll("&[0-9a-fk-orA-FK-OR]", "");
 
         int messagePxSize = 0;
@@ -196,6 +217,6 @@ public final class TextUtil {
      */
     public static String stripFormatting(String text) {
         if (text == null) return "";
-        return text.replaceAll("<[^>]*>", "").replaceAll("&[0-9a-fk-orA-FK-OR]", "").trim();
+        return text.replaceAll("<[^>]*>", "").replaceAll("&[0-9a-fk-orA-FK-OR]", "").replaceAll("§[0-9a-fk-orA-FK-OR]", "").trim();
     }
 }

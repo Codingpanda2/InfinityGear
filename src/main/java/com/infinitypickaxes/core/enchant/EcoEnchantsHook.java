@@ -2,52 +2,27 @@ package com.infinitypickaxes.core.enchant;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.utils.TextUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.util.*;
-import java.util.regex.Pattern;
 
 public class EcoEnchantsHook {
 
     private final InfinityPickaxes plugin;
-    private boolean ecoEnchantsPresent = false;
-    private boolean ecoFrameworkPresent = false;
-
-    private static final Set<String> NON_PICKAXE_KEYWORDS = Set.of(
-            "protection", "fire_protection", "blast_protection", "projectile_protection", "feather_falling",
-            "respiration", "aqua_affinity", "thorns", "depth_strider", "frost_walker", "soul_speed", "swift_sneak",
-            "sharpness", "smite", "bane_of_arthropods", "knockback", "fire_aspect", "looting", "sweeping",
-            "power", "punch", "flame", "infinity", "loyalty", "impaling", "riptide", "channeling", "multishot",
-            "quick_charge", "piercing", "density", "breach", "wind_burst", "lure", "luck_of_the_sea",
-            "unbreaking", "mending", "curse", "vanishing", "binding"
-    );
+    private final boolean ecoEnchantsPresent;
 
     public EcoEnchantsHook(InfinityPickaxes plugin) {
         this.plugin = plugin;
-        checkPlugins();
-    }
-
-    public void checkPlugins() {
         this.ecoEnchantsPresent = Bukkit.getPluginManager().isPluginEnabled("EcoEnchants");
-        this.ecoFrameworkPresent = Bukkit.getPluginManager().isPluginEnabled("eco");
-
         if (ecoEnchantsPresent) {
-            plugin.getLogger().info("EcoEnchants detected successfully. Compatibility enabled.");
-        } else {
-            plugin.getLogger().info("EcoEnchants not detected. Operating in standard Bukkit mode.");
+            plugin.getLogger().info("EcoEnchants integration successfully initialized.");
         }
     }
 
@@ -55,21 +30,19 @@ public class EcoEnchantsHook {
         return ecoEnchantsPresent;
     }
 
-    public boolean isEcoFrameworkPresent() {
-        return ecoFrameworkPresent;
-    }
-
     /**
-     * Extracts enchantment key and level from any book (Vanilla EnchantedBook, EcoEnchants book, or custom PDC/Lore).
+     * Extracts all enchantments and levels present on a book ItemStack.
      */
     public Map<String, Integer> extractEnchantsFromBook(ItemStack bookItem) {
         Map<String, Integer> result = new LinkedHashMap<>();
-        if (bookItem == null || !bookItem.hasItemMeta()) return result;
+        if (bookItem == null || !bookItem.hasItemMeta()) {
+            return result;
+        }
 
         ItemMeta meta = bookItem.getItemMeta();
 
-        // 1. Check Vanilla EnchantmentStorageMeta (Stored Enchants on Book)
-        if (meta instanceof EnchantmentStorageMeta storageMeta) {
+        // 1. Check Bukkit Stored Enchants
+        if (meta instanceof org.bukkit.inventory.meta.EnchantmentStorageMeta storageMeta) {
             for (Map.Entry<Enchantment, Integer> entry : storageMeta.getStoredEnchants().entrySet()) {
                 if (entry.getKey() != null && entry.getKey().getKey() != null) {
                     result.put(entry.getKey().getKey().toString().toLowerCase(), entry.getValue());
@@ -77,7 +50,7 @@ public class EcoEnchantsHook {
             }
         }
 
-        // 2. Check Direct Enchants on Item
+        // 2. Check Standard Bukkit Enchants on the item
         if (meta.hasEnchants()) {
             for (Map.Entry<Enchantment, Integer> entry : meta.getEnchants().entrySet()) {
                 if (entry.getKey() != null && entry.getKey().getKey() != null) {
@@ -86,51 +59,47 @@ public class EcoEnchantsHook {
             }
         }
 
-        // 3. Check PersistentDataContainer for Eco / EcoEnchants / Custom tags
-        PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        for (NamespacedKey key : pdc.getKeys()) {
-            String ns = key.getNamespace().toLowerCase();
-            if (ns.contains("eco") || ns.contains("enchant") || ns.contains("libreforge")) {
-                Integer lvl = pdc.get(key, PersistentDataType.INTEGER);
-                if (lvl != null && lvl > 0) {
-                    result.put(key.toString().toLowerCase(), lvl);
-                }
-            }
-        }
+        // 3. Check EcoEnchants custom PDC / API if present
+        if (ecoEnchantsPresent) {
+            try {
+                Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
+                java.lang.reflect.Method getEnchantsOnItem = ecoEnchantsClass.getMethod("getEnchantmentsOnItem", ItemStack.class);
+                Object enchantsMapObj = getEnchantsOnItem.invoke(null, bookItem);
 
-        // 4. Fallback: Parse Display Name & Lore lines for custom/translated/renamed enchantment books
-        if (plugin.getEnchantManager() != null) {
-            List<String> textLines = new ArrayList<>();
-            if (meta.hasDisplayName()) {
-                Component dName = meta.displayName();
-                if (dName != null) {
-                    textLines.add(TextUtil.stripFormatting(LegacyComponentSerializer.legacySection().serialize(dName)));
-                }
-            }
-            if (meta.hasLore() && meta.lore() != null) {
-                for (Component c : meta.lore()) {
-                    if (c != null) {
-                        textLines.add(TextUtil.stripFormatting(LegacyComponentSerializer.legacySection().serialize(c)));
-                    }
-                }
-            }
+                if (enchantsMapObj instanceof Map<?, ?> ecoMap) {
+                    for (Map.Entry<?, ?> entry : ecoMap.entrySet()) {
+                        Object keyObj = entry.getKey();
+                        Object lvlObj = entry.getValue();
 
-            for (EnchantSocket socket : plugin.getEnchantManager().getAllSockets()) {
-                String cleanName = socket.getCleanName().toLowerCase();
-                String rawId = socket.getId().toLowerCase();
-                String keyStr = socket.getKeyString().toLowerCase();
-
-                if (result.containsKey(keyStr)) continue;
-
-                for (String line : textLines) {
-                    String lowerLine = line.toLowerCase();
-                    if (lowerLine.contains(cleanName) || lowerLine.contains(rawId)) {
-                        int level = extractLevelFromText(line, cleanName, rawId);
-                        if (level > 0) {
-                            result.put(keyStr, level);
-                            break;
+                        if (keyObj != null && lvlObj instanceof Number num) {
+                            String keyStr;
+                            if (keyObj instanceof Enchantment ench) {
+                                keyStr = ench.getKey().toString().toLowerCase();
+                            } else {
+                                java.lang.reflect.Method getKeyMethod = keyObj.getClass().getMethod("getKey");
+                                Object namespacedKeyObj = getKeyMethod.invoke(keyObj);
+                                keyStr = namespacedKeyObj.toString().toLowerCase();
+                            }
+                            result.put(keyStr, num.intValue());
                         }
                     }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        // 4. Fallback check: Extract name & Roman numeral from DisplayName if not detected by API
+        if (result.isEmpty() && meta.hasDisplayName()) {
+            String plainName = TextUtil.stripFormatting(meta.getDisplayName());
+            for (Enchantment registered : Bukkit.getRegistry(Enchantment.class)) {
+                String enchantName = registered.getKey().getKey().replace("_", " ");
+                if (plainName.toLowerCase().contains(enchantName.toLowerCase())) {
+                    int level = 1;
+                    String[] parts = plainName.split(" ");
+                    if (parts.length > 1) {
+                        level = TextUtil.fromRoman(parts[parts.length - 1]);
+                    }
+                    result.put(registered.getKey().toString().toLowerCase(), level);
+                    break;
                 }
             }
         }
@@ -138,100 +107,75 @@ public class EcoEnchantsHook {
         return result;
     }
 
-    private int extractLevelFromText(String line, String cleanName, String rawId) {
-        String clean = TextUtil.stripFormatting(line).trim();
-        String remainder = clean.replaceFirst("(?i)" + Pattern.quote(cleanName), "")
-                                .replaceFirst("(?i)" + Pattern.quote(rawId), "")
-                                .replace(":", "")
-                                .replace("-", "")
-                                .replace("libro", "")
-                                .replace("encantado", "")
-                                .replace("de", "")
-                                .replace("book", "")
-                                .replace("enchanted", "")
-                                .trim();
+    /**
+     * Discovers all pickaxe-compatible enchantments currently active on the server.
+     */
+    public List<Enchantment> discoverPickaxeEnchants() {
+        List<Enchantment> list = new ArrayList<>();
 
-        String[] tokens = remainder.split("\\s+");
-        for (String token : tokens) {
-            token = token.replaceAll("[^a-zA-Z0-9]", "").trim();
-            if (token.isEmpty()) continue;
+        // 1. Query EcoEnchants API if available
+        if (ecoEnchantsPresent) {
             try {
-                int num = Integer.parseInt(token);
-                if (num > 0 && num <= 100) return num;
-            } catch (NumberFormatException ignored) {
-                int num = TextUtil.fromRoman(token);
-                if (num > 0 && num <= 100) return num;
+                Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
+                java.lang.reflect.Method getValues = ecoEnchantsClass.getMethod("values");
+                Object[] values = (Object[]) getValues.invoke(null);
+
+                if (values != null) {
+                    for (Object ecoEnchantObj : values) {
+                        try {
+                            java.lang.reflect.Method getTargetMethod = ecoEnchantObj.getClass().getMethod("getTarget");
+                            Object targetObj = getTargetMethod.invoke(ecoEnchantObj);
+                            String targetStr = targetObj != null ? targetObj.toString().toLowerCase() : "";
+
+                            java.lang.reflect.Method getKeyMethod = ecoEnchantObj.getClass().getMethod("getKey");
+                            NamespacedKey key = (NamespacedKey) getKeyMethod.invoke(ecoEnchantObj);
+
+                            if (targetStr.contains("pickaxe") || targetStr.contains("tool") || targetStr.contains("digger") || targetStr.contains("breaker") || targetStr.contains("mining") || targetStr.contains("all")) {
+                                Enchantment ench = Bukkit.getRegistry(Enchantment.class).get(key);
+                                if (ench != null && !list.contains(ench)) {
+                                    list.add(ench);
+                                }
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        // 2. Discover from Registry (all ecoenchants / custom enchants with matching keys)
+        for (Enchantment ench : Bukkit.getRegistry(Enchantment.class)) {
+            if (list.contains(ench)) continue;
+            String keyStr = ench.getKey().toString().toLowerCase();
+
+            if (keyStr.startsWith("ecoenchants:")) {
+                String sub = ench.getKey().getKey().toLowerCase();
+                if (isMiningEnchantName(sub)) {
+                    list.add(ench);
+                }
             }
         }
-        return 1;
+
+        return list;
+    }
+
+    private boolean isMiningEnchantName(String name) {
+        return name.contains("blast") || name.contains("dynamite") || name.contains("drill") ||
+               name.contains("jackhammer") || name.contains("laser") || name.contains("telepathy") ||
+               name.contains("telekinesis") || name.contains("autosmelt") || name.contains("smelt") ||
+               name.contains("vein") || name.contains("mine") || name.contains("speed") ||
+               name.contains("haste") || name.contains("fortune") || name.contains("efficiency") ||
+               name.contains("layer") || name.contains("cuboid") || name.contains("excavat");
     }
 
     /**
-     * Strictly discovers only pickaxe-compatible enchantments currently registered on the server.
+     * Fetches enchantment description lines safely in English with clean formatting.
      */
-    public List<Enchantment> discoverPickaxeEnchants() {
-        List<Enchantment> pickaxeEnchants = new ArrayList<>();
-        ItemStack pickaxe = new ItemStack(Material.NETHERITE_PICKAXE);
-        ItemStack diamondPickaxe = new ItemStack(Material.DIAMOND_PICKAXE);
-        ItemStack sword = new ItemStack(Material.NETHERITE_SWORD);
-        ItemStack chestplate = new ItemStack(Material.NETHERITE_CHESTPLATE);
-        ItemStack bow = new ItemStack(Material.BOW);
-
-        try {
-            for (Enchantment ench : Bukkit.getRegistry(Enchantment.class)) {
-                if (ench == null || ench.getKey() == null) continue;
-                String keyOnly = ench.getKey().getKey().toLowerCase();
-
-                // 1. Explicit keyword blacklist for non-pickaxe categories
-                boolean blacklisted = false;
-                for (String word : NON_PICKAXE_KEYWORDS) {
-                    if (keyOnly.contains(word)) {
-                        blacklisted = true;
-                        break;
-                    }
-                }
-                if (blacklisted) continue;
-
-                // 2. Strict item capability check
-                boolean canPickaxe = false;
-                try {
-                    canPickaxe = ench.canEnchantItem(pickaxe) || ench.canEnchantItem(diamondPickaxe);
-                } catch (Throwable ignored) {}
-
-                // Check if it's actually an armor or sword enchant that falsely returned true
-                boolean isArmorOrWeaponOnly = false;
-                try {
-                    if ((ench.canEnchantItem(sword) || ench.canEnchantItem(chestplate) || ench.canEnchantItem(bow)) && !canPickaxe) {
-                        isArmorOrWeaponOnly = true;
-                    }
-                } catch (Throwable ignored) {}
-
-                if (isArmorOrWeaponOnly) continue;
-
-                // 3. Name or target check
-                boolean nameSuggestsPickaxe = keyOnly.contains("pickaxe") || keyOnly.contains("mine")
-                        || keyOnly.contains("drill") || keyOnly.contains("explosive") || keyOnly.contains("dynamite")
-                        || keyOnly.contains("jackhammer") || keyOnly.contains("telepathy") || keyOnly.contains("telekinesis")
-                        || keyOnly.contains("efficiency") || keyOnly.contains("fortune") || keyOnly.contains("silk_touch")
-                        || keyOnly.contains("smelt") || keyOnly.contains("auto_smelt") || keyOnly.contains("infernal")
-                        || keyOnly.contains("vein") || keyOnly.contains("haste") || keyOnly.contains("speed")
-                        || keyOnly.contains("quarry") || keyOnly.contains("laser");
-
-                if (canPickaxe || nameSuggestsPickaxe) {
-                    pickaxeEnchants.add(ench);
-                }
-            }
-        } catch (Throwable ignored) {}
-
-        return pickaxeEnchants;
-    }
-
     public List<String> getEnchantmentDescription(Enchantment ench) {
         return getEnchantmentDescription(ench, 1);
     }
 
     /**
-     * Extracts and resolves authentic description of an enchantment, replacing dynamic level formulas and placeholders.
+     * Fetches enchantment description lines safely in English with clean formatting.
      */
     public List<String> getEnchantmentDescription(Enchantment ench, int level) {
         List<String> desc = new ArrayList<>();
@@ -262,7 +206,6 @@ public class EcoEnchantsHook {
             }
 
             if (ecoEnchantObj != null) {
-                // Try getFormattedDescription(level)
                 try {
                     java.lang.reflect.Method getFormatted = ecoEnchantObj.getClass().getMethod("getFormattedDescription", int.class);
                     Object res = getFormatted.invoke(ecoEnchantObj, safeLevel);
@@ -273,7 +216,6 @@ public class EcoEnchantsHook {
                     }
                 } catch (Throwable ignored) {}
 
-                // Try getDescription(level) or getDescription()
                 if (desc.isEmpty()) {
                     try {
                         java.lang.reflect.Method getDesc = null;
@@ -334,13 +276,28 @@ public class EcoEnchantsHook {
         List<String> resolved = new ArrayList<>();
         for (String line : desc) {
             if (line == null || line.trim().isEmpty()) continue;
-            String clean = resolvePlaceholders(line, id, safeLevel);
-            // Ensure proper enclosing tags
-            clean = clean.replace("</gray>", "").replace("<gray>", "");
+            // Fully sanitize line by stripping all existing color/closing tags and legacy codes
+            String clean = sanitizeDescriptionRaw(line);
+            // Resolve placeholders
+            clean = resolvePlaceholders(clean, id, safeLevel);
+            // Re-clean any rogue closing tags
+            clean = clean.replaceAll("(?i)</?gr[ae]y>", "").trim();
+            // Wrap cleanly with <gray>
             resolved.add("<gray>" + clean + "</gray>");
         }
 
         return resolved;
+    }
+
+    public static String sanitizeDescriptionRaw(String raw) {
+        if (raw == null) return "";
+        // Strip legacy codes
+        String s = raw.replaceAll("(?i)[&§][0-9a-fk-or]", "");
+        // Strip any rogue </gray>, </grey>, <gray>, etc.
+        s = s.replaceAll("(?i)</?(gray|grey|white|yellow|gold|green|red|blue|aqua|dark_[a-z]+|light_purple|b|i|u|st|obf|reset|color|colour)(:[^>]+)?>", "");
+        s = s.replaceAll("(?i)</?#[0-9a-fA-F]{6}>", "");
+        s = s.replaceAll("(?i)</?gradient(:#[0-9a-fA-F]{6})+>", "");
+        return s.trim();
     }
 
     private String resolvePlaceholders(String text, String enchantId, int level) {
@@ -348,6 +305,9 @@ public class EcoEnchantsHook {
 
         if (result.contains("%placeholder%x%placeholder%")) {
             result = result.replace("%placeholder%x%placeholder%", "<green>3x3</green>");
+        }
+        if (result.contains("3x3")) {
+            result = result.replaceAll("(?i)\\b3x3\\b", "<green>3x3</green>");
         }
 
         if (result.contains("%placeholder%%")) {
