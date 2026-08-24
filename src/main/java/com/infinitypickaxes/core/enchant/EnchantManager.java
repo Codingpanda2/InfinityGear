@@ -124,23 +124,14 @@ public class EnchantManager {
                 continue;
             }
 
-            // Derive display name from Paper Component if available or format ID
-            String displayName;
-            try {
-                net.kyori.adventure.text.Component comp = ench.displayName(1);
-                displayName = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp);
-                displayName = displayName.replace(" I", "").replace(" 1", "");
-            } catch (Throwable t) {
-                displayName = "<#00E5FF><b>" + capitalize(id.replace("_", " ")) + "</b></#00E5FF>";
-            }
+            // Derive real display name & description from EcoEnchants / Paper
+            String displayName = ecoHook.getEnchantmentDisplayName(ench);
+            List<String> desc = ecoHook.getEnchantmentDescription(ench);
 
             int maxLevel = Math.max(1, ench.getMaxLevel());
             int unlockLevel = 10;
             if (maxLevel == 1) unlockLevel = 15;
             else if (maxLevel >= 5) unlockLevel = 25;
-
-            List<String> desc = new ArrayList<>();
-            desc.add("<gray>Encantamiento detectado de EcoEnchants.");
 
             NavigableMap<Integer, Integer> scaling = new TreeMap<>();
             scaling.put(unlockLevel, 1);

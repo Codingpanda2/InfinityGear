@@ -7,13 +7,16 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.plugin.Plugin;
 
+import java.io.File;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -175,7 +178,6 @@ public class EcoEnchantsHook {
         try {
             for (Enchantment ench : Bukkit.getRegistry(Enchantment.class)) {
                 if (ench == null || ench.getKey() == null) continue;
-                String keyStr = ench.getKey().toString().toLowerCase();
                 String keyOnly = ench.getKey().getKey().toLowerCase();
 
                 // 1. Explicit keyword blacklist for non-pickaxe categories
@@ -220,5 +222,206 @@ public class EcoEnchantsHook {
         } catch (Throwable ignored) {}
 
         return pickaxeEnchants;
+    }
+
+    /**
+     * Extracts authentic description of an enchantment from EcoEnchants API, YAML files or known fallbacks.
+     */
+    public List<String> getEnchantmentDescription(Enchantment ench) {
+        List<String> desc = new ArrayList<>();
+        if (ench == null || ench.getKey() == null) return desc;
+
+        String id = ench.getKey().getKey().toLowerCase();
+
+        // 1. Try EcoEnchants API reflection
+        try {
+            Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
+            java.lang.reflect.Method getByKeyMethod = null;
+            try {
+                getByKeyMethod = ecoEnchantsClass.getMethod("getByKey", NamespacedKey.class);
+            } catch (NoSuchMethodException e) {
+                try {
+                    getByKeyMethod = ecoEnchantsClass.getMethod("getByID", String.class);
+                } catch (NoSuchMethodException ignored) {}
+            }
+
+            Object ecoEnchantObj = null;
+            if (getByKeyMethod != null) {
+                if (getByKeyMethod.getParameterTypes()[0].equals(NamespacedKey.class)) {
+                    ecoEnchantObj = getByKeyMethod.invoke(null, ench.getKey());
+                } else {
+                    ecoEnchantObj = getByKeyMethod.invoke(null, id);
+                }
+            }
+
+            if (ecoEnchantObj != null) {
+                // Try getDescription()
+                try {
+                    java.lang.reflect.Method getDesc = ecoEnchantObj.getClass().getMethod("getDescription");
+                    Object descResult = getDesc.invoke(ecoEnchantObj);
+                    if (descResult instanceof List<?> list) {
+                        for (Object o : list) {
+                            if (o != null) desc.add("<gray>" + o.toString());
+                        }
+                    } else if (descResult instanceof String s && !s.isEmpty()) {
+                        desc.add("<gray>" + s);
+                    }
+                } catch (Throwable ignored) {}
+
+                // Try getConfig() -> description
+                if (desc.isEmpty()) {
+                    try {
+                        java.lang.reflect.Method getConfig = ecoEnchantObj.getClass().getMethod("getConfig");
+                        Object cfg = getConfig.invoke(ecoEnchantObj);
+                        if (cfg != null) {
+                            java.lang.reflect.Method getList = cfg.getClass().getMethod("getStringList", String.class);
+                            List<?> list = (List<?>) getList.invoke(cfg, "description");
+                            if (list != null && !list.isEmpty()) {
+                                for (Object o : list) {
+                                    if (o != null) desc.add("<gray>" + o.toString());
+                                }
+                            } else {
+                                java.lang.reflect.Method getStr = cfg.getClass().getMethod("getString", String.class);
+                                String s = (String) getStr.invoke(cfg, "description");
+                                if (s != null && !s.isEmpty()) {
+                                    desc.add("<gray>" + s);
+                                }
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        // 2. Try EcoEnchants Plugin YAML files on disk
+        if (desc.isEmpty()) {
+            try {
+                Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("EcoEnchants");
+                if (ecoPlugin != null && ecoPlugin.getDataFolder().exists()) {
+                    File enchantsFolder = new File(ecoPlugin.getDataFolder(), "enchants");
+                    if (enchantsFolder.exists() && enchantsFolder.isDirectory()) {
+                        File ymlFile = findYamlFile(enchantsFolder, id);
+                        if (ymlFile != null) {
+                            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(ymlFile);
+                            List<String> list = yaml.getStringList("description");
+                            if (!list.isEmpty()) {
+                                for (String s : list) {
+                                    desc.add("<gray>" + s);
+                                }
+                            } else {
+                                String single = yaml.getString("description");
+                                if (single != null && !single.isEmpty()) {
+                                    desc.add("<gray>" + single);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        // 3. Known Standard / Fallback descriptions
+        if (desc.isEmpty()) {
+            desc.addAll(getKnownDescription(id));
+        }
+
+        return desc;
+    }
+
+    private File findYamlFile(File dir, String id) {
+        if (dir == null || !dir.isDirectory()) return null;
+        File exact = new File(dir, id + ".yml");
+        if (exact.exists()) return exact;
+
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File f : files) {
+                if (f.isDirectory()) {
+                    File found = findYamlFile(f, id);
+                    if (found != null) return found;
+                } else if (f.getName().equalsIgnoreCase(id + ".yml") || f.getName().replace(".yml", "").equalsIgnoreCase(id)) {
+                    return f;
+                }
+            }
+        }
+        return null;
+    }
+
+    private List<String> getKnownDescription(String id) {
+        List<String> lines = new ArrayList<>();
+        switch (id) {
+            case "efficiency" -> lines.add("<gray>Aumenta considerablemente la velocidad de minado.");
+            case "fortune" -> lines.add("<gray>Multiplica los minerales y gemas soltados al picar.");
+            case "silk_touch" -> lines.add("<gray>Permite recolectar bloques en su forma original.");
+            case "blast_mining" -> lines.add("<gray>Otorga probabilidad de minar en un área de 3x3.");
+            case "dynamite" -> lines.add("<gray>Mina y destruye un área masiva de bloques.");
+            case "infernal_touch", "autosmelt" -> lines.add("<gray>Funde automáticamente los minerales extraídos.");
+            case "telekinesis", "telepathy" -> lines.add("<gray>Envía los ítems y experiencia directo a tu inventario.");
+            case "drill" -> lines.add("<gray>Perfora túneles continuos al minar.");
+            case "jackhammer" -> lines.add("<gray>Rompe capas enteras de bloques de un golpe.");
+            case "laser" -> lines.add("<gray>Dispara un rayo continuo que desintegra bloques.");
+            case "vein_miner" -> lines.add("<gray>Mina toda la veta de mineral conectada.");
+            default -> lines.add("<gray>Encantamiento de minería avanzado.");
+        }
+        return lines;
+    }
+
+    public String getEnchantmentDisplayName(Enchantment ench) {
+        if (ench == null || ench.getKey() == null) return "Encantamiento";
+        String id = ench.getKey().getKey().toLowerCase();
+
+        // 1. Try EcoEnchants API reflection
+        try {
+            Class<?> ecoEnchantsClass = Class.forName("com.willfp.ecoenchants.enchantments.EcoEnchants");
+            java.lang.reflect.Method getByKeyMethod = null;
+            try {
+                getByKeyMethod = ecoEnchantsClass.getMethod("getByKey", NamespacedKey.class);
+            } catch (NoSuchMethodException e) {
+                try {
+                    getByKeyMethod = ecoEnchantsClass.getMethod("getByID", String.class);
+                } catch (NoSuchMethodException ignored) {}
+            }
+
+            Object ecoEnchantObj = null;
+            if (getByKeyMethod != null) {
+                if (getByKeyMethod.getParameterTypes()[0].equals(NamespacedKey.class)) {
+                    ecoEnchantObj = getByKeyMethod.invoke(null, ench.getKey());
+                } else {
+                    ecoEnchantObj = getByKeyMethod.invoke(null, id);
+                }
+            }
+
+            if (ecoEnchantObj != null) {
+                try {
+                    java.lang.reflect.Method getDName = ecoEnchantObj.getClass().getMethod("getDisplayName");
+                    Object nameRes = getDName.invoke(ecoEnchantObj);
+                    if (nameRes != null && !nameRes.toString().isEmpty()) {
+                        return nameRes.toString();
+                    }
+                } catch (Throwable ignored) {}
+            }
+        } catch (Throwable ignored) {}
+
+        // 2. Try Paper ench.displayName(1)
+        try {
+            Component comp = ench.displayName(1);
+            String mini = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().serialize(comp);
+            mini = mini.replace(" I", "").replace(" 1", "");
+            if (!mini.isEmpty()) return mini;
+        } catch (Throwable ignored) {}
+
+        // 3. Fallback capitalize ID
+        return "<#00E5FF><b>" + capitalize(id.replace("_", " ")) + "</b></#00E5FF>";
+    }
+
+    private String capitalize(String text) {
+        if (text == null || text.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String part : text.split(" ")) {
+            if (!part.isEmpty()) {
+                sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1).toLowerCase()).append(" ");
+            }
+        }
+        return sb.toString().trim();
     }
 }
