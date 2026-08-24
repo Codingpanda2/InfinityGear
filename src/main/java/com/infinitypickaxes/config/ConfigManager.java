@@ -15,6 +15,7 @@ public class ConfigManager {
     private final InfinityPickaxes plugin;
 
     private FileConfiguration config;
+    private FileConfiguration limitbreakConfig;
     private FileConfiguration enchantsConfig;
     private FileConfiguration perksConfig;
     private FileConfiguration blocksConfig;
@@ -24,6 +25,7 @@ public class ConfigManager {
     private FileConfiguration perksMenuConfig;
 
     private File configFile;
+    private File limitbreakFile;
     private File enchantsFile;
     private File perksFile;
     private File blocksFile;
@@ -49,6 +51,10 @@ public class ConfigManager {
         this.currentLanguage = this.config.getString("language", "en").toLowerCase();
 
         // 2. Custom core files
+        this.limitbreakFile = loadAndSyncFile("limitbreak.yml");
+        this.limitbreakConfig = YamlConfiguration.loadConfiguration(limitbreakFile);
+        updateMissingKeys(limitbreakFile, "limitbreak.yml", (YamlConfiguration) this.limitbreakConfig);
+
         this.enchantsFile = loadAndSyncFile("enchants.yml");
         this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
         updateMissingKeys(enchantsFile, "enchants.yml", (YamlConfiguration) this.enchantsConfig);
@@ -164,6 +170,10 @@ public class ConfigManager {
 
     public FileConfiguration getConfig() {
         return config;
+    }
+
+    public FileConfiguration getLimitBreakConfig() {
+        return limitbreakConfig;
     }
 
     public FileConfiguration getEnchantsConfig() {

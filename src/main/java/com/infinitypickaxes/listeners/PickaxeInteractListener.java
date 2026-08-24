@@ -1,7 +1,10 @@
 package com.infinitypickaxes.listeners;
 
 import com.infinitypickaxes.InfinityPickaxes;
+import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.core.pickaxe.PickaxeData;
+import com.infinitypickaxes.gui.EnchantSocketsGui;
 import com.infinitypickaxes.gui.MainPickaxeGui;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -10,6 +13,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -59,6 +63,54 @@ public class PickaxeInteractListener implements Listener {
             } else {
                 new MainPickaxeGui(plugin, player, pickaxe).open();
             }
+        }
+    }
+
+    /**
+     * Allows players to drag-and-drop LimitBreak books directly onto an InfinityPickaxe in their inventory.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInventoryDragDrop(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+
+        ItemStack cursor = event.getCursor();
+        ItemStack current = event.getCurrentItem();
+
+        if (cursor == null || cursor.getType().isAir() || current == null || current.getType().isAir()) {
+            return;
+        }
+
+        if (plugin.getLimitBreakManager() == null || !plugin.getLimitBreakManager().isLimitBreakBook(cursor)) {
+            return;
+        }
+
+        if (!PickaxeData.isInfinityPickaxe(current)) {
+            return;
+        }
+
+        InfinityPickaxe pickaxe = PickaxeData.fromItemStack(current);
+        if (pickaxe == null) return;
+
+        // If it's a Specific Book, apply directly to the target enchant!
+        if (!plugin.getLimitBreakManager().isUniversalBook(cursor)) {
+            String target = plugin.getLimitBreakManager().getTargetEnchantKey(cursor);
+            EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(target);
+            if (socket == null && target != null && target.contains(":")) {
+                socket = plugin.getEnchantManager().getSocket(target.substring(target.indexOf(":") + 1));
+            }
+
+            if (socket != null) {
+                event.setCancelled(true);
+                boolean success = plugin.getLimitBreakManager().applyLimitBreak(player, pickaxe, socket, cursor);
+                if (success) {
+                    event.setCurrentItem(pickaxe.getItemStack());
+                    event.getView().setCursor(cursor);
+                }
+            }
+        } else {
+            // If Universal Super Book, open enchants menu so player can select target socket
+            event.setCancelled(true);
+            new EnchantSocketsGui(plugin, player, pickaxe).open();
         }
     }
 }

@@ -157,6 +157,8 @@ public class EnchantSocketsGui extends CustomGui {
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxForPickaxe = socket.getMaxAllowedLevel(pickaxeLvl);
         int globalMax = socket.getMaxLevel();
+        int maxExtra = (plugin.getLimitBreakManager() != null) ? plugin.getLimitBreakManager().getMaxExtraLevels() : 5;
+        int absoluteMax = globalMax + maxExtra;
 
         ItemBuilder builder = new ItemBuilder(socket.getIcon());
         if (socket.getCustomModelData() != null) {
@@ -167,27 +169,44 @@ public class EnchantSocketsGui extends CustomGui {
             String name = menuConfig.getString("enchant-format.locked-name", "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Bloqueado)</red>")
                     .replace("%enchant_display_name%", socket.getDisplayName());
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-locked");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax));
+            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+        } else if (currentLvl >= absoluteMax) {
+            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
+                    .replace("%enchant_display_name%", socket.getDisplayName())
+                    .replace("%current_level%", String.valueOf(currentLvl))
+                    .replace("%max_level%", String.valueOf(globalMax))
+                    + " <gradient:#FF00FF:#00FFFF><b>[LB MAX]</b></gradient>";
+            List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
+            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+        } else if (currentLvl > globalMax) {
+            int extra = currentLvl - globalMax;
+            String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
+                    .replace("%enchant_display_name%", socket.getDisplayName())
+                    .replace("%current_level%", String.valueOf(currentLvl))
+                    .replace("%max_level%", String.valueOf(globalMax))
+                    + " <gradient:#FF00FF:#FFAA00><b>[LB +" + extra + "]</b></gradient>";
+            List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
+            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl >= maxForPickaxe && maxForPickaxe > 0) {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax));
+            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Nv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax));
+            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         }
 
         return builder.build();
     }
 
-    private List<String> formatLoreList(List<String> rawLore, EnchantSocket socket, int currentLvl, int maxForPickaxe, int globalMax) {
+    private List<String> formatLoreList(List<String> rawLore, EnchantSocket socket, int currentLvl, int maxForPickaxe, int globalMax, int absoluteMax) {
         List<String> formatted = new ArrayList<>();
         int requiredBookLevel = (currentLvl == 0) ? 1 : currentLvl;
 
@@ -204,6 +223,7 @@ public class EnchantSocketsGui extends CustomGui {
                         .replace("%current_level_roman%", (currentLvl > 0) ? TextUtil.toRoman(currentLvl) : "0")
                         .replace("%max_level%", String.valueOf(globalMax))
                         .replace("%max_level_roman%", TextUtil.toRoman(globalMax))
+                        .replace("%absolute_max%", String.valueOf(absoluteMax))
                         .replace("%current_max_for_pickaxe%", String.valueOf(maxForPickaxe))
                         .replace("%required_book_level%", TextUtil.toRoman(requiredBookLevel))
                         .replace("%required_book_level_num%", String.valueOf(requiredBookLevel))
@@ -222,10 +242,28 @@ public class EnchantSocketsGui extends CustomGui {
         // 1. Player clicked in their OWN player inventory (Bottom Inventory)
         if (rawSlot >= inventory.getSize() || event.getClickedInventory() == event.getView().getBottomInventory()) {
             if (event.isShiftClick()) {
-                // If shift-clicking an enchanted book from inventory, attempt auto-applying to socket
                 event.setCancelled(true);
                 ItemStack clickedItem = event.getCurrentItem();
                 if (clickedItem != null && !clickedItem.getType().isAir()) {
+
+                    // Check if clicked item is a LimitBreak Specific Book
+                    if (plugin.getLimitBreakManager() != null && plugin.getLimitBreakManager().isLimitBreakBook(clickedItem)) {
+                        if (!plugin.getLimitBreakManager().isUniversalBook(clickedItem)) {
+                            String target = plugin.getLimitBreakManager().getTargetEnchantKey(clickedItem);
+                            EnchantSocket targetSocket = plugin.getEnchantManager().getSocketByKey(target);
+                            if (targetSocket == null && target != null && target.contains(":")) {
+                                targetSocket = plugin.getEnchantManager().getSocket(target.substring(target.indexOf(":") + 1));
+                            }
+                            if (targetSocket != null) {
+                                if (plugin.getLimitBreakManager().applyLimitBreak(player, pickaxe, targetSocket, clickedItem)) {
+                                    setupItems();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // Otherwise regular book auto-apply
                     Map<String, Integer> bookEnchants = plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(clickedItem);
                     boolean upgraded = false;
                     for (String keyStr : bookEnchants.keySet()) {
@@ -240,9 +278,6 @@ public class EnchantSocketsGui extends CustomGui {
                                 break;
                             }
                         }
-                    }
-                    if (!upgraded && bookEnchants.isEmpty()) {
-                        // Not an enchant book, keep cancelled to prevent dumping items into menu
                     }
                 }
             } else {
@@ -292,6 +327,18 @@ public class EnchantSocketsGui extends CustomGui {
         if (socket != null) {
             ItemStack cursorItem = event.getCursor();
             if (cursorItem != null && !cursorItem.getType().isAir()) {
+
+                // A. Check LimitBreak / Universal Book upgrade first
+                if (plugin.getLimitBreakManager() != null && plugin.getLimitBreakManager().isLimitBreakBook(cursorItem)) {
+                    boolean success = plugin.getLimitBreakManager().applyLimitBreak(player, pickaxe, socket, cursorItem);
+                    if (success) {
+                        event.getView().setCursor(cursorItem);
+                        setupItems();
+                    }
+                    return;
+                }
+
+                // B. Regular Enchantment Book upgrade
                 boolean success = plugin.getEnchantManager().handleSocketUpgrade(player, pickaxe, socket, cursorItem);
                 if (success) {
                     event.getView().setCursor(cursorItem);

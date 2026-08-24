@@ -1,0 +1,64 @@
+# ==============================================================================
+#                  INFINITY PICKAXES - LIMIT BREAK CONFIGURATION
+# ==============================================================================
+# Mechanics for Specific (+1) Enchantment Books and Universal Super Books.
+
+settings:
+  # Maximum extra levels that can exceed the normal enchant max-level via LimitBreak
+  # (e.g. if Fortune max-level is 30, LimitBreak allows up to 35)
+  max-extra-levels: 5
+
+  # Sound effect played on successful LimitBreak upgrade
+  sound:
+    enabled: true
+    sound: BLOCK_ENCHANTMENT_TABLE_USE
+    volume: 1.0
+    pitch: 1.4
+
+  # Particle animation on upgrade
+  particles:
+    enabled: true
+    particle: TOTEM_OF_UNDYING
+    count: 35
+
+# ------------------------------------------------------------------------------
+# Specific (+1) Enchantment Book Template
+# ------------------------------------------------------------------------------
+specific-book:
+  material: ENCHANTED_BOOK
+  custom-model-data: 10001
+  glowing: true
+  display-name: "<gradient:#FF0055:#FFAA00><b>LimitBreak: %enchant_name% +1</b></gradient>"
+  lore:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<gray>Tipo: <light_purple><b>Tomo de Ruptura de Límite</b></light_purple>"
+    - "<gray>Encantamiento: <aqua>%enchant_name%</aqua>"
+    - ""
+    - "<white><b>EFECTO ESPECIAL:</b></white>"
+    - "<yellow>• Aumenta exactamente <gold>+1 Nivel</gold> a este encantamiento."
+    - "<yellow>• Funciona sin importar qué tan alto sea el nivel actual."
+    - "<yellow>• Permite sobrepasar el nivel máximo hasta <light_purple>+%max_extra% niveles</light_purple>."
+    - ""
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<green><i>¡Haz clic sobre el socket en /pickaxe o arrástralo sobre tu pico!</i></green>"
+
+# ------------------------------------------------------------------------------
+# Universal Super Book (Omni Tome) Template
+# ------------------------------------------------------------------------------
+universal-book:
+  material: ENCHANTED_BOOK
+  custom-model-data: 10002
+  glowing: true
+  display-name: "<gradient:#FF00FF:#00FFFF><b>✦ SÚPER LIBRO UNIVERSAL +1 ✦</b></gradient>"
+  lore:
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<gray>Tipo: <gradient:#FF00FF:#00FFFF><b>Tomo Arcano Primordial</b></gradient>"
+    - "<gray>Objetivo: <white><b>Cualquier Encantamiento de Pico</b></white>"
+    - ""
+    - "<white><b>EFECTO LEGENDARIO:</b></white>"
+    - "<yellow>• Aumenta <gold>+1 Nivel</gold> al encantamiento que tú elijas."
+    - "<yellow>• Compatible con cualquier socket registrado en tu pico."
+    - "<yellow>• Activa el <light_purple>LimitBreak</light_purple> hasta <light_purple>+%max_extra% niveles extra</light_purple>."
+    - ""
+    - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    - "<green><i>¡Haz clic en cualquier socket en /pickaxe para aplicar la mejora!</i></green>"

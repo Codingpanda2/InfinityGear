@@ -5,6 +5,7 @@ import com.infinitypickaxes.config.ConfigManager;
 import com.infinitypickaxes.config.MessageManager;
 import com.infinitypickaxes.core.enchant.EnchantManager;
 import com.infinitypickaxes.core.level.LevelManager;
+import com.infinitypickaxes.core.limitbreak.LimitBreakManager;
 import com.infinitypickaxes.core.perk.PerkManager;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
 import com.infinitypickaxes.gui.CustomGui;
@@ -28,6 +29,7 @@ public final class InfinityPickaxes extends JavaPlugin {
     private MessageManager messageManager;
     private LevelManager levelManager;
     private EnchantManager enchantManager;
+    private LimitBreakManager limitBreakManager;
     private PerkManager perkManager;
     private PickaxeManager pickaxeManager;
     private GuiManager guiManager;
@@ -56,18 +58,19 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.messageManager = new MessageManager(this);
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[1/6]</dark_gray> <white>Configuración & Idiomas:</white> <green>Cargados (Idioma: " + configManager.getCurrentLanguage() + ")</green>"));
 
-        // 2. Initialize Core Subsystems
+        // 2. Initialize Core Subsystems & LimitBreak
         this.levelManager = new LevelManager(this);
         this.enchantManager = new EnchantManager(this);
+        this.limitBreakManager = new LimitBreakManager(this);
         this.perkManager = new PerkManager(this);
         this.pickaxeManager = new PickaxeManager(this);
         this.guiManager = new GuiManager(this);
 
         int socketsCount = enchantManager.getAllSockets().size();
         boolean ecoPresent = enchantManager.getEcoHook().isEcoEnchantsPresent();
-        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[2/6]</dark_gray> <white>EcoEnchants Addon:</white> " +
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[2/6]</dark_gray> <white>EcoEnchants & LimitBreak:</white> " +
                 (ecoPresent ? "<green>Conectado </green>" : "<yellow>Modo Bukkit </yellow>") +
-                "<dark_gray>(" + socketsCount + " sockets de picos activos)</dark_gray>"));
+                "<dark_gray>(" + socketsCount + " sockets, LimitBreak +" + limitBreakManager.getMaxExtraLevels() + ")</dark_gray>"));
 
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[3/6]</dark_gray> <white>Sistema de Niveles:</white> <green>Listo </green><dark_gray>(Nivel Máximo: " + levelManager.getMaxLevel() + ")</dark_gray>"));
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[4/6]</dark_gray> <white>Sistema de Habilidades:</white> <gold>5 Perks modulares registrados.</gold>"));
@@ -98,7 +101,7 @@ public final class InfinityPickaxes extends JavaPlugin {
             InfinityPickaxeCommand executor = new InfinityPickaxeCommand(this);
             cmd.setExecutor(executor);
             cmd.setTabCompleter(executor);
-            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Comandos & Eventos:</white> <green>Registrados (/pickaxe, /pickaxe reload, etc.).</green>"));
+            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Comandos & Eventos:</white> <green>Registrados (/pickaxe, /pickaxe book, /pickaxe reload).</green>"));
         }
 
         long elapsed = System.currentTimeMillis() - start;
@@ -199,6 +202,10 @@ public final class InfinityPickaxes extends JavaPlugin {
 
     public EnchantManager getEnchantManager() {
         return enchantManager;
+    }
+
+    public LimitBreakManager getLimitBreakManager() {
+        return limitBreakManager;
     }
 
     public PerkManager getPerkManager() {
