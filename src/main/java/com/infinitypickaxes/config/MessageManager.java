@@ -113,10 +113,12 @@ public class MessageManager {
 
         // 1. Chat Message
         List<String> chatLines = config.getStringList("messages.level-up-chat");
+        String summary = config.getString("messages.level-up-unlocks-summary", "");
         for (String line : chatLines) {
             String processed = line.replace("%level%", String.valueOf(newLevel))
                                    .replace("%old_level%", String.valueOf(oldLevel))
-                                   .replace("%player%", player.getName());
+                                   .replace("%player%", player.getName())
+                                   .replace("%unlocks_summary%", summary);
             player.sendMessage(TextUtil.parse(processed));
         }
 
