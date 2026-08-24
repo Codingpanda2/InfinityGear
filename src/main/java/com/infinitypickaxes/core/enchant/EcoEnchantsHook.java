@@ -331,6 +331,44 @@ public class EcoEnchantsHook {
         List<String> results = new ArrayList<>();
         if (ench == null || ench.getKey() == null) return results;
 
+        try {
+            Object ecoEnchantObj = findEcoEnchantObject(ench);
+            if (ecoEnchantObj != null) {
+                // Try 1: getFormattedDescription(int level)
+                Object res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getFormattedDescription", new Class<?>[]{int.class}, level);
+                extractLinesFromObject(res, results);
+
+                // Try 2: getFormattedDescription()
+                if (results.isEmpty()) {
+                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getFormattedDescription", new Class<?>[]{});
+                    extractLinesFromObject(res, results);
+                }
+
+                // Try 3: getDescription(int level)
+                if (results.isEmpty()) {
+                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getDescription", new Class<?>[]{int.class}, level);
+                    extractLinesFromObject(res, results);
+                }
+
+                // Try 4: getDescription()
+                if (results.isEmpty()) {
+                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getDescription", new Class<?>[]{});
+                    extractLinesFromObject(res, results);
+                }
+
+                // Try 5: getRawDescription()
+                if (results.isEmpty()) {
+                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getRawDescription", new Class<?>[]{});
+                    extractLinesFromObject(res, results);
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        return results;
+    }
+
+    private Object findEcoEnchantObject(Enchantment ench) {
+        if (ench == null || ench.getKey() == null) return null;
         String id = ench.getKey().getKey().toLowerCase();
         NamespacedKey key = ench.getKey();
 
@@ -389,38 +427,10 @@ public class EcoEnchantsHook {
                 }
             }
 
-            if (ecoEnchantObj != null) {
-                // Try 1: getFormattedDescription(int level)
-                Object res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getFormattedDescription", new Class<?>[]{int.class}, level);
-                extractLinesFromObject(res, results);
-
-                // Try 2: getFormattedDescription()
-                if (results.isEmpty()) {
-                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getFormattedDescription", new Class<?>[]{});
-                    extractLinesFromObject(res, results);
-                }
-
-                // Try 3: getDescription(int level)
-                if (results.isEmpty()) {
-                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getDescription", new Class<?>[]{int.class}, level);
-                    extractLinesFromObject(res, results);
-                }
-
-                // Try 4: getDescription()
-                if (results.isEmpty()) {
-                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getDescription", new Class<?>[]{});
-                    extractLinesFromObject(res, results);
-                }
-
-                // Try 5: getRawDescription()
-                if (results.isEmpty()) {
-                    res = invokeMethodQuietly(ecoEnchantObj.getClass(), ecoEnchantObj, "getRawDescription", new Class<?>[]{});
-                    extractLinesFromObject(res, results);
-                }
-            }
+            return ecoEnchantObj;
         } catch (Throwable ignored) {}
 
-        return results;
+        return null;
     }
 
     private List<File> getEcoSearchDirectories() {
