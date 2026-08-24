@@ -177,7 +177,7 @@ public class EcoEnchantsHook {
         String id = ench.getKey().getKey().toLowerCase();
         int maxLevel = ench.getMaxLevel();
 
-        // 1. Try EcoEnchants Live API
+        // 1. Try EcoEnchants Live API (direct runtime inspection)
         if (ecoEnchantsPresent) {
             Object ecoEnchantObj = findEcoEnchantObject(ench);
             if (ecoEnchantObj != null) {
@@ -210,7 +210,7 @@ public class EcoEnchantsHook {
             }
         }
 
-        // 2. Try EcoEnchants YAML files on disk
+        // 2. Try EcoEnchants YAML files on server disk (reads custom rarities, display_name, colors)
         String yamlHeader = findHeaderInEcoYaml(id, ench.getKey().toString(), level, maxLevel);
         if (yamlHeader != null && !yamlHeader.isEmpty()) {
             return yamlHeader;
@@ -266,6 +266,43 @@ public class EcoEnchantsHook {
         };
     }
 
+    private Map<String, String> loadRaritiesColors() {
+        Map<String, String> rarities = new HashMap<>();
+        try {
+            List<File> searchDirs = getEcoSearchDirectories();
+            for (File dir : searchDirs) {
+                File rFile = new File(dir, "rarities.yml");
+                if (rFile.exists()) {
+                    YamlConfiguration yaml = YamlConfiguration.loadConfiguration(rFile);
+                    for (String key : yaml.getKeys(false)) {
+                        String color = yaml.getString(key + ".color", "");
+                        if (color.isEmpty()) {
+                            String dName = yaml.getString(key + ".display_name", yaml.getString(key + ".name", ""));
+                            if (dName.startsWith("<") && dName.contains(">")) {
+                                color = dName.substring(0, dName.indexOf(">") + 1);
+                            }
+                        }
+                        if (!color.isEmpty()) {
+                            rarities.put(key.toLowerCase(), color);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        // Defaults if rarities.yml is not found on disk
+        if (rarities.isEmpty()) {
+            rarities.put("common", "<gray>");
+            rarities.put("uncommon", "<green>");
+            rarities.put("rare", "<#00E5FF>");
+            rarities.put("epic", "<#9400D3>");
+            rarities.put("legendary", "<gold>");
+            rarities.put("special", "<#FF00E5>");
+            rarities.put("very_special", "<#FF5555>");
+        }
+        return rarities;
+    }
+
     private String findHeaderInEcoYaml(String id, String namespacedKeyStr, int level, int maxLevel) {
         try {
             List<File> searchDirs = getEcoSearchDirectories();
@@ -278,9 +315,21 @@ public class EcoEnchantsHook {
             if (matchedFile != null) {
                 YamlConfiguration yaml = YamlConfiguration.loadConfiguration(matchedFile);
                 String dName = yaml.getString("display_name", yaml.getString("name", ""));
-                if (!dName.isEmpty()) {
-                    return formatHeaderWithLevel(dName, level, maxLevel);
+                String rarity = yaml.getString("rarity", "common").toLowerCase();
+
+                Map<String, String> rarityColors = loadRaritiesColors();
+                String rarityColor = rarityColors.getOrDefault(rarity, "<gray>");
+
+                if (dName.isEmpty()) {
+                    dName = capitalize(id.replace("_", " "));
                 }
+
+                if (!dName.startsWith("<")) {
+                    String closeColor = rarityColor.startsWith("<#") ? "</" + rarityColor.substring(1) : "</" + rarityColor.replaceAll("[<>]", "") + ">";
+                    dName = rarityColor + dName + closeColor;
+                }
+
+                return formatHeaderWithLevel(dName, level, maxLevel);
             }
         } catch (Throwable ignored) {}
         return null;
