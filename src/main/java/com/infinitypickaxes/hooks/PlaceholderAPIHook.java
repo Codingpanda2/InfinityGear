@@ -98,7 +98,7 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                 return String.format("%,d", pickaxe.getBlocksMined());
             }
             case "enchant_count" -> {
-                return String.valueOf(pickaxe.getEnchantments().size());
+                return String.valueOf(plugin.getEnchantManager().countUsedSockets(pickaxe));
             }
             case "max_sockets" -> {
                 return String.valueOf(config.getInt("settings.max-sockets", 10));

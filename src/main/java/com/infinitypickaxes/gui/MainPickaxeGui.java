@@ -120,7 +120,7 @@ public class MainPickaxeGui extends CustomGui {
                     .replace("%required_xp%", String.format("%.0f", reqXp))
                     .replace("%xp_bar%", bar)
                     .replace("%blocks_mined%", String.format("%,d", pickaxe.getBlocksMined()))
-                    .replace("%enchant_count%", String.valueOf(pickaxe.getEnchantments().size()))
+                    .replace("%enchant_count%", String.valueOf(plugin.getEnchantManager().countUsedSockets(pickaxe)))
                     .replace("%max_sockets%", String.valueOf(maxSockets))
             );
         }

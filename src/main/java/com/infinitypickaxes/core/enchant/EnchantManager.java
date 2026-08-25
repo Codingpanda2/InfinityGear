@@ -109,6 +109,21 @@ public class EnchantManager {
         return socketsById.values();
     }
 
+    /**
+     * Counts only managed EcoEnchants. Vanilla enchantments such as the baseline
+     * Efficiency enchantment are real item enchantments, but never consume sockets.
+     */
+    public int countUsedSockets(InfinityPickaxe pickaxe) {
+        if (pickaxe == null) return 0;
+        int used = 0;
+        for (String enchantmentKey : pickaxe.getEnchantments().keySet()) {
+            if (socketsByKey.containsKey(enchantmentKey.toLowerCase(Locale.ROOT))) {
+                used++;
+            }
+        }
+        return used;
+    }
+
     public EcoEnchantsHook getEcoHook() {
         return ecoHook;
     }

@@ -6,6 +6,7 @@ import com.infinitypickaxes.utils.TextUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -39,6 +40,7 @@ public class PickaxeManager {
         if (material == null) material = Material.NETHERITE_PICKAXE;
 
         ItemStack item = new ItemStack(material);
+        applyDefaultEnchantments(item, config);
         InfinityPickaxe pickaxe = new InfinityPickaxe(
                 item,
                 UUID.randomUUID(),
@@ -61,6 +63,7 @@ public class PickaxeManager {
             return PickaxeData.fromItemStack(item);
         }
 
+        applyDefaultEnchantments(item, plugin.getConfigManager().getConfig());
         InfinityPickaxe pickaxe = new InfinityPickaxe(
                 item,
                 UUID.randomUUID(),
@@ -172,7 +175,7 @@ public class PickaxeManager {
                         .replace("%required_xp%", String.format("%.0f", reqXp))
                         .replace("%xp_bar%", bar)
                         .replace("%blocks_mined%", String.format("%,d", pickaxe.getBlocksMined()))
-                        .replace("%enchant_count%", String.valueOf(pickaxe.getEnchantments().size()))
+                        .replace("%enchant_count%", String.valueOf(plugin.getEnchantManager().countUsedSockets(pickaxe)))
                         .replace("%max_sockets%", String.valueOf(maxSockets));
                 finalLore.add(TextUtil.parse(processed));
             }
@@ -189,6 +192,13 @@ public class PickaxeManager {
         if (player == null) return null;
         ItemStack held = player.getInventory().getItemInMainHand();
         return getOrCreatePickaxe(held, player);
+    }
+
+    private void applyDefaultEnchantments(ItemStack item, FileConfiguration config) {
+        int efficiencyLevel = Math.max(0, config.getInt("settings.default-efficiency-level", 20));
+        if (efficiencyLevel > item.getEnchantmentLevel(Enchantment.EFFICIENCY)) {
+            item.addUnsafeEnchantment(Enchantment.EFFICIENCY, efficiencyLevel);
+        }
     }
 
 }
