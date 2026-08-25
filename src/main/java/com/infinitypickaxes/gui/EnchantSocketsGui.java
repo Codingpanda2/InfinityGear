@@ -78,7 +78,17 @@ public class EnchantSocketsGui extends CustomGui {
         if (infoSlot >= 0 && infoSlot < invSize) {
             Material infoMat = Material.matchMaterial(menuConfig.getString("items.info-book.material", "KNOWLEDGE_BOOK"));
             String infoName = menuConfig.getString("items.info-book.name", "<#00FF88><b>How to Upgrade Sockets?</b></#00FF88>");
-            List<String> infoLore = menuConfig.getStringList("items.info-book.lore");
+            int usedSockets = plugin.getEnchantManager().countUsedSockets(pickaxe);
+            int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel());
+            int limitBreakUnlock = plugin.getLimitBreakManager().getUnlockLevel();
+            int limitBreakExtra = plugin.getLimitBreakManager().getMaxExtraLevels(pickaxe.getLevel());
+            List<String> infoLore = menuConfig.getStringList("items.info-book.lore").stream()
+                    .map(line -> line
+                            .replace("%used_sockets%", String.valueOf(usedSockets))
+                            .replace("%max_sockets%", String.valueOf(maxSockets))
+                            .replace("%limitbreak_unlock_level%", String.valueOf(limitBreakUnlock))
+                            .replace("%limitbreak_extra%", String.valueOf(limitBreakExtra)))
+                    .toList();
             inventory.setItem(infoSlot, new ItemBuilder(infoMat != null ? infoMat : Material.KNOWLEDGE_BOOK)
                     .name(infoName)
                     .lore(infoLore)
@@ -157,7 +167,8 @@ public class EnchantSocketsGui extends CustomGui {
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxForPickaxe = socket.getMaxAllowedLevel(pickaxeLvl);
         int globalMax = socket.getMaxLevel();
-        int maxExtra = (plugin.getLimitBreakManager() != null) ? plugin.getLimitBreakManager().getMaxExtraLevels() : 5;
+        int maxExtra = (plugin.getLimitBreakManager() != null)
+                ? plugin.getLimitBreakManager().getMaxExtraLevels(pickaxeLvl) : 0;
         int absoluteMax = globalMax + maxExtra;
 
         ItemBuilder builder = new ItemBuilder(socket.getIcon());

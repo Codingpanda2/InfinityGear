@@ -9,7 +9,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -23,6 +22,7 @@ public class EnchantManager {
     private final EcoEnchantsHook ecoHook;
     private final Map<String, EnchantSocket> socketsById = new LinkedHashMap<>();
     private final Map<String, EnchantSocket> socketsByKey = new LinkedHashMap<>();
+    private PickaxeProgressionPolicy progressionPolicy;
 
     private Sound upgradeSound = Sound.BLOCK_ANVIL_USE;
     private float upgradeSoundVolume = 1.0f;
@@ -39,6 +39,7 @@ public class EnchantManager {
         socketsByKey.clear();
 
         FileConfiguration config = plugin.getConfigManager().getEnchantsConfig();
+        this.progressionPolicy = PickaxeProgressionPolicy.from(config);
 
         // Sound settings
         this.upgradeSound = SoundUtil.resolve(config.getString(
@@ -54,21 +55,31 @@ public class EnchantManager {
 
     public void discoverAndRegisterEcoEnchants() {
         FileConfiguration policy = plugin.getConfigManager().getEnchantsConfig();
+        Collection<EcoEnchant> liveEnchants = ecoHook.getPickaxeEnchants();
+        synchronizePolicy(policy, liveEnchants);
         int added = 0;
 
-        for (EcoEnchant ecoEnchant : ecoHook.getPickaxeEnchants()) {
+        for (EcoEnchant ecoEnchant : liveEnchants) {
             Enchantment ench = ecoEnchant.getEnchantment();
             if (ench == null || ench.getKey() == null) continue;
-            String keyStr = ench.getKey().toString().toLowerCase();
-            String id = ecoEnchant.getID().toLowerCase();
-
-            if (policy.getStringList("policy.disabled").stream().anyMatch(id::equalsIgnoreCase)) continue;
+            String keyStr = ench.getKey().toString().toLowerCase(Locale.ROOT);
+            String id = ecoEnchant.getID().toLowerCase(Locale.ROOT);
+            String path = "enchants." + id;
 
             String displayName = ecoHook.getEnchantmentDisplayName(ench);
             List<String> desc = ecoHook.getEnchantmentDescription(ench);
-            int maxLevel = Math.max(1, ecoEnchant.getMaximumLevel());
-            int unlockLevel = policy.getInt("policy.unlock-levels." + id,
-                    policy.getInt("policy.default-unlock-level", 0));
+            int nativeMax = Math.max(1, ecoEnchant.getMaximumLevel());
+            int maxLevel = effectiveMaximum(policy.get(path + ".max-level"), nativeMax, id);
+            int unlockLevel = Math.max(0, policy.getInt(path + ".unlock-pickaxe-level", 0));
+            boolean enabled = policy.getBoolean(path + ".enabled", true);
+            Set<String> additionalConflicts = new LinkedHashSet<>(
+                    policy.getStringList(path + ".additional-conflicts"));
+
+            String configuredKey = policy.getString(path + ".key", keyStr);
+            if (!keyStr.equalsIgnoreCase(configuredKey)) {
+                plugin.getLogger().warning("Ignoring non-canonical key for EcoEnchant '" + id
+                        + "' in enchants.yml; live key is " + keyStr + ".");
+            }
 
             EnchantSocket socket = new EnchantSocket(
                     id,
@@ -77,12 +88,13 @@ public class EnchantManager {
                     displayName,
                     Material.ENCHANTED_BOOK,
                     -1,
-                    true,
+                    enabled,
                     unlockLevel,
                     maxLevel,
                     new TreeMap<>(),
                     desc,
-                    null
+                    null,
+                    additionalConflicts
             );
 
             socketsById.put(id, socket);
@@ -93,6 +105,7 @@ public class EnchantManager {
         if (added > 0) {
             plugin.getLogger().info("Loaded " + added + " pickaxe enchantments from EcoEnchants.");
         }
+        validateAdditionalConflicts();
     }
 
     public EnchantSocket getSocket(String id) {
@@ -106,7 +119,15 @@ public class EnchantManager {
     }
 
     public Collection<EnchantSocket> getAllSockets() {
-        return socketsById.values();
+        return Collections.unmodifiableCollection(socketsById.values());
+    }
+
+    public PickaxeProgressionPolicy getProgressionPolicy() {
+        return progressionPolicy;
+    }
+
+    public int getSocketLimit(int pickaxeLevel) {
+        return progressionPolicy == null ? 0 : progressionPolicy.getSocketLimit(pickaxeLevel);
     }
 
     /**
@@ -117,7 +138,8 @@ public class EnchantManager {
         if (pickaxe == null) return 0;
         int used = 0;
         for (String enchantmentKey : pickaxe.getEnchantments().keySet()) {
-            if (socketsByKey.containsKey(enchantmentKey.toLowerCase(Locale.ROOT))) {
+            EnchantSocket socket = socketsByKey.get(enchantmentKey.toLowerCase(Locale.ROOT));
+            if (socket != null && socket.isEnabled()) {
                 used++;
             }
         }
@@ -126,6 +148,44 @@ public class EnchantManager {
 
     public EcoEnchantsHook getEcoHook() {
         return ecoHook;
+    }
+
+    /**
+     * Applies all rules for introducing a new managed enchantment. Existing
+     * enchantments are grandfathered and can still be upgraded while over cap.
+     */
+    public boolean canIntroduceEnchantment(Player player, InfinityPickaxe pickaxe, EnchantSocket socket) {
+        if (player == null || pickaxe == null || socket == null || !socket.isEnabled()) return false;
+
+        int used = countUsedSockets(pickaxe);
+        int limit = getSocketLimit(pickaxe.getLevel());
+        if (used >= limit) {
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-sockets-full",
+                    "%used%", String.valueOf(used),
+                    "%max%", String.valueOf(limit));
+            return false;
+        }
+
+        Enchantment candidate = getEnchantment(socket.getKeyString());
+        for (String existingKey : pickaxe.getEnchantments().keySet()) {
+            Enchantment existing = getEnchantment(existingKey);
+            EnchantSocket existingSocket = getSocketByKey(existingKey);
+            boolean adminConflict = socket.additionallyConflictsWith(existingKey)
+                    || (existingSocket != null
+                    && existingSocket.additionallyConflictsWith(socket.getKeyString()));
+            if (adminConflict || ecoHook.conflictsWith(candidate, existing)) {
+                plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
+                        "%enchant%", socket.getDisplayName());
+                return false;
+            }
+        }
+
+        if (!ecoHook.canApply(pickaxe.getItemStack(), candidate)) {
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
+                    "%enchant%", socket.getDisplayName());
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -140,6 +200,7 @@ public class EnchantManager {
             plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return false;
         }
+        if (!socket.isEnabled()) return false;
 
         // 1. Check if pickaxe level satisfies socket unlock
         if (!socket.isUnlocked(pickaxe.getLevel())) {
@@ -151,10 +212,7 @@ public class EnchantManager {
         int currentLevelOnPickaxe = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxAllowedForPickaxe = socket.getMaxAllowedLevel(pickaxe.getLevel());
 
-        Enchantment liveEnchantment = getEnchantment(socket.getKeyString());
-        if (currentLevelOnPickaxe == 0 && !ecoHook.canApply(pickaxe.getItemStack(), liveEnchantment)) {
-            plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
-                    "%enchant%", socket.getDisplayName());
+        if (currentLevelOnPickaxe == 0 && !canIntroduceEnchantment(player, pickaxe, socket)) {
             return false;
         }
 
@@ -232,6 +290,52 @@ public class EnchantManager {
             return Bukkit.getRegistry(Enchantment.class).get(key);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private void synchronizePolicy(FileConfiguration policy, Collection<EcoEnchant> liveEnchants) {
+        List<EnchantPolicySynchronizer.EnchantDescriptor> descriptors = liveEnchants.stream()
+                .filter(enchant -> enchant != null && enchant.getEnchantment() != null
+                        && enchant.getEnchantment().getKey() != null)
+                .map(enchant -> new EnchantPolicySynchronizer.EnchantDescriptor(
+                        enchant.getID().toLowerCase(Locale.ROOT),
+                        enchant.getEnchantment().getKey().toString().toLowerCase(Locale.ROOT)))
+                .toList();
+        EnchantPolicySynchronizer.SyncResult result = EnchantPolicySynchronizer.synchronize(policy, descriptors);
+        result.added().forEach(id -> plugin.getLogger().info(
+                "Added EcoEnchant policy entry for '" + id + "' to enchants.yml."));
+        result.orphaned().forEach(id -> plugin.getLogger().warning(
+                "Orphaned enchants.yml entry '" + id
+                        + "' has no matching live pickaxe EcoEnchant; it was preserved."));
+        if (result.changed()) plugin.getConfigManager().saveEnchantsConfig();
+    }
+
+    private int effectiveMaximum(Object configured, int nativeMaximum, String id) {
+        int effective = EnchantPolicySynchronizer.effectiveMaximum(configured, nativeMaximum);
+        if (configured != null
+                && !"inherit".equalsIgnoreCase(String.valueOf(configured))) {
+            try {
+                if (Integer.parseInt(String.valueOf(configured)) < 1) throw new NumberFormatException();
+            } catch (NumberFormatException exception) {
+                plugin.getLogger().warning("Invalid max-level for EcoEnchant '" + id
+                        + "'; inheriting EcoEnchants maximum " + nativeMaximum + ".");
+            }
+        }
+        return effective;
+    }
+
+    private void validateAdditionalConflicts() {
+        for (EnchantSocket socket : socketsById.values()) {
+            for (String configuredConflict : socket.getAdditionalConflicts()) {
+                boolean knownSocket = getSocket(configuredConflict) != null
+                        || getSocketByKey(configuredConflict) != null;
+                boolean knownLiveEnchant = configuredConflict.contains(":")
+                        && getEnchantment(configuredConflict) != null;
+                if (!knownSocket && !knownLiveEnchant) {
+                    plugin.getLogger().warning("Unknown additional-conflict '" + configuredConflict
+                            + "' for EcoEnchant '" + socket.getId() + "'; policy was preserved.");
+                }
+            }
         }
     }
 }

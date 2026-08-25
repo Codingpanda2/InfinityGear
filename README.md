@@ -13,6 +13,8 @@
 * 📈 **Sistema de Nivel Progresivo (0 a 100):** Gana experiencia minando bloques configurables (`blocks.yml`). Incluye protección anti-exploit para bloques colocados por jugadores.
 * 🔮 **Integración Nativa con EcoEnchants:** EcoEnchants 2026.33 es la única fuente de encantamientos, efectos, niveles máximos, nombres y descripciones.
 * 📖 **Mejora Interactiva por Libros:** Arrastra y suelta un libro del mismo nivel en el socket para subirlo de nivel.
+* 🧩 **Progresión de Sockets:** Los niveles 0/10/25/50/75 permiten 3/4/6/8/10 EcoEnchants gestionados. Los encantamientos vanilla, incluido Efficiency XX, no consumen sockets.
+* ✦ **LimitBreak por Hitos:** Se desbloquea al nivel 50 con límites extra configurables por nivel (+1/+3/+5 por defecto).
 * 🛡️ **Protección contra Duplicados:** Los UUID duplicados quedan en cuarentena hasta que un administrador conserva y reasigna el ejemplar legítimo.
 * 🎨 **Soporte para TexturePacks & Bridges:**
   * Compatible de forma nativa con `CustomModelData` y fuentes de texturas GUI en títulos.
@@ -38,6 +40,12 @@
 La detección es heurística: pone en cuarentena UUID que aparecen simultáneamente en inventarios de jugadores conectados, cofres de Ender, almacenamientos físicos abiertos, contenedores anidados o ítems arrojados. No mantiene una revisión canónica y no puede detectar dos copias que nunca sean observables al mismo tiempo, como un inventario desconectado y un cofre que permanece cerrado.
 
 Los inventarios GUI arbitrarios de otros plugins no se escanean. Las solicitudes automáticas relevantes se agrupan para evitar ejecutar numerosos escaneos globales durante una ráfaga de eventos.
+
+## 🔮 Política de EcoEnchants
+
+`enchants.yml` se sincroniza de forma aditiva al iniciar y recargar: cada EcoEnchant compatible nuevo recibe una entrada, pero las ediciones del administrador y las entradas huérfanas nunca se sobrescriben ni eliminan. EcoEnchants conserva autoridad sobre claves reales, objetivos, conflictos nativos, metadatos y máximos nativos.
+
+Los administradores pueden habilitar o deshabilitar sockets, definir el nivel de desbloqueo, reducir el máximo efectivo y añadir conflictos simétricos. Los picos que ya superen una capacidad o política nueva se conservan sin eliminar encantamientos; simplemente no pueden añadir otro socket hasta recuperar capacidad.
 
 ---
 

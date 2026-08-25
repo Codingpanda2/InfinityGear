@@ -33,6 +33,9 @@ messages:
     - "%unlocks_summary%"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</dark_gray>"
   level-up-unlocks-summary: "<center><green>¡La progresión de tu pico ha aumentado!</green></center>"
+  level-up-sockets-unlocked: "<center><green>Los espacios de encantamiento gestionados aumentaron a <yellow>%sockets%</yellow>.</green></center>"
+  level-up-limitbreak-unlocked: "<center><light_purple>LimitBreak ya está desbloqueado.</light_purple></center>"
+  level-up-limitbreak-increased: "<center><light_purple>El límite de LimitBreak aumentó a +%extra%.</light_purple></center>"
   level-up-title: "<gradient:#00FF88:#00E5FF><b>¡NIVEL %level%!</b></gradient>"
   level-up-subtitle: "<gray>Tu pico se ha vuelto más fuerte.</gray>"
   level-up-actionbar: "<green>+1 Nivel de Pico <dark_gray>(<yellow>Nv.%level%<dark_gray>)</green>"
@@ -40,9 +43,11 @@ messages:
   # Enchantment Upgrades
   enchant-upgraded: "<green>¡Has mejorado el encantamiento <aqua>%enchant%</aqua> a <yellow>Nivel %level%</yellow>!</green>"
   enchant-max-reached: "<red>Este encantamiento ya se encuentra en su nivel máximo para tu nivel de pico (<yellow>Máx: %max%</yellow>).</red>"
+  enchant-sockets-full: "<red>Este pico no tiene espacios libres para encantamientos gestionados (<yellow>%used%/%max%</yellow>). Los encantamientos existentes siguen funcionando y pueden mejorarse.</red>"
   enchant-locked-pickaxe-level: "<red>Tu pico requiere ser <yellow>Nivel %required%</yellow> para desbloquear este socket.</red>"
   enchant-invalid-book: "<red>Debes colocar un libro de <aqua>%enchant%</aqua> <yellow>Nivel %required_book_level%</yellow> para mejorar este socket.</red>"
   enchant-no-book-in-hand: "<red>No tienes el libro requerido en tu cursor para aplicar la mejora.</red>"
+  enchant-use-socket-menu: "<red>Los libros de EcoEnchants gestionados deben aplicarse mediante los espacios de encantamiento en <yellow>/pickaxe</yellow>.</red>"
 
   # LimitBreak & Libros Especiales
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ ¡LIMITBREAK APLICADO! ✦</b></gradient> <green>¡Has mejorado <aqua>%enchant%</aqua> a <yellow>Nivel %level%</yellow>!%limitbreak_indicator%</green>"

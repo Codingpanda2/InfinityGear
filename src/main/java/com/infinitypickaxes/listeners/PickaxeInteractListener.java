@@ -14,6 +14,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -118,6 +119,34 @@ public class PickaxeInteractListener implements Listener {
             // If Universal Super Book, open enchants menu so player can select target socket
             event.setCancelled(true);
             new EnchantSocketsGui(plugin, player, pickaxe).open();
+        }
+    }
+
+    /**
+     * Managed EcoEnchant books must go through the socket UI so capacity,
+     * unlocks, configured maxima, and additional conflicts cannot be bypassed.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onDirectEcoEnchantDrop(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        ItemStack target = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+        if (!PickaxeData.isInfinityPickaxe(target)
+                || plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(cursor).isEmpty()) {
+            return;
+        }
+        event.setCancelled(true);
+        plugin.getMessageManager().sendMessage(player, "messages.enchant-use-socket-menu");
+    }
+
+    /** Prevents EcoEnchant books from bypassing socket policy through anvils. */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPrepareAnvil(PrepareAnvilEvent event) {
+        ItemStack pickaxe = event.getInventory().getFirstItem();
+        ItemStack addition = event.getInventory().getSecondItem();
+        if (PickaxeData.isInfinityPickaxe(pickaxe)
+                && !plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(addition).isEmpty()) {
+            event.setResult(null);
         }
     }
 }

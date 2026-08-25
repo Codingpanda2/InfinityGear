@@ -4,10 +4,6 @@
 # Mechanics for Specific (+1) Enchantment Books and Universal Super Books.
 
 settings:
-  # Maximum extra levels that can exceed the normal enchant max-level via LimitBreak
-  # (e.g. if Fortune max-level is 30, LimitBreak allows up to 35)
-  max-extra-levels: 5
-
   # Sound effect played on successful LimitBreak upgrade
   sound:
     enabled: true

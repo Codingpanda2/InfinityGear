@@ -95,6 +95,15 @@ public final class EcoEnchantsHook {
                 && ecoEnchant.canEnchantItem(item, item.getEnchantments().keySet());
     }
 
+    /** Checks EcoEnchants' live, authoritative conflict rules in both directions. */
+    public boolean conflictsWith(Enchantment first, Enchantment second) {
+        if (first == null || second == null) return false;
+        EcoEnchant firstEco = findEcoEnchant(first);
+        EcoEnchant secondEco = findEcoEnchant(second);
+        return (firstEco != null && firstEco.conflictsWith(second))
+                || (secondEco != null && secondEco.conflictsWith(first));
+    }
+
     public static String cleanEnchantmentName(String text) {
         if (text == null || text.isBlank()) return "";
         return TextUtil.stripFormatting(text)

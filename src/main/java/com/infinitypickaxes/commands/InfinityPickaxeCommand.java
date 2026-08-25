@@ -137,7 +137,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     if (socket == null) {
                         socket = plugin.getEnchantManager().getSocketByKey(enchantArg);
                     }
-                    if (socket == null) {
+                    if (socket == null || !socket.isEnabled()) {
                         sender.sendMessage("§cEnchantment '" + enchantArg + "' was not found.");
                         return true;
                     }
@@ -376,7 +376,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 List<String> enchants = new ArrayList<>();
                 enchants.add("universal");
                 for (EnchantSocket s : plugin.getEnchantManager().getAllSockets()) {
-                    enchants.add(s.getId());
+                    if (s.isEnabled()) enchants.add(s.getId());
                 }
                 return enchants.stream().filter(s -> s.startsWith(args[1].toLowerCase())).collect(Collectors.toList());
             }
