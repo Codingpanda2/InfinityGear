@@ -1,7 +1,6 @@
 package com.infinitypickaxes.core.pickaxe;
 
 import com.infinitypickaxes.InfinityPickaxes;
-import com.infinitypickaxes.core.perk.PickaxePerk;
 import com.infinitypickaxes.utils.ProgressBarUtil;
 import com.infinitypickaxes.utils.TextUtil;
 import net.kyori.adventure.text.Component;
@@ -45,8 +44,7 @@ public class PickaxeManager {
                 UUID.randomUUID(),
                 startingLevel,
                 0.0,
-                0L,
-                new HashSet<>()
+                0L
         );
 
         syncPickaxe(pickaxe);
@@ -68,8 +66,7 @@ public class PickaxeManager {
                 UUID.randomUUID(),
                 0,
                 0.0,
-                0L,
-                new HashSet<>()
+                0L
         );
 
         syncPickaxe(pickaxe);
@@ -88,7 +85,7 @@ public class PickaxeManager {
         }
 
         FileConfiguration config = plugin.getConfigManager().getConfig();
-        if (config.getBoolean("settings.auto-convert-vanilla", true)) {
+        if (config.getBoolean("settings.auto-convert-vanilla", false)) {
             return convertVanillaPickaxe(item, player);
         }
 
@@ -153,24 +150,7 @@ public class PickaxeManager {
                 config.getString("progress-bar.uncompleted-color", "<#555555>")
         );
 
-        // 4. Perks List format (if used in custom lore templates)
-        String perkLineFormat = config.getString("formats.perk-line", "  <gray>• <gold>%perk_name%</gold> <green>(Active)</green>");
-        String noPerksText = config.getString("formats.no-perks", "");
-        List<String> perkLines = new ArrayList<>();
-        if (pickaxe.getEquippedPerks().isEmpty()) {
-            if (noPerksText != null && !noPerksText.trim().isEmpty()) {
-                perkLines.add(noPerksText);
-            }
-        } else {
-            for (String perkId : pickaxe.getEquippedPerks()) {
-                PickaxePerk perk = plugin.getPerkManager().getPerk(perkId);
-                String pName = (perk != null) ? perk.getDisplayName() : perkId;
-                String line = perkLineFormat.replace("%perk_name%", pName);
-                perkLines.add(line);
-            }
-        }
-
-        // 5. Assemble only InfinityPickaxes-owned lore. EcoEnchants owns enchantment display.
+        // 4. Assemble only InfinityPickaxes-owned lore. EcoEnchants owns enchantment display.
         List<String> loreTemplates = config.getStringList("pickaxe-lore.lore");
         List<Component> finalLore = new ArrayList<>();
 
@@ -181,15 +161,9 @@ public class PickaxeManager {
         }
 
         int maxSockets = config.getInt("settings.max-sockets", 10);
-        int maxPerks = plugin.getLevelManager().getMaxPerksForLevel(pickaxe.getLevel());
-
         for (String template : loreTemplates) {
             if (template.contains("%enchants_list%")) {
                 continue; // Legacy token: EcoEnchants owns and renders this section.
-            } else if (template.contains("%perks_list%")) {
-                for (String pLine : perkLines) {
-                    finalLore.add(TextUtil.parse(pLine));
-                }
             } else {
                 String processed = template
                         .replace("%level%", String.valueOf(pickaxe.getLevel()))
@@ -199,9 +173,7 @@ public class PickaxeManager {
                         .replace("%xp_bar%", bar)
                         .replace("%blocks_mined%", String.format("%,d", pickaxe.getBlocksMined()))
                         .replace("%enchant_count%", String.valueOf(pickaxe.getEnchantments().size()))
-                        .replace("%max_sockets%", String.valueOf(maxSockets))
-                        .replace("%perks_count%", String.valueOf(pickaxe.getEquippedPerks().size()))
-                        .replace("%max_perks%", String.valueOf(maxPerks));
+                        .replace("%max_sockets%", String.valueOf(maxSockets));
                 finalLore.add(TextUtil.parse(processed));
             }
         }

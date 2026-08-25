@@ -30,19 +30,6 @@ items:
       - ""
       - "<yellow>▶ Click to open sockets menu</yellow>"
 
-  # Navigation Button: Perks Menu
-  perks-button:
-    slot: 24
-    material: NETHER_STAR
-    name: "<#FFA500><b>Abilities & Perks</b></#FFA500>"
-    lore:
-      - "<gray>Unlock and equip passive and active"
-      - "<gray>abilities to boost your mining."
-      - ""
-      - "<gray>Perks Equipped: <gold>%perks_count%</gold><gray>/<yellow>%max_perks%</yellow>"
-      - ""
-      - "<yellow>▶ Click to open perks menu</yellow>"
-
   # Statistics Summary Item
   stats-info:
     slot: 22

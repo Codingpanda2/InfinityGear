@@ -4,7 +4,6 @@ import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantManager;
 import com.infinitypickaxes.core.duplicate.PickaxeDuplicateService;
 import com.infinitypickaxes.core.level.LevelManager;
-import com.infinitypickaxes.core.perk.PerkManager;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
@@ -37,10 +36,6 @@ public final class InfinityPickaxesAPI {
 
     public static EnchantManager getEnchantManager() {
         return InfinityPickaxes.getInstance().getEnchantManager();
-    }
-
-    public static PerkManager getPerkManager() {
-        return InfinityPickaxes.getInstance().getPerkManager();
     }
 
     public static PickaxeManager getPickaxeManager() {

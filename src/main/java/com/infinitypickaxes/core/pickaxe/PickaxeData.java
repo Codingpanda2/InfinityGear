@@ -16,7 +16,6 @@ public final class PickaxeData {
     public static final NamespacedKey KEY_LEVEL;
     public static final NamespacedKey KEY_XP;
     public static final NamespacedKey KEY_BLOCKS_MINED;
-    public static final NamespacedKey KEY_PERKS;
     public static final NamespacedKey KEY_QUARANTINED;
 
     static {
@@ -26,7 +25,6 @@ public final class PickaxeData {
         KEY_LEVEL = new NamespacedKey(plugin, "level");
         KEY_XP = new NamespacedKey(plugin, "xp");
         KEY_BLOCKS_MINED = new NamespacedKey(plugin, "blocks_mined");
-        KEY_PERKS = new NamespacedKey(plugin, "perks_data");
         KEY_QUARANTINED = new NamespacedKey(plugin, "quarantined");
     }
 
@@ -67,6 +65,13 @@ public final class PickaxeData {
         item.setItemMeta(meta);
     }
 
+    public static boolean isQuarantined(ItemStack item) {
+        if (!isInfinityPickaxe(item)) return false;
+        Byte value = item.getItemMeta().getPersistentDataContainer()
+                .get(KEY_QUARANTINED, PersistentDataType.BYTE);
+        return value != null && value != 0;
+    }
+
     /**
      * Reads and parses an InfinityPickaxe instance from an ItemStack.
      */
@@ -92,9 +97,7 @@ public final class PickaxeData {
         double xp = pdc.getOrDefault(KEY_XP, PersistentDataType.DOUBLE, 0.0);
         long blocksMined = pdc.getOrDefault(KEY_BLOCKS_MINED, PersistentDataType.LONG, 0L);
 
-        Set<String> perks = deserializePerks(pdc.get(KEY_PERKS, PersistentDataType.STRING));
-
-        return new InfinityPickaxe(item, uuid, level, xp, blocksMined, perks);
+        return new InfinityPickaxe(item, uuid, level, xp, blocksMined);
     }
 
     /**
@@ -112,25 +115,8 @@ public final class PickaxeData {
         pdc.set(KEY_LEVEL, PersistentDataType.INTEGER, pickaxe.getLevel());
         pdc.set(KEY_XP, PersistentDataType.DOUBLE, pickaxe.getXp());
         pdc.set(KEY_BLOCKS_MINED, PersistentDataType.LONG, pickaxe.getBlocksMined());
-        pdc.set(KEY_PERKS, PersistentDataType.STRING, serializePerks(pickaxe.getEquippedPerks()));
 
         item.setItemMeta(meta);
     }
 
-    public static String serializePerks(Set<String> perks) {
-        if (perks == null || perks.isEmpty()) return "";
-        return String.join(",", perks);
-    }
-
-    public static Set<String> deserializePerks(String data) {
-        Set<String> set = new HashSet<>();
-        if (data == null || data.trim().isEmpty()) return set;
-        String[] split = data.split(",");
-        for (String s : split) {
-            if (!s.trim().isEmpty()) {
-                set.add(s.trim().toLowerCase());
-            }
-        }
-        return set;
-    }
 }

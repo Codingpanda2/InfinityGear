@@ -121,7 +121,7 @@ public class EnchantManager {
         if (player == null || pickaxe == null || socket == null || bookItem == null) {
             return false;
         }
-        if (plugin.getDuplicateService().isRestricted(pickaxe.getUuid())) {
+        if (!plugin.getDuplicateService().isUsable(pickaxe.getItemStack())) {
             plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return false;
         }

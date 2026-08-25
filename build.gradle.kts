@@ -6,6 +6,8 @@ plugins {
 group = "com.infinitypickaxes"
 version = "2.0.0-SNAPSHOT"
 
+val mockitoAgent = configurations.create("mockitoAgent")
+
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
@@ -25,6 +27,10 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.mockito:mockito-core:5.20.0")
+    mockitoAgent("org.mockito:mockito-core:5.20.0") { isTransitive = false }
+    testImplementation("io.papermc.paper:paper-api:26.2.build.112-stable")
+    testImplementation("me.clip:placeholderapi:2.12.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -45,6 +51,7 @@ tasks.processResources {
 
 tasks.test {
     useJUnitPlatform()
+    jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
 
 tasks.shadowJar {

@@ -6,21 +6,22 @@ import com.infinitypickaxes.api.events.PickaxeRekeyedEvent;
 import com.infinitypickaxes.api.events.PickaxeQuarantinedEvent;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
-import com.infinitypickaxes.gui.CustomGui;
 import org.bukkit.Bukkit;
+import org.bukkit.block.Container;
+import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Item;
-import org.bukkit.block.Container;
+import org.bukkit.entity.ChestBoat;
+import org.bukkit.entity.ChestedHorse;
+import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -49,39 +50,51 @@ public final class PickaxeDuplicateService implements AutoCloseable {
 
     public boolean isUsable(ItemStack item) {
         UUID uuid = PickaxeData.getPickaxeUuid(item);
+        if (PickaxeData.isQuarantined(item)) {
+            if (uuid != null && restricted.add(uuid)) {
+                try {
+                    store.quarantine(uuid, "Recovered quarantine from item metadata",
+                            "system:pdc-recovery", List.of("item-pdc"));
+                } catch (SQLException exception) {
+                    plugin.getLogger().log(Level.SEVERE,
+                            "Could not restore item-local quarantine for " + uuid, exception);
+                }
+            }
+            markRestricted(item);
+            return false;
+        }
         if (!isRestricted(uuid)) return true;
         markRestricted(item);
         return false;
     }
 
     public DuplicateScanResult scanOnline(String actor) {
-        Map<UUID, List<Sighting>> sightings = new HashMap<>();
+        DuplicateObservations<ItemStack> sightings = new DuplicateObservations<>();
         Set<Inventory> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        int scanned = 0;
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            scanned += collectInventory(player.getInventory(), "player:" + player.getName(), visited, sightings);
-            scanned += collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), visited, sightings);
+            collectInventory(player.getInventory(), "player:" + player.getName(), visited, sightings);
+            collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), visited, sightings);
             Inventory top = player.getOpenInventory().getTopInventory();
-            if (!(top.getHolder() instanceof CustomGui)) {
-                scanned += collectInventory(top, "open-container:" + player.getName(), visited, sightings);
+            if (isPhysicalStorageInventory(top)) {
+                collectInventory(top, "open-container:" + player.getName(), visited, sightings);
             }
         }
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (Item entity : world.getEntitiesByClass(Item.class)) {
-                scanned += collectItem(entity.getItemStack(), "dropped-item:" + entity.getUniqueId(), 0, sightings);
+                collectItem(entity.getItemStack(), "dropped-item:" + entity.getUniqueId(), 0, sightings);
             }
         }
 
-        return quarantineDuplicates(sightings, scanned, actor);
+        return quarantineDuplicates(sightings, actor);
     }
 
     public DuplicateScanResult scanPlayer(Player player, String actor) {
-        Map<UUID, List<Sighting>> sightings = new HashMap<>();
+        DuplicateObservations<ItemStack> sightings = new DuplicateObservations<>();
         Set<Inventory> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        int scanned = collectInventory(player.getInventory(), "player:" + player.getName(), visited, sightings);
-        scanned += collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), visited, sightings);
-        return quarantineDuplicates(sightings, scanned, actor);
+        collectInventory(player.getInventory(), "player:" + player.getName(), visited, sightings);
+        collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), visited, sightings);
+        return quarantineDuplicates(sightings, actor);
     }
 
     public void quarantine(UUID uuid, String reason, String actor) throws SQLException {
@@ -104,6 +117,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         ItemStack held = administrator.getInventory().getItemInMainHand();
         UUID oldUuid = PickaxeData.getPickaxeUuid(held);
         if (oldUuid == null) throw new IllegalArgumentException("Hold an Infinity Pickaxe first.");
+        validateRekeyAmount(held.getAmount());
 
         UUID replacement = UUID.randomUUID();
         store.revoke(oldUuid, "Administrator selected a canonical replacement", administrator.getName(), replacement);
@@ -125,29 +139,65 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         return store.listRestricted();
     }
 
-    private int collectInventory(Inventory inventory, String label, Set<Inventory> visited,
-                                 Map<UUID, List<Sighting>> sightings) {
-        if (inventory == null || !visited.add(inventory)) return 0;
-        int scanned = 0;
-        for (int slot = 0; slot < inventory.getSize(); slot++) {
-            ItemStack item = inventory.getItem(slot);
-            scanned += collectItem(item, label + ":slot=" + slot, 0, sightings);
-        }
-        return scanned;
+    public boolean isPhysicalStorageInventory(Inventory inventory) {
+        if (inventory == null) return false;
+        return isPhysicalStorageHolder(inventory.getHolder());
     }
 
-    private int collectItem(ItemStack item, String location, int depth,
-                            Map<UUID, List<Sighting>> sightings) {
-        if (item == null || item.getType().isAir()) return 0;
-        int scanned = 0;
+    public boolean containsInfinityPickaxe(Inventory inventory) {
+        if (inventory == null) return false;
+        for (ItemStack item : inventory.getContents()) {
+            if (containsInfinityPickaxe(item, 0)) return true;
+        }
+        return false;
+    }
+
+    static boolean isPhysicalStorageHolder(InventoryHolder holder) {
+        return holder instanceof Container
+                || holder instanceof DoubleChest
+                || holder instanceof StorageMinecart
+                || holder instanceof ChestedHorse
+                || holder instanceof ChestBoat;
+    }
+
+    static void validateRekeyAmount(int amount) {
+        if (amount != 1) {
+            throw new IllegalArgumentException("Canonical rekeying requires exactly one unstacked pickaxe.");
+        }
+    }
+
+    private boolean containsInfinityPickaxe(ItemStack item, int depth) {
+        if (item == null || item.getType().isAir()) return false;
+        if (PickaxeData.isInfinityPickaxe(item)) return true;
+
+        int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()
+                .getInt("duplicate-protection.container-recursion-depth", 3));
+        if (depth >= maxDepth || !(item.getItemMeta() instanceof BlockStateMeta blockMeta)
+                || !(blockMeta.getBlockState() instanceof Container container)) {
+            return false;
+        }
+        for (ItemStack nested : container.getInventory().getContents()) {
+            if (containsInfinityPickaxe(nested, depth + 1)) return true;
+        }
+        return false;
+    }
+
+    private void collectInventory(Inventory inventory, String label, Set<Inventory> visited,
+                                  DuplicateObservations<ItemStack> sightings) {
+        if (inventory == null || !visited.add(inventory)) return;
+        for (int slot = 0; slot < inventory.getSize(); slot++) {
+            ItemStack item = inventory.getItem(slot);
+            collectItem(item, label + ":slot=" + slot, 0, sightings);
+        }
+    }
+
+    private void collectItem(ItemStack item, String location, int depth,
+                             DuplicateObservations<ItemStack> sightings) {
+        if (item == null || item.getType().isAir()) return;
         UUID uuid = PickaxeData.getPickaxeUuid(item);
         if (uuid != null) {
             int physicalCopies = Math.max(1, item.getAmount());
-            scanned += physicalCopies;
-            List<Sighting> uuidSightings = sightings.computeIfAbsent(uuid, ignored -> new ArrayList<>());
-            for (int copy = 0; copy < physicalCopies; copy++) {
-                uuidSightings.add(new Sighting(item, physicalCopies == 1 ? location : location + ":stack-copy=" + copy));
-            }
+            sightings.observe(uuid, item, location, physicalCopies);
             if (isRestricted(uuid)) markRestricted(item);
         }
 
@@ -155,27 +205,28 @@ public final class PickaxeDuplicateService implements AutoCloseable {
                 .getInt("duplicate-protection.container-recursion-depth", 3));
         if (depth >= maxDepth || !(item.getItemMeta() instanceof BlockStateMeta blockMeta)
                 || !(blockMeta.getBlockState() instanceof Container container)) {
-            return scanned;
+            return;
         }
 
         ItemStack[] nested = container.getInventory().getContents();
         for (int slot = 0; slot < nested.length; slot++) {
-            scanned += collectItem(nested[slot], location + "/container-slot=" + slot, depth + 1, sightings);
+            collectItem(nested[slot], location + "/container-slot=" + slot, depth + 1, sightings);
         }
-        return scanned;
     }
 
-    private DuplicateScanResult quarantineDuplicates(Map<UUID, List<Sighting>> sightings, int scanned, String actor) {
+    private DuplicateScanResult quarantineDuplicates(DuplicateObservations<ItemStack> sightings, String actor) {
         Set<UUID> detected = new HashSet<>();
-        for (Map.Entry<UUID, List<Sighting>> entry : sightings.entrySet()) {
+        for (Map.Entry<UUID, List<DuplicateObservations.Observation<ItemStack>>> entry
+                : sightings.entries().entrySet()) {
             if (entry.getValue().size() < 2) continue;
             UUID uuid = entry.getKey();
             boolean newlyDetected = !restricted.contains(uuid);
-            List<String> locations = entry.getValue().stream().map(Sighting::location).toList();
+            List<String> locations = entry.getValue().stream()
+                    .map(DuplicateObservations.Observation::location).toList();
             try {
                 store.quarantine(uuid, "Multiple physical pickaxes observed in one scan", actor, locations);
                 restricted.add(uuid);
-                entry.getValue().forEach(sighting -> markRestricted(sighting.item()));
+                entry.getValue().forEach(sighting -> markRestricted(sighting.value()));
                 detected.add(uuid);
                 if (newlyDetected) {
                     Bukkit.getPluginManager().callEvent(new PickaxeDuplicateDetectedEvent(uuid, locations));
@@ -187,7 +238,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
                 plugin.getLogger().log(Level.SEVERE, "Could not quarantine duplicate pickaxe " + uuid, exception);
             }
         }
-        return new DuplicateScanResult(scanned, detected);
+        return new DuplicateScanResult(sightings.observedCopies(), detected);
     }
 
     private void markVisibleCopies(UUID uuid) {
@@ -195,7 +246,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
             markInventoryCopies(player.getInventory(), uuid);
             markInventoryCopies(player.getEnderChest(), uuid);
             Inventory top = player.getOpenInventory().getTopInventory();
-            if (!(top.getHolder() instanceof CustomGui)) markInventoryCopies(top, uuid);
+            if (isPhysicalStorageInventory(top)) markInventoryCopies(top, uuid);
         }
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (Item entity : world.getEntitiesByClass(Item.class)) {
@@ -224,6 +275,4 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     public void close() throws Exception {
         store.close();
     }
-
-    private record Sighting(ItemStack item, String location) {}
 }

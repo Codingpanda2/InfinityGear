@@ -1,13 +1,12 @@
 package com.infinitypickaxes.listeners;
 
 import com.infinitypickaxes.InfinityPickaxes;
+import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -16,7 +15,9 @@ import org.bukkit.scheduler.BukkitTask;
 
 public final class DuplicateDetectionListener implements Listener {
     private final InfinityPickaxes plugin;
+    private final ScanDebouncer debouncer = new ScanDebouncer();
     private BukkitTask periodicScan;
+    private BukkitTask pendingScan;
 
     public DuplicateDetectionListener(InfinityPickaxes plugin) {
         this.plugin = plugin;
@@ -30,50 +31,52 @@ public final class DuplicateDetectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(InventoryOpenEvent event) {
-        scheduleScan("automatic:inventory-open:" + event.getPlayer().getName());
+        if (plugin.getDuplicateService().isPhysicalStorageInventory(event.getInventory())
+                && plugin.getDuplicateService().containsInfinityPickaxe(event.getInventory())) {
+            scheduleScan("automatic:storage-open:" + event.getPlayer().getName());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPickup(EntityPickupItemEvent event) {
-        if (event.getEntity() instanceof org.bukkit.entity.Player player) {
+        if (event.getEntity() instanceof org.bukkit.entity.Player player
+                && PickaxeData.isInfinityPickaxe(event.getItem().getItemStack())) {
             scheduleScan("automatic:pickup:" + player.getName());
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent event) {
-        scheduleScan("automatic:drop:" + event.getPlayer().getName());
+        if (PickaxeData.isInfinityPickaxe(event.getItemDrop().getItemStack())) {
+            scheduleScan("automatic:drop:" + event.getPlayer().getName());
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCreativeInventory(InventoryCreativeEvent event) {
-        scheduleScan("automatic:creative:" + event.getWhoClicked().getName());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onInventoryClick(InventoryClickEvent event) {
-        if (com.infinitypickaxes.core.pickaxe.PickaxeData.isInfinityPickaxe(event.getCurrentItem())
-                || com.infinitypickaxes.core.pickaxe.PickaxeData.isInfinityPickaxe(event.getCursor())) {
-            scheduleScan("automatic:inventory-click:" + event.getWhoClicked().getName());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onInventoryDrag(InventoryDragEvent event) {
-        if (com.infinitypickaxes.core.pickaxe.PickaxeData.isInfinityPickaxe(event.getOldCursor())
-                || event.getNewItems().values().stream().anyMatch(
-                com.infinitypickaxes.core.pickaxe.PickaxeData::isInfinityPickaxe)) {
-            scheduleScan("automatic:inventory-drag:" + event.getWhoClicked().getName());
+        if (PickaxeData.isInfinityPickaxe(event.getCurrentItem())
+                || PickaxeData.isInfinityPickaxe(event.getCursor())) {
+            scheduleScan("automatic:creative:" + event.getWhoClicked().getName());
         }
     }
 
     private void scheduleScan(String actor) {
-        Bukkit.getScheduler().runTask(plugin, () -> plugin.getDuplicateService().scanOnline(actor));
+        if (!debouncer.request(actor)) return;
+        long delay = Math.max(1L, plugin.getConfigManager().getConfig()
+                .getLong("duplicate-protection.debounce-ticks", 10L));
+        pendingScan = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            String scanActor = debouncer.consume();
+            pendingScan = null;
+            plugin.getDuplicateService().scanOnline(scanActor);
+        }, delay);
     }
 
     public void stop() {
         if (periodicScan != null) periodicScan.cancel();
+        if (pendingScan != null) pendingScan.cancel();
         periodicScan = null;
+        pendingScan = null;
+        debouncer.clear();
     }
 
     public void reload() {
@@ -82,8 +85,8 @@ public final class DuplicateDetectionListener implements Listener {
     }
 
     private void start() {
-        long interval = Math.max(100L, plugin.getConfigManager().getConfig()
-                .getLong("duplicate-protection.scan-interval-ticks", 200L));
+        long interval = Math.max(200L, plugin.getConfigManager().getConfig()
+                .getLong("duplicate-protection.scan-interval-ticks", 1200L));
         periodicScan = Bukkit.getScheduler().runTaskTimer(plugin,
                 () -> plugin.getDuplicateService().scanOnline("automatic:periodic"), interval, interval);
     }

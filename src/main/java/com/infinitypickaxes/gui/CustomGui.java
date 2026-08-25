@@ -29,7 +29,9 @@ public abstract class CustomGui implements InventoryHolder {
 
     public abstract void handleClick(InventoryClickEvent event);
 
-    public void handleDrag(InventoryDragEvent event) {}
+    public void handleDrag(InventoryDragEvent event) {
+        event.setCancelled(true);
+    }
 
     public void handleClose(InventoryCloseEvent event) {}
 

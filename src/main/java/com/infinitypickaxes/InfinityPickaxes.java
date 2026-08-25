@@ -7,7 +7,6 @@ import com.infinitypickaxes.core.enchant.EnchantManager;
 import com.infinitypickaxes.core.duplicate.PickaxeDuplicateService;
 import com.infinitypickaxes.core.level.LevelManager;
 import com.infinitypickaxes.core.limitbreak.LimitBreakManager;
-import com.infinitypickaxes.core.perk.PerkManager;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
 import com.infinitypickaxes.gui.CustomGui;
 import com.infinitypickaxes.gui.GuiManager;
@@ -31,7 +30,6 @@ public final class InfinityPickaxes extends JavaPlugin {
     private LevelManager levelManager;
     private EnchantManager enchantManager;
     private LimitBreakManager limitBreakManager;
-    private PerkManager perkManager;
     private PickaxeManager pickaxeManager;
     private GuiManager guiManager;
     private PickaxeHeldListener heldListener;
@@ -65,7 +63,6 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.levelManager = new LevelManager(this);
         this.enchantManager = new EnchantManager(this);
         this.limitBreakManager = new LimitBreakManager(this);
-        this.perkManager = new PerkManager(this);
         try {
             this.duplicateService = new PickaxeDuplicateService(this);
         } catch (Exception exception) {
@@ -83,10 +80,11 @@ public final class InfinityPickaxes extends JavaPlugin {
                 "<dark_gray>(" + socketsCount + " sockets, LimitBreak +" + limitBreakManager.getMaxExtraLevels() + ")</dark_gray>"));
 
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[3/6]</dark_gray> <white>Leveling System:</white> <green>Ready </green><dark_gray>(Max Level: " + levelManager.getMaxLevel() + ")</dark_gray>"));
-        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[4/6]</dark_gray> <white>Perk System:</white> <gold>5 modular perks registered.</gold>"));
+        console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[4/6]</dark_gray> <white>Duplicate Protection:</white> <green>Ready</green>"));
 
         // 3. Register Event Listeners
         PluginManager pm = getServer().getPluginManager();
+        pm.registerEvents(new QuarantineListener(this), this);
         BlockPlaceListener placeListener = new BlockPlaceListener(this);
         pm.registerEvents(placeListener, this);
         pm.registerEvents(new BlockBreakListener(this, placeListener), this);
@@ -128,34 +126,27 @@ public final class InfinityPickaxes extends JavaPlugin {
     public void reloadPlugin(CommandSender sender) {
         long start = System.currentTimeMillis();
 
-        // 1. Stop tick task
-        if (heldListener != null) {
-            heldListener.stopTickTask();
-        }
-
-        // 2. Close open CustomGui inventories
+        // 1. Close open CustomGui inventories
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.getOpenInventory().getTopInventory().getHolder() instanceof CustomGui) {
                 p.closeInventory();
             }
         }
 
-        // 3. Reload configurations and locales
+        // 2. Reload configurations and locales
         this.configManager.reload();
 
-        // 4. Reload core subsystems
+        // 3. Reload core subsystems
         this.levelManager.loadConfig();
         this.enchantManager.loadConfig();
-        this.perkManager.loadConfig();
         if (this.duplicateListener != null) this.duplicateListener.reload();
 
-        // 5. Restart tick task and refresh all pickaxes currently held by players
+        // 4. Refresh all pickaxes currently held by players
         if (this.heldListener != null) {
-            this.heldListener.startTickTask();
             this.heldListener.refreshAllHeldPickaxes();
         }
 
-        // 6. Ensure PlaceholderAPI hook is registered
+        // 5. Ensure PlaceholderAPI hook is registered
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI") && papiHook == null) {
             this.papiHook = new PlaceholderAPIHook(this);
             this.papiHook.register();
@@ -168,23 +159,19 @@ public final class InfinityPickaxes extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // 1. Stop tick task
-        if (heldListener != null) {
-            heldListener.stopTickTask();
-        }
         if (duplicateListener != null) duplicateListener.stop();
 
-        // 2. Close any open CustomGui inventories
+        // 1. Close any open CustomGui inventories
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.getOpenInventory().getTopInventory().getHolder() instanceof CustomGui) {
                 p.closeInventory();
             }
         }
 
-        // 3. Cancel all bukkit scheduler tasks for this plugin
+        // 2. Cancel all bukkit scheduler tasks for this plugin
         Bukkit.getScheduler().cancelTasks(this);
 
-        // 4. Unregister PlaceholderAPI
+        // 3. Unregister PlaceholderAPI
         if (papiHook != null) {
             try {
                 papiHook.unregister();
@@ -228,10 +215,6 @@ public final class InfinityPickaxes extends JavaPlugin {
 
     public LimitBreakManager getLimitBreakManager() {
         return limitBreakManager;
-    }
-
-    public PerkManager getPerkManager() {
-        return perkManager;
     }
 
     public PickaxeManager getPickaxeManager() {

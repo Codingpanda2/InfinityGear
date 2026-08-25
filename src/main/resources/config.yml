@@ -14,7 +14,7 @@ settings:
   # Base pickaxe item material (e.g. NETHERITE_PICKAXE, DIAMOND_PICKAXE)
   default-material: NETHERITE_PICKAXE
   # Automatically convert any regular vanilla pickaxe held or used by a player into an Infinity Pickaxe
-  auto-convert-vanilla: true
+  auto-convert-vanilla: false
   # All pickaxes are unbreakable by default
   unbreakable: true
   # Hide vanilla attributes/unbreakable tags on item
@@ -72,7 +72,10 @@ anti-exploit:
   ignore-creative: true
 
 duplicate-protection:
-  scan-interval-ticks: 200
+  # Heuristic simultaneous-duplicate scans. This does not detect copies that are
+  # never observable at the same time (for example, an offline inventory and an unopened chest).
+  scan-interval-ticks: 1200
+  debounce-ticks: 10
   container-recursion-depth: 3
 
 # Visual Progress Bar Settings (used in Lore and Menus)
@@ -93,9 +96,3 @@ pickaxe-lore:
     - "<gray>Level: <gold><b>%level%</b></gold></gray>"
     - "<gray>Progress: %xp_bar%</gray>"
     - "<gray>Mined Blocks: <yellow>%blocks_mined%</yellow></gray>"
-    - "<gray>Perks: <gold>%perks_count%</gold><gray>/</gray><gold>%max_perks%</gold></gray>"
-
-# Optional expanded perk-list formatting for custom lore templates
-formats:
-  perk-line: "  <gray>• <gold>%perk_name%</gold> <green>(Active)</green>"
-  no-perks: ""

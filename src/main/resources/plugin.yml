@@ -3,7 +3,7 @@ version: '${version}'
 main: com.infinitypickaxes.InfinityPickaxes
 api-version: '26.2'
 author: aland
-description: Advanced Rival-style leveling pickaxes with EcoEnchants addon integration, interactive GUIs, sockets, and perks.
+description: Leveling pickaxes with EcoEnchants integration, interactive sockets, and duplicate quarantine.
 depend:
   - EcoEnchants
   - eco

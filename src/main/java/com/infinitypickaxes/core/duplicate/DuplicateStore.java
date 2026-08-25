@@ -62,8 +62,8 @@ public final class DuplicateStore implements AutoCloseable {
                 VALUES (?, 'QUARANTINED', ?, ?, ?, NULL, NULL)
                 ON CONFLICT(uuid) DO UPDATE SET
                     status = CASE WHEN status = 'REVOKED' THEN status ELSE 'QUARANTINED' END,
-                    last_updated = excluded.last_updated,
-                    reason = excluded.reason
+                    last_updated = CASE WHEN status = 'REVOKED' THEN last_updated ELSE excluded.last_updated END,
+                    reason = CASE WHEN status = 'REVOKED' THEN reason ELSE excluded.reason END
                 """)) {
             statement.setString(1, uuid.toString());
             statement.setLong(2, now);

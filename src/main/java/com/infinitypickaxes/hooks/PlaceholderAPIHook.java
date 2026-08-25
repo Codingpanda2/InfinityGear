@@ -103,12 +103,6 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
             case "max_sockets" -> {
                 return String.valueOf(config.getInt("settings.max-sockets", 10));
             }
-            case "perk_count" -> {
-                return String.valueOf(pickaxe.getEquippedPerks().size());
-            }
-            case "max_perks" -> {
-                return String.valueOf(plugin.getLevelManager().getMaxPerksForLevel(pickaxe.getLevel()));
-            }
         }
 
         // Check dynamic enchant level placeholder: %infinitypickaxes_enchant_level_<enchant_id>%
@@ -126,12 +120,6 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
             String key = (socket != null) ? socket.getKeyString() : "minecraft:" + enchantId;
             int lvl = pickaxe.getEnchantmentLevel(key);
             return (lvl > 0) ? TextUtil.toRoman(lvl) : "0";
-        }
-
-        // Check dynamic perk status: %infinitypickaxes_has_perk_<perk_id>%
-        if (lower.startsWith("has_perk_")) {
-            String perkId = lower.substring("has_perk_".length());
-            return String.valueOf(pickaxe.hasPerk(perkId));
         }
 
         return null;

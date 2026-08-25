@@ -32,9 +32,9 @@ messages:
     - "<center><gray>Your pickaxe has reached <gold><b>Level %level%</b></gold></center>"
     - "%unlocks_summary%"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</dark_gray>"
-  level-up-unlocks-summary: "<center><green>New enchant limits and perks available!</green></center>"
+  level-up-unlocks-summary: "<center><green>Your pickaxe progression has increased!</green></center>"
   level-up-title: "<gradient:#00FF88:#00E5FF><b>LEVEL %level%!</b></gradient>"
-  level-up-subtitle: "<gray>New sockets and abilities unlocked!</gray>"
+  level-up-subtitle: "<gray>Your pickaxe has grown stronger.</gray>"
   level-up-actionbar: "<green>+1 Pickaxe Level <dark_gray>(<yellow>Lv.%level%<dark_gray>)</green>"
 
   # Enchantment Upgrades
@@ -52,10 +52,3 @@ messages:
   limitbreak-book-received: "<green>You received <yellow>%amount%x</yellow> <gradient:#FF0055:#FFAA00><b>LimitBreak Book: %enchant% +1</b></gradient>!</green>"
   limitbreak-universal-received: "<green>You received <yellow>%amount%x</yellow> <gradient:#FF00FF:#00FFFF><b>✦ UNIVERSAL SUPER BOOK +1 ✦</b></gradient>!</green>"
   limitbreak-book-given: "<green>Gave <yellow>%amount%x</yellow> LimitBreak book (<aqua>%enchant%</aqua>) to <yellow>%player%</yellow>.</green>"
-
-  # Perks
-  perk-unlocked: "<green>You unlocked perk <gold>%perk%</gold>!</green>"
-  perk-equipped: "<green>Perk <gold>%perk%</gold> equipped successfully.</green>"
-  perk-unequipped: "<yellow>Perk <gold>%perk%</gold> unequipped.</yellow>"
-  perk-locked: "<red>This perk requires your pickaxe to be <yellow>Level %required%</yellow>.</red>"
-  perk-max-slots: "<red>You have reached the maximum equipped perks limit for your pickaxe level.</red>"

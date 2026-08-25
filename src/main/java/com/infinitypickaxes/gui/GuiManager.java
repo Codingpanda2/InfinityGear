@@ -1,6 +1,7 @@
 package com.infinitypickaxes.gui;
 
 import com.infinitypickaxes.InfinityPickaxes;
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -9,6 +10,9 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+
+import java.util.List;
+import java.util.logging.Level;
 
 public class GuiManager implements Listener {
 
@@ -25,15 +29,18 @@ public class GuiManager implements Listener {
         try {
             InventoryHolder holder = inv.getHolder();
             if (holder instanceof CustomGui gui) {
-                if (plugin.getDuplicateService().isRestricted(gui.getPickaxe().getUuid())) {
-                    event.setCancelled(true);
+                event.setCancelled(true);
+                if (!plugin.getDuplicateService().isUsable(gui.getPickaxe().getItemStack())) {
                     gui.getPlayer().closeInventory();
                     plugin.getMessageManager().sendMessage(gui.getPlayer(), "messages.pickaxe-quarantined");
                     return;
                 }
                 gui.handleClick(event);
             }
-        } catch (Throwable ignored) {}
+        } catch (RuntimeException exception) {
+            failClosed(event.getWhoClicked().getName(), inv, exception);
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -43,9 +50,13 @@ public class GuiManager implements Listener {
         try {
             InventoryHolder holder = inv.getHolder();
             if (holder instanceof CustomGui gui) {
+                event.setCancelled(true);
                 gui.handleDrag(event);
             }
-        } catch (Throwable ignored) {}
+        } catch (RuntimeException exception) {
+            failClosed(event.getWhoClicked().getName(), inv, exception);
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -57,6 +68,16 @@ public class GuiManager implements Listener {
             if (holder instanceof CustomGui gui) {
                 gui.handleClose(event);
             }
-        } catch (Throwable ignored) {}
+        } catch (RuntimeException exception) {
+            plugin.getLogger().log(Level.SEVERE,
+                    "Custom GUI close handler failed for " + event.getPlayer().getName(), exception);
+        }
+    }
+
+    private void failClosed(String playerName, Inventory inventory, RuntimeException exception) {
+        plugin.getLogger().log(Level.SEVERE, "Custom GUI handler failed for " + playerName, exception);
+        if (inventory.getViewers().isEmpty()) return;
+        Bukkit.getScheduler().runTask(plugin,
+                () -> List.copyOf(inventory.getViewers()).forEach(viewer -> viewer.closeInventory()));
     }
 }

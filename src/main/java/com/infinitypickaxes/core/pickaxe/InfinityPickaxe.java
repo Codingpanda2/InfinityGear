@@ -16,16 +16,14 @@ public class InfinityPickaxe {
     private int level;
     private double xp;
     private long blocksMined;
-    private final Set<String> equippedPerks;
 
-    public InfinityPickaxe(ItemStack itemStack, UUID uuid, int level, double xp, long blocksMined, Set<String> equippedPerks) {
+    public InfinityPickaxe(ItemStack itemStack, UUID uuid, int level, double xp, long blocksMined) {
         this.itemStack = itemStack;
         this.uuid = uuid != null ? uuid : UUID.randomUUID();
         this.level = 0;
         setLevel(level);
         this.xp = Math.max(0.0, xp);
         this.blocksMined = Math.max(0L, blocksMined);
-        this.equippedPerks = equippedPerks != null ? new HashSet<>(equippedPerks) : new HashSet<>();
     }
 
     public ItemStack getItemStack() {
@@ -104,27 +102,6 @@ public class InfinityPickaxe {
         if (level <= 0) meta.removeEnchant(enchantment);
         else meta.addEnchant(enchantment, level, true);
         itemStack.setItemMeta(meta);
-    }
-
-    public Set<String> getEquippedPerks() {
-        return equippedPerks;
-    }
-
-    public boolean hasPerk(String perkId) {
-        if (perkId == null) return false;
-        return equippedPerks.contains(perkId.toLowerCase());
-    }
-
-    public void addPerk(String perkId) {
-        if (perkId != null) {
-            equippedPerks.add(perkId.toLowerCase());
-        }
-    }
-
-    public void removePerk(String perkId) {
-        if (perkId != null) {
-            equippedPerks.remove(perkId.toLowerCase());
-        }
     }
 
     /**

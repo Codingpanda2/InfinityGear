@@ -27,9 +27,6 @@ public class ConfigManager {
     private File enchantsFile;
     private FileConfiguration enchantsConfig;
 
-    private File perksFile;
-    private FileConfiguration perksConfig;
-
     private File blocksFile;
     private FileConfiguration blocksConfig;
 
@@ -38,9 +35,6 @@ public class ConfigManager {
 
     private File enchantsMenuFile;
     private FileConfiguration enchantsMenuConfig;
-
-    private File perksMenuFile;
-    private FileConfiguration perksMenuConfig;
 
     private final Map<String, YamlConfiguration> localeConfigs = new HashMap<>();
     private String defaultLanguage = "en";
@@ -67,10 +61,6 @@ public class ConfigManager {
         this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
         updateMissingKeys(enchantsFile, "enchants.yml", (YamlConfiguration) this.enchantsConfig);
 
-        this.perksFile = loadAndSyncFile("perks.yml");
-        this.perksConfig = YamlConfiguration.loadConfiguration(perksFile);
-        updateMissingKeys(perksFile, "perks.yml", (YamlConfiguration) this.perksConfig);
-
         this.blocksFile = loadAndSyncFile("blocks.yml");
         this.blocksConfig = YamlConfiguration.loadConfiguration(blocksFile);
         updateMissingKeys(blocksFile, "blocks.yml", (YamlConfiguration) this.blocksConfig);
@@ -85,8 +75,6 @@ public class ConfigManager {
         this.enchantsMenuFile = loadAndSyncFile("menus/enchants_menu.yml");
         this.enchantsMenuConfig = YamlConfiguration.loadConfiguration(enchantsMenuFile);
 
-        this.perksMenuFile = loadAndSyncFile("menus/perks_menu.yml");
-        this.perksMenuConfig = YamlConfiguration.loadConfiguration(perksMenuFile);
     }
 
     private void loadLocales() {
@@ -174,10 +162,6 @@ public class ConfigManager {
         return enchantsConfig;
     }
 
-    public FileConfiguration getPerksConfig() {
-        return perksConfig;
-    }
-
     public FileConfiguration getBlocksConfig() {
         return blocksConfig;
     }
@@ -202,10 +186,6 @@ public class ConfigManager {
 
     public FileConfiguration getEnchantsMenuConfig() {
         return enchantsMenuConfig;
-    }
-
-    public FileConfiguration getPerksMenuConfig() {
-        return perksMenuConfig;
     }
 
     public String getCurrentLanguage() {

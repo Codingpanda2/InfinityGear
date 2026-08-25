@@ -10,9 +10,6 @@ import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
-import java.util.NavigableMap;
-import java.util.TreeMap;
-
 public class LevelManager {
 
     private final InfinityPickaxes plugin;
@@ -29,8 +26,6 @@ public class LevelManager {
     private boolean particlesEnabled = true;
     private Particle levelupParticle = Particle.TOTEM_OF_UNDYING;
     private int particleCount = 30;
-
-    private final NavigableMap<Integer, Integer> perkMilestones = new TreeMap<>();
 
     public LevelManager(InfinityPickaxes plugin) {
         this.plugin = plugin;
@@ -58,25 +53,6 @@ public class LevelManager {
         }
         this.particleCount = config.getInt("leveling.levelup-particles.count", 30);
 
-        // Load perk milestones from perks.yml
-        perkMilestones.clear();
-        FileConfiguration perksConfig = plugin.getConfigManager().getPerksConfig();
-        if (perksConfig.isConfigurationSection("slots-milestones")) {
-            for (String key : perksConfig.getConfigurationSection("slots-milestones").getKeys(false)) {
-                try {
-                    int lvl = Integer.parseInt(key);
-                    int slots = perksConfig.getInt("slots-milestones." + key);
-                    perkMilestones.put(lvl, slots);
-                } catch (NumberFormatException ignored) {}
-            }
-        }
-        if (perkMilestones.isEmpty()) {
-            perkMilestones.put(10, 1);
-            perkMilestones.put(25, 2);
-            perkMilestones.put(50, 3);
-            perkMilestones.put(75, 4);
-            perkMilestones.put(100, 5);
-        }
     }
 
     /**
@@ -88,14 +64,6 @@ public class LevelManager {
         }
         int nextLevel = currentLevel + 1;
         return Math.round(baseExp * Math.pow(nextLevel, exponent) + (nextLevel * linear));
-    }
-
-    /**
-     * Returns the maximum number of perk slots allowed for a given pickaxe level.
-     */
-    public int getMaxPerksForLevel(int pickaxeLevel) {
-        var entry = perkMilestones.floorEntry(pickaxeLevel);
-        return entry != null ? entry.getValue() : 0;
     }
 
     /**

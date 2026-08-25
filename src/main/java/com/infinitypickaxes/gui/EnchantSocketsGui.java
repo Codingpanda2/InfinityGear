@@ -282,9 +282,6 @@ public class EnchantSocketsGui extends CustomGui {
                         }
                     }
                 }
-            } else {
-                // Normal click in player inventory: ALLOW picking up / moving books freely!
-                event.setCancelled(false);
             }
             return;
         }

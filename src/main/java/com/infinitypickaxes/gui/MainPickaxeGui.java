@@ -58,17 +58,7 @@ public class MainPickaxeGui extends CustomGui {
                 .lore(enchLore)
                 .build());
 
-        // 4. Perks Button
-        int perkSlot = menuConfig.getInt("items.perks-button.slot", 24);
-        Material perkMat = Material.matchMaterial(menuConfig.getString("items.perks-button.material", "NETHER_STAR"));
-        String perkName = menuConfig.getString("items.perks-button.name", "<#FFA500><b>Abilities & Perks</b></#FFA500>");
-        List<String> perkLore = processPlaceholders(menuConfig.getStringList("items.perks-button.lore"));
-        inventory.setItem(perkSlot, new ItemBuilder(perkMat != null ? perkMat : Material.NETHER_STAR)
-                .name(perkName)
-                .lore(perkLore)
-                .build());
-
-        // 5. Stats Info
+        // 4. Stats Info
         int statsSlot = menuConfig.getInt("items.stats-info.slot", 22);
         Material statsMat = Material.matchMaterial(menuConfig.getString("items.stats-info.material", "BOOK"));
         String statsName = menuConfig.getString("items.stats-info.name", "<#00FF88><b>Mining Statistics</b></#00FF88>");
@@ -78,7 +68,7 @@ public class MainPickaxeGui extends CustomGui {
                 .lore(statsLore)
                 .build());
 
-        // 6. Close Button
+        // 5. Close Button
         int closeSlot = menuConfig.getInt("items.close-button.slot", 31);
         Material closeMat = Material.matchMaterial(menuConfig.getString("items.close-button.material", "BARRIER"));
         String closeName = menuConfig.getString("items.close-button.name", "<red><b>Close Menu</b></red>");
@@ -95,15 +85,11 @@ public class MainPickaxeGui extends CustomGui {
         int slot = event.getRawSlot();
 
         int enchantSlot = menuConfig.getInt("items.enchants-button.slot", 20);
-        int perkSlot = menuConfig.getInt("items.perks-button.slot", 24);
         int closeSlot = menuConfig.getInt("items.close-button.slot", 31);
 
         if (slot == enchantSlot) {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
             new EnchantSocketsGui(plugin, player, pickaxe).open();
-        } else if (slot == perkSlot) {
-            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
-            new PerksGui(plugin, player, pickaxe).open();
         } else if (slot == closeSlot) {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 0.9f);
             player.closeInventory();
@@ -125,8 +111,6 @@ public class MainPickaxeGui extends CustomGui {
         );
 
         int maxSockets = config.getInt("settings.max-sockets", 10);
-        int maxPerks = plugin.getLevelManager().getMaxPerksForLevel(pickaxe.getLevel());
-
         for (String line : lines) {
             result.add(line
                     .replace("%player%", player.getName())
@@ -138,8 +122,6 @@ public class MainPickaxeGui extends CustomGui {
                     .replace("%blocks_mined%", String.format("%,d", pickaxe.getBlocksMined()))
                     .replace("%enchant_count%", String.valueOf(pickaxe.getEnchantments().size()))
                     .replace("%max_sockets%", String.valueOf(maxSockets))
-                    .replace("%perks_count%", String.valueOf(pickaxe.getEquippedPerks().size()))
-                    .replace("%max_perks%", String.valueOf(maxPerks))
             );
         }
         return result;

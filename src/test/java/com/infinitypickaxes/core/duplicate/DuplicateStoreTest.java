@@ -44,6 +44,8 @@ class DuplicateStoreTest {
 
             DuplicateRecord record = store.find(compromised).orElseThrow();
             assertEquals(DuplicateStatus.REVOKED, record.status());
+            assertEquals("resolved", record.reason());
+            assertEquals("admin", record.resolvedBy());
             assertEquals(replacement, record.replacementUuid());
             assertFalse(store.find(replacement).isPresent());
         }
