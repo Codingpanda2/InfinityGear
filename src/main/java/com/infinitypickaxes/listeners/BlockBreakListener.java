@@ -22,9 +22,10 @@ public class BlockBreakListener implements Listener {
         this.placeListener = placeListener;
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
+        if (!player.hasPermission("infinitypickaxes.use")) return;
         ItemStack held = player.getInventory().getItemInMainHand();
 
         InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(held, player);
@@ -50,17 +51,10 @@ public class BlockBreakListener implements Listener {
         String matName = block.getType().name();
         double xp = blocksConfig.getDouble("blocks." + matName, defaultXp);
 
-        // 4. Apply Perk Multipliers
-        double multiplier = plugin.getPerkManager().getActiveXpMultiplier(pickaxe);
-        double totalXp = xp * multiplier;
+        // 4. Add XP & update pickaxe progression
+        plugin.getLevelManager().addXp(pickaxe, xp, player);
 
-        // 5. Add XP & update pickaxe progression
-        plugin.getLevelManager().addXp(pickaxe, totalXp, player);
-
-        // 6. Send real-time Action Bar with progress & XP
-        plugin.getMessageManager().sendMiningActionbar(player, pickaxe, totalXp);
-
-        // 7. Dispatch block break to active perks (e.g. AutoSmelt, BlastRadius, FortuneFrenzy)
-        plugin.getPerkManager().dispatchBlockBreak(event, pickaxe, player);
+        // 5. Send real-time Action Bar with progress & XP
+        plugin.getMessageManager().sendMiningActionbar(player, pickaxe, xp);
     }
 }

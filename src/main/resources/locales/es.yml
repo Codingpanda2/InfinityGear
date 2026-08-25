@@ -11,6 +11,8 @@ mining-actionbar:
   message: "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Nv.%level%<dark_gray>)"
 
 messages:
+  pickaxe-quarantined: "<red>Este pico está en cuarentena porque su UUID fue duplicado. Contacta a un administrador.</red>"
+  enchant-conflict: "<red>%enchant% no se puede aplicar porque EcoEnchants detectó un conflicto, requisito o destino inválido.</red>"
   no-permission: "<red>No tienes permisos suficientes para ejecutar este comando.</red>"
   player-only: "<red>Este comando solo puede ser ejecutado por jugadores en el servidor.</red>"
   player-not-found: "<red>El jugador especificado no fue encontrado o está desconectado.</red>"
@@ -30,9 +32,9 @@ messages:
     - "<center><gray>Tu pico ha alcanzado el <gold><b>Nivel %level%</b></gold></center>"
     - "%unlocks_summary%"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</dark_gray>"
-  level-up-unlocks-summary: "<center><green>Nuevos límites de encantamiento y habilidades disponibles</green></center>"
+  level-up-unlocks-summary: "<center><green>¡La progresión de tu pico ha aumentado!</green></center>"
   level-up-title: "<gradient:#00FF88:#00E5FF><b>¡NIVEL %level%!</b></gradient>"
-  level-up-subtitle: "<gray>¡Nuevos sockets y habilidades desbloqueados!</gray>"
+  level-up-subtitle: "<gray>Tu pico se ha vuelto más fuerte.</gray>"
   level-up-actionbar: "<green>+1 Nivel de Pico <dark_gray>(<yellow>Nv.%level%<dark_gray>)</green>"
 
   # Enchantment Upgrades
@@ -50,10 +52,3 @@ messages:
   limitbreak-book-received: "<green>¡Has recibido <yellow>%amount%x</yellow> <gradient:#FF0055:#FFAA00><b>Libro LimitBreak: %enchant% +1</b></gradient>!</green>"
   limitbreak-universal-received: "<green>¡Has recibido <yellow>%amount%x</yellow> <gradient:#FF00FF:#00FFFF><b>✦ SÚPER LIBRO UNIVERSAL +1 ✦</b></gradient>!</green>"
   limitbreak-book-given: "<green>Has entregado <yellow>%amount%x</yellow> libro LimitBreak (<aqua>%enchant%</aqua>) a <yellow>%player%</yellow>.</green>"
-
-  # Perks
-  perk-unlocked: "<green>¡Has desbloqueado el perk <gold>%perk%</gold>!</green>"
-  perk-equipped: "<green>Perk <gold>%perk%</gold> equipado exitosamente.</green>"
-  perk-unequipped: "<yellow>Perk <gold>%perk%</gold> desequipado.</yellow>"
-  perk-locked: "<red>Este perk requiere que tu pico sea <yellow>Nivel %required%</yellow>.</red>"
-  perk-max-slots: "<red>Has alcanzado el límite máximo de perks equipados para tu nivel.</red>"

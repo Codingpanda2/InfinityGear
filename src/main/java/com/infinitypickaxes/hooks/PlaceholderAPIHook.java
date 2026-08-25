@@ -3,6 +3,7 @@ package com.infinitypickaxes.hooks;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
+import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitypickaxes.utils.ProgressBarUtil;
 import com.infinitypickaxes.utils.TextUtil;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
@@ -46,7 +47,8 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
         Player player = offlinePlayer.getPlayer();
         if (player == null) return "";
 
-        InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(player);
+        // Placeholder resolution must be read-only; never auto-convert a vanilla item.
+        InfinityPickaxe pickaxe = PickaxeData.fromItemStack(player.getInventory().getItemInMainHand());
         if (pickaxe == null) {
             if (params.equalsIgnoreCase("is_holding")) return "false";
             return "0";
@@ -96,19 +98,10 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                 return String.format("%,d", pickaxe.getBlocksMined());
             }
             case "enchant_count" -> {
-                return String.valueOf(pickaxe.getEnchantments().size());
+                return String.valueOf(plugin.getEnchantManager().countUsedSockets(pickaxe));
             }
             case "max_sockets" -> {
                 return String.valueOf(config.getInt("settings.max-sockets", 10));
-            }
-            case "perk_count" -> {
-                return String.valueOf(pickaxe.getEquippedPerks().size());
-            }
-            case "max_perks" -> {
-                return String.valueOf(plugin.getLevelManager().getMaxPerksForLevel(pickaxe.getLevel()));
-            }
-            case "owner" -> {
-                return pickaxe.getOwnerName();
             }
         }
 
@@ -127,12 +120,6 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
             String key = (socket != null) ? socket.getKeyString() : "minecraft:" + enchantId;
             int lvl = pickaxe.getEnchantmentLevel(key);
             return (lvl > 0) ? TextUtil.toRoman(lvl) : "0";
-        }
-
-        // Check dynamic perk status: %infinitypickaxes_has_perk_<perk_id>%
-        if (lower.startsWith("has_perk_")) {
-            String perkId = lower.substring("has_perk_".length());
-            return String.valueOf(pickaxe.hasPerk(perkId));
         }
 
         return null;

@@ -2,6 +2,8 @@ package com.infinitypickaxes.commands;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
+import com.infinitypickaxes.core.duplicate.DuplicateRecord;
+import com.infinitypickaxes.core.duplicate.DuplicateScanResult;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.gui.MainPickaxeGui;
 import org.bukkit.Bukkit;
@@ -19,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
@@ -32,6 +35,10 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
             if (sender instanceof Player player) {
+                if (!player.hasPermission("infinitypickaxes.use")) {
+                    plugin.getMessageManager().sendMessage(player, "messages.no-permission");
+                    return true;
+                }
                 InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(player);
                 if (pickaxe != null) {
                     new MainPickaxeGui(plugin, player, pickaxe).open();
@@ -76,7 +83,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                         level = Integer.parseInt(args[2]);
                     } catch (NumberFormatException ignored) {}
                 }
-                ItemStack item = plugin.getPickaxeManager().createPickaxe(target.getUniqueId(), target.getName(), level);
+                ItemStack item = plugin.getPickaxeManager().createPickaxe(level);
                 target.getInventory().addItem(item);
 
                 plugin.getMessageManager().sendMessage(sender, "messages.pickaxe-given",
@@ -154,6 +161,10 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     plugin.getMessageManager().sendMessage(sender, "messages.player-only");
                     return true;
                 }
+                if (!player.hasPermission("infinitypickaxes.use")) {
+                    plugin.getMessageManager().sendMessage(player, "messages.no-permission");
+                    return true;
+                }
                 InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(player);
                 if (pickaxe == null) {
                     plugin.getMessageManager().sendMessage(player, "messages.must-hold-pickaxe");
@@ -161,6 +172,8 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 }
                 new MainPickaxeGui(plugin, player, pickaxe).open();
             }
+
+            case "duplicate", "duplicates" -> handleDuplicate(sender, label, args);
 
             case "setlevel" -> {
                 if (!sender.hasPermission("infinitypickaxes.admin")) {
@@ -238,8 +251,96 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§e/pickaxe setlevel <player> <level> §7- Sets pickaxe level.");
             sender.sendMessage("§e/pickaxe addxp <player> <amount> §7- Adds XP to pickaxe.");
             sender.sendMessage("§e/pickaxe reload §7- Reloads configurations and menus.");
+            sender.sendMessage("§e/pickaxe duplicate §7- Duplicate detection and quarantine administration.");
         }
         sender.sendMessage("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+    }
+
+    private void handleDuplicate(CommandSender sender, String label, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage("§e/" + label + " duplicate <list|inspect|scan|quarantine|revoke|resolve|rekey-held>");
+            return;
+        }
+
+        try {
+            switch (args[1].toLowerCase()) {
+                case "list" -> {
+                    require(sender, "infinitypickaxes.admin.duplicates.view");
+                    List<DuplicateRecord> records = plugin.getDuplicateService().listRestricted();
+                    sender.sendMessage("§6Restricted pickaxe UUIDs: §f" + records.size());
+                    records.stream().limit(20).forEach(record -> sender.sendMessage(
+                            "§8- §f" + record.uuid() + " §7[§c" + record.status() + "§7] §8" + record.reason()));
+                }
+                case "inspect" -> {
+                    require(sender, "infinitypickaxes.admin.duplicates.view");
+                    UUID uuid = requireUuid(args, 2);
+                    DuplicateRecord record = plugin.getDuplicateService().find(uuid).orElse(null);
+                    if (record == null) {
+                        sender.sendMessage("§aThat UUID has no duplicate restriction.");
+                    } else {
+                        sender.sendMessage("§6UUID: §f" + record.uuid());
+                        sender.sendMessage("§6Status: §f" + record.status());
+                        sender.sendMessage("§6Reason: §f" + record.reason());
+                        sender.sendMessage("§6Last update: §f" + record.lastUpdated());
+                        sender.sendMessage("§6Replacement: §f" + (record.replacementUuid() == null ? "none" : record.replacementUuid()));
+                    }
+                }
+                case "scan" -> {
+                    require(sender, "infinitypickaxes.admin.duplicates.scan");
+                    DuplicateScanResult result;
+                    if (args.length >= 3 && !args[2].equalsIgnoreCase("online")) {
+                        Player target = Bukkit.getPlayer(args[2]);
+                        if (target == null) throw new IllegalArgumentException("Player is not online.");
+                        result = plugin.getDuplicateService().scanPlayer(target, sender.getName());
+                    } else {
+                        result = plugin.getDuplicateService().scanOnline(sender.getName());
+                    }
+                    sender.sendMessage("§aScanned §f" + result.itemsScanned() + "§a pickaxes; detected §f"
+                            + result.duplicatesDetected().size() + "§a compromised UUID(s).");
+                }
+                case "quarantine" -> {
+                    require(sender, "infinitypickaxes.admin.duplicates.quarantine");
+                    UUID uuid = requireUuid(args, 2);
+                    plugin.getDuplicateService().quarantine(uuid, "Manual administrator quarantine", sender.getName());
+                    sender.sendMessage("§eQuarantined pickaxe UUID §f" + uuid);
+                }
+                case "revoke" -> {
+                    require(sender, "infinitypickaxes.admin.duplicates.resolve");
+                    UUID uuid = requireUuid(args, 2);
+                    plugin.getDuplicateService().revoke(uuid, "Manual administrator revocation", sender.getName());
+                    sender.sendMessage("§cPermanently revoked pickaxe UUID §f" + uuid);
+                }
+                case "resolve", "rekey-held" -> {
+                    require(sender, "infinitypickaxes.admin.duplicates.resolve");
+                    if (!(sender instanceof Player player)) throw new IllegalArgumentException("A player must hold the canonical pickaxe.");
+                    if (args[1].equalsIgnoreCase("resolve")
+                            && (args.length < 3 || !args[2].equalsIgnoreCase("keep-held"))) {
+                        throw new IllegalArgumentException("Use /" + label + " duplicate resolve keep-held while holding the canonical item.");
+                    }
+                    UUID replacement = plugin.getDuplicateService().rekeyHeld(player);
+                    sender.sendMessage("§aThe held pickaxe is now canonical with UUID §f" + replacement
+                            + "§a. Its previous UUID is permanently revoked.");
+                }
+                default -> sender.sendMessage("§cUnknown duplicate subcommand.");
+            }
+        } catch (SecurityException exception) {
+            plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
+        } catch (Exception exception) {
+            sender.sendMessage("§c" + exception.getMessage());
+        }
+    }
+
+    private void require(CommandSender sender, String permission) {
+        if (!sender.hasPermission(permission)) throw new SecurityException(permission);
+    }
+
+    private UUID requireUuid(String[] args, int index) {
+        if (args.length <= index) throw new IllegalArgumentException("A pickaxe UUID is required.");
+        try {
+            return UUID.fromString(args[index]);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Invalid pickaxe UUID.");
+        }
     }
 
     @Override
@@ -248,8 +349,21 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             List<String> list = new ArrayList<>(Arrays.asList("menu", "gui"));
             if (sender.hasPermission("infinitypickaxes.admin")) {
                 list.addAll(Arrays.asList("give", "book", "reload", "setlevel", "addxp"));
+                list.add("duplicate");
             }
             return list.stream().filter(s -> s.startsWith(args[0].toLowerCase())).collect(Collectors.toList());
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("duplicate")) {
+            return Arrays.asList("list", "inspect", "scan", "quarantine", "revoke", "resolve", "rekey-held");
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("duplicate") && args[1].equalsIgnoreCase("scan")) {
+            List<String> targets = new ArrayList<>();
+            targets.add("online");
+            Bukkit.getOnlinePlayers().forEach(player -> targets.add(player.getName()));
+            return targets;
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("duplicate") && args[1].equalsIgnoreCase("resolve")) {
+            return List.of("keep-held");
         }
         if (args.length == 2) {
             if (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("setlevel") || args[0].equalsIgnoreCase("addxp")) {

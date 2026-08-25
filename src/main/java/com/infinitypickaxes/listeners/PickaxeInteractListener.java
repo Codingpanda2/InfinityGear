@@ -26,11 +26,12 @@ public class PickaxeInteractListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         Player player = event.getPlayer();
+        if (!player.hasPermission("infinitypickaxes.use")) return;
         if (!player.isSneaking()) return;
 
         ItemStack item = player.getInventory().getItemInMainHand();
@@ -72,6 +73,7 @@ public class PickaxeInteractListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryDragDrop(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (event.getClickedInventory() != event.getView().getBottomInventory()) return;
 
         ItemStack cursor = event.getCursor();
         ItemStack current = event.getCurrentItem();
@@ -85,6 +87,11 @@ public class PickaxeInteractListener implements Listener {
         }
 
         if (!PickaxeData.isInfinityPickaxe(current)) {
+            return;
+        }
+        if (!plugin.getDuplicateService().isUsable(current)) {
+            event.setCancelled(true);
+            plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return;
         }
 

@@ -27,9 +27,6 @@ public class ConfigManager {
     private File enchantsFile;
     private FileConfiguration enchantsConfig;
 
-    private File perksFile;
-    private FileConfiguration perksConfig;
-
     private File blocksFile;
     private FileConfiguration blocksConfig;
 
@@ -38,9 +35,6 @@ public class ConfigManager {
 
     private File enchantsMenuFile;
     private FileConfiguration enchantsMenuConfig;
-
-    private File perksMenuFile;
-    private FileConfiguration perksMenuConfig;
 
     private final Map<String, YamlConfiguration> localeConfigs = new HashMap<>();
     private String defaultLanguage = "en";
@@ -56,9 +50,6 @@ public class ConfigManager {
         this.config = YamlConfiguration.loadConfiguration(configFile);
         updateMissingKeys(configFile, "config.yml", (YamlConfiguration) this.config);
 
-        // Auto-migrate lore template if contains outdated Spanish/ownership keys
-        migratePickaxeLore();
-
         this.defaultLanguage = this.config.getString("language", "en").toLowerCase();
 
         // 2. Custom core files
@@ -68,13 +59,7 @@ public class ConfigManager {
 
         this.enchantsFile = loadAndSyncFile("enchants.yml");
         this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
-        migrateEnchantsFile();
         updateMissingKeys(enchantsFile, "enchants.yml", (YamlConfiguration) this.enchantsConfig);
-
-        this.perksFile = loadAndSyncFile("perks.yml");
-        this.perksConfig = YamlConfiguration.loadConfiguration(perksFile);
-        migratePerksFile();
-        updateMissingKeys(perksFile, "perks.yml", (YamlConfiguration) this.perksConfig);
 
         this.blocksFile = loadAndSyncFile("blocks.yml");
         this.blocksConfig = YamlConfiguration.loadConfiguration(blocksFile);
@@ -86,78 +71,10 @@ public class ConfigManager {
         // 4. Menus
         this.mainMenuFile = loadAndSyncFile("menus/main_menu.yml");
         this.mainMenuConfig = YamlConfiguration.loadConfiguration(mainMenuFile);
-        migrateMenuFile(mainMenuFile, "menus/main_menu.yml", (YamlConfiguration) this.mainMenuConfig, "Sockets de Encantamientos");
 
         this.enchantsMenuFile = loadAndSyncFile("menus/enchants_menu.yml");
         this.enchantsMenuConfig = YamlConfiguration.loadConfiguration(enchantsMenuFile);
-        migrateMenuFile(enchantsMenuFile, "menus/enchants_menu.yml", (YamlConfiguration) this.enchantsMenuConfig, "¿Cómo Mejorar Sockets?");
 
-        this.perksMenuFile = loadAndSyncFile("menus/perks_menu.yml");
-        this.perksMenuConfig = YamlConfiguration.loadConfiguration(perksMenuFile);
-        migrateMenuFile(perksMenuFile, "menus/perks_menu.yml", (YamlConfiguration) this.perksMenuConfig, "Ranuras de Habilidades");
-    }
-
-    private void migratePickaxeLore() {
-        List<String> currentLore = this.config.getStringList("pickaxe-lore.lore");
-        boolean needsMigration = false;
-        for (String line : currentLore) {
-            if (line.contains("Dueño") || line.contains("%player%") || line.contains("ENCANTAMIENTOS")
-                    || line.contains("PERKS ACTIVOS") || line.contains("Progreso XP:") || line.contains("Nivel del Pico")) {
-                needsMigration = true;
-                break;
-            }
-        }
-        if (needsMigration || currentLore.isEmpty()) {
-            List<String> newLore = Arrays.asList(
-                    "%enchants_list%",
-                    "<dark_gray>---------------------</dark_gray>",
-                    "<gray>Level: <gold><b>%level%</b></gold></gray>",
-                    "<gray>Progress: %xp_bar%</gray>",
-                    "<gray>Mined Blocks: <yellow>%blocks_mined%</yellow></gray>",
-                    "<gray>Perks: <gold>%perks_count%</gold><gray>/</gray><gold>%max_perks%</gold></gray>"
-            );
-            this.config.set("pickaxe-lore.lore", newLore);
-            try {
-                ((YamlConfiguration) this.config).save(configFile);
-                plugin.getLogger().info("Pickaxe lore template migrated automatically to new clean English layout.");
-            } catch (Exception ignored) {}
-        }
-    }
-
-    private void migrateEnchantsFile() {
-        String effName = this.enchantsConfig.getString("enchants.efficiency.display-name", "");
-        if (effName.contains("Eficiencia") || effName.contains("Fortuna")) {
-            overwriteFromResource(enchantsFile, "enchants.yml");
-            this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
-            plugin.getLogger().info("enchants.yml migrated to standard English.");
-        }
-    }
-
-    private void migratePerksFile() {
-        String pName = this.perksConfig.getString("perks.haste_surge.display-name", "");
-        if (pName.contains("Furia de Prisa") || pName.contains("Fundición")) {
-            overwriteFromResource(perksFile, "perks.yml");
-            this.perksConfig = YamlConfiguration.loadConfiguration(perksFile);
-            plugin.getLogger().info("perks.yml migrated to standard English.");
-        }
-    }
-
-    private void migrateMenuFile(File file, String resourcePath, YamlConfiguration menuYaml, String spanishKeyword) {
-        String raw = menuYaml.saveToString();
-        if (raw.contains(spanishKeyword)) {
-            overwriteFromResource(file, resourcePath);
-            plugin.getLogger().info(resourcePath + " migrated to standard English.");
-        }
-    }
-
-    private void overwriteFromResource(File targetFile, String resourcePath) {
-        try (InputStream in = plugin.getResource(resourcePath)) {
-            if (in == null) return;
-            try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                YamlConfiguration def = YamlConfiguration.loadConfiguration(reader);
-                def.save(targetFile);
-            }
-        } catch (Exception ignored) {}
     }
 
     private void loadLocales() {
@@ -245,10 +162,6 @@ public class ConfigManager {
         return enchantsConfig;
     }
 
-    public FileConfiguration getPerksConfig() {
-        return perksConfig;
-    }
-
     public FileConfiguration getBlocksConfig() {
         return blocksConfig;
     }
@@ -273,10 +186,6 @@ public class ConfigManager {
 
     public FileConfiguration getEnchantsMenuConfig() {
         return enchantsMenuConfig;
-    }
-
-    public FileConfiguration getPerksMenuConfig() {
-        return perksMenuConfig;
     }
 
     public String getCurrentLanguage() {
