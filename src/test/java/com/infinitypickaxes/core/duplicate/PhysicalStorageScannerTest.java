@@ -11,8 +11,8 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.block.DecoratedPot;
-import org.bukkit.block.ChiseledBookshelf;
 import org.bukkit.block.DoubleChest;
+import org.bukkit.block.Shelf;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.minecart.HopperMinecart;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -68,7 +68,7 @@ class PhysicalStorageScannerTest {
         UUID pickaxeUuid = UUID.randomUUID();
 
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
-             MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
+                MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
             bukkit.when(Bukkit::getOnlinePlayers).thenReturn(List.of(firstPlayer, secondPlayer));
             bukkit.when(Bukkit::getWorlds).thenReturn(List.of());
             pickaxeData.when(() -> PickaxeData.getPickaxeUuid(pickaxe)).thenReturn(pickaxeUuid);
@@ -108,7 +108,7 @@ class PhysicalStorageScannerTest {
         when(retainedWrapper.getItem(0)).thenReturn(pickaxe);
 
         try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
-             MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
+                MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
             bukkit.when(Bukkit::getOnlinePlayers).thenReturn(List.of());
             bukkit.when(Bukkit::getWorlds).thenReturn(List.of());
             bukkit.when(() -> Bukkit.getWorld(worldUuid)).thenReturn(world);
@@ -159,14 +159,14 @@ class PhysicalStorageScannerTest {
     }
 
     @Test
-    void chiseledBookshelfIsPhysicalBlockStorage() {
+    void shelfIsPhysicalBlockStorage() {
         UUID worldUuid = UUID.randomUUID();
         World world = mock(World.class);
         when(world.getUID()).thenReturn(worldUuid);
-        ChiseledBookshelf bookshelf = blockStorage(ChiseledBookshelf.class, world, -2, 81, 14);
+        Shelf shelf = blockStorage(Shelf.class, world, -2, 81, 14);
 
         assertEquals("block:" + worldUuid + ":-2:81:14",
-                PhysicalStorageKey.from(bookshelf).orElseThrow().value());
+                PhysicalStorageKey.from(shelf).orElseThrow().value());
     }
 
     @Test
@@ -187,7 +187,7 @@ class PhysicalStorageScannerTest {
         DecoratedPot pot = mock(DecoratedPot.class);
         DecoratedPotInventory potInventory = mock(DecoratedPotInventory.class);
         when(pot.getInventory()).thenReturn(potInventory);
-        when(potInventory.getContents()).thenReturn(new ItemStack[]{nestedPickaxe});
+        when(potInventory.getContents()).thenReturn(new ItemStack[] { nestedPickaxe });
         BlockStateMeta blockMeta = mock(BlockStateMeta.class);
         when(blockMeta.getBlockState()).thenReturn(pot);
         ItemStack potItem = mock(ItemStack.class);
@@ -227,7 +227,7 @@ class PhysicalStorageScannerTest {
 
     private static Inventory inventoryContaining(ItemStack item) {
         Inventory inventory = mock(Inventory.class);
-        when(inventory.getContents()).thenReturn(new ItemStack[]{item});
+        when(inventory.getContents()).thenReturn(new ItemStack[] { item });
         return inventory;
     }
 
