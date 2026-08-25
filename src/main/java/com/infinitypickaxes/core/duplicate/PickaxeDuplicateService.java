@@ -7,13 +7,10 @@ import com.infinitypickaxes.api.events.PickaxeQuarantinedEvent;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.block.Container;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Item;
-import org.bukkit.entity.ChestBoat;
-import org.bukkit.entity.ChestedHorse;
-import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -21,9 +18,8 @@ import org.bukkit.inventory.meta.BlockStateMeta;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +37,12 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         this.plugin = plugin;
         Path database = plugin.getDataFolder().toPath().resolve("duplicates.db");
         this.store = new DuplicateStore(database);
+        this.restricted.addAll(store.loadRestrictedUuids());
+    }
+
+    PickaxeDuplicateService(InfinityPickaxes plugin, DuplicateStore store) throws SQLException {
+        this.plugin = plugin;
+        this.store = store;
         this.restricted.addAll(store.loadRestrictedUuids());
     }
 
@@ -69,16 +71,21 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     }
 
     public DuplicateScanResult scanOnline(String actor) {
+        return scanOnline(actor, List.of());
+    }
+
+    public DuplicateScanResult scanOnline(String actor, Collection<Inventory> retainedStorages) {
         DuplicateObservations<ItemStack> sightings = new DuplicateObservations<>();
-        Set<Inventory> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<PhysicalStorageKey> visitedStorages = new HashSet<>();
 
         for (Player player : Bukkit.getOnlinePlayers()) {
-            collectInventory(player.getInventory(), "player:" + player.getName(), visited, sightings);
-            collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), visited, sightings);
+            collectInventory(player.getInventory(), "player:" + player.getName(), sightings);
+            collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), sightings);
             Inventory top = player.getOpenInventory().getTopInventory();
-            if (isPhysicalStorageInventory(top)) {
-                collectInventory(top, "open-container:" + player.getName(), visited, sightings);
-            }
+            collectPhysicalInventory(top, "open-container:" + player.getName(), visitedStorages, sightings);
+        }
+        for (Inventory retained : retainedStorages) {
+            collectPhysicalInventory(retained, "retained-open-container", visitedStorages, sightings);
         }
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (Item entity : world.getEntitiesByClass(Item.class)) {
@@ -91,9 +98,8 @@ public final class PickaxeDuplicateService implements AutoCloseable {
 
     public DuplicateScanResult scanPlayer(Player player, String actor) {
         DuplicateObservations<ItemStack> sightings = new DuplicateObservations<>();
-        Set<Inventory> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-        collectInventory(player.getInventory(), "player:" + player.getName(), visited, sightings);
-        collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), visited, sightings);
+        collectInventory(player.getInventory(), "player:" + player.getName(), sightings);
+        collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), sightings);
         return quarantineDuplicates(sightings, actor);
     }
 
@@ -140,8 +146,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     }
 
     public boolean isPhysicalStorageInventory(Inventory inventory) {
-        if (inventory == null) return false;
-        return isPhysicalStorageHolder(inventory.getHolder());
+        return PhysicalStorageKey.from(inventory).isPresent();
     }
 
     public boolean containsInfinityPickaxe(Inventory inventory) {
@@ -153,11 +158,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     }
 
     static boolean isPhysicalStorageHolder(InventoryHolder holder) {
-        return holder instanceof Container
-                || holder instanceof DoubleChest
-                || holder instanceof StorageMinecart
-                || holder instanceof ChestedHorse
-                || holder instanceof ChestBoat;
+        return PhysicalStorageKey.from(holder).isPresent();
     }
 
     static void validateRekeyAmount(int amount) {
@@ -167,24 +168,33 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     }
 
     private boolean containsInfinityPickaxe(ItemStack item, int depth) {
-        if (item == null || item.getType().isAir()) return false;
+        if (isEmpty(item)) return false;
         if (PickaxeData.isInfinityPickaxe(item)) return true;
 
-        int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()
-                .getInt("duplicate-protection.container-recursion-depth", 3));
-        if (depth >= maxDepth || !(item.getItemMeta() instanceof BlockStateMeta blockMeta)
+        if (!(item.getItemMeta() instanceof BlockStateMeta blockMeta)
                 || !(blockMeta.getBlockState() instanceof Container container)) {
             return false;
         }
+        int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()
+                .getInt("duplicate-protection.container-recursion-depth", 3));
+        if (depth >= maxDepth) return false;
         for (ItemStack nested : container.getInventory().getContents()) {
             if (containsInfinityPickaxe(nested, depth + 1)) return true;
         }
         return false;
     }
 
-    private void collectInventory(Inventory inventory, String label, Set<Inventory> visited,
+    private void collectPhysicalInventory(Inventory inventory, String label,
+                                          Set<PhysicalStorageKey> visitedStorages,
+                                          DuplicateObservations<ItemStack> sightings) {
+        Optional<PhysicalStorageKey> key = PhysicalStorageKey.from(inventory);
+        if (key.isEmpty() || !visitedStorages.add(key.get())) return;
+        collectInventory(inventory, label + ":storage=" + key.get().value(), sightings);
+    }
+
+    private void collectInventory(Inventory inventory, String label,
                                   DuplicateObservations<ItemStack> sightings) {
-        if (inventory == null || !visited.add(inventory)) return;
+        if (inventory == null) return;
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             ItemStack item = inventory.getItem(slot);
             collectItem(item, label + ":slot=" + slot, 0, sightings);
@@ -193,7 +203,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
 
     private void collectItem(ItemStack item, String location, int depth,
                              DuplicateObservations<ItemStack> sightings) {
-        if (item == null || item.getType().isAir()) return;
+        if (isEmpty(item)) return;
         UUID uuid = PickaxeData.getPickaxeUuid(item);
         if (uuid != null) {
             int physicalCopies = Math.max(1, item.getAmount());
@@ -201,12 +211,13 @@ public final class PickaxeDuplicateService implements AutoCloseable {
             if (isRestricted(uuid)) markRestricted(item);
         }
 
-        int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()
-                .getInt("duplicate-protection.container-recursion-depth", 3));
-        if (depth >= maxDepth || !(item.getItemMeta() instanceof BlockStateMeta blockMeta)
+        if (!(item.getItemMeta() instanceof BlockStateMeta blockMeta)
                 || !(blockMeta.getBlockState() instanceof Container container)) {
             return;
         }
+        int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()
+                .getInt("duplicate-protection.container-recursion-depth", 3));
+        if (depth >= maxDepth) return;
 
         ItemStack[] nested = container.getInventory().getContents();
         for (int slot = 0; slot < nested.length; slot++) {
@@ -242,11 +253,13 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     }
 
     private void markVisibleCopies(UUID uuid) {
+        Set<PhysicalStorageKey> visitedStorages = new HashSet<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             markInventoryCopies(player.getInventory(), uuid);
             markInventoryCopies(player.getEnderChest(), uuid);
             Inventory top = player.getOpenInventory().getTopInventory();
-            if (isPhysicalStorageInventory(top)) markInventoryCopies(top, uuid);
+            PhysicalStorageKey.from(top).filter(visitedStorages::add)
+                    .ifPresent(ignored -> markInventoryCopies(top, uuid));
         }
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (Item entity : world.getEntitiesByClass(Item.class)) {
@@ -269,6 +282,12 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         if (pickaxe != null && plugin.getPickaxeManager() != null) {
             plugin.getPickaxeManager().syncPickaxe(pickaxe);
         }
+    }
+
+    private static boolean isEmpty(ItemStack item) {
+        if (item == null || item.getAmount() <= 0) return true;
+        Material type = item.getType();
+        return type == Material.AIR || type == Material.CAVE_AIR || type == Material.VOID_AIR;
     }
 
     @Override

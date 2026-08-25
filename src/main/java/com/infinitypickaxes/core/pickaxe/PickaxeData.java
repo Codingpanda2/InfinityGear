@@ -1,6 +1,5 @@
 package com.infinitypickaxes.core.pickaxe;
 
-import com.infinitypickaxes.InfinityPickaxes;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -19,13 +18,13 @@ public final class PickaxeData {
     public static final NamespacedKey KEY_QUARANTINED;
 
     static {
-        InfinityPickaxes plugin = InfinityPickaxes.getInstance();
-        KEY_IS_INFINITY = new NamespacedKey(plugin, "is_infinity_pickaxe");
-        KEY_UUID = new NamespacedKey(plugin, "pickaxe_uuid");
-        KEY_LEVEL = new NamespacedKey(plugin, "level");
-        KEY_XP = new NamespacedKey(plugin, "xp");
-        KEY_BLOCKS_MINED = new NamespacedKey(plugin, "blocks_mined");
-        KEY_QUARANTINED = new NamespacedKey(plugin, "quarantined");
+        String namespace = "infinitypickaxes";
+        KEY_IS_INFINITY = new NamespacedKey(namespace, "is_infinity_pickaxe");
+        KEY_UUID = new NamespacedKey(namespace, "pickaxe_uuid");
+        KEY_LEVEL = new NamespacedKey(namespace, "level");
+        KEY_XP = new NamespacedKey(namespace, "xp");
+        KEY_BLOCKS_MINED = new NamespacedKey(namespace, "blocks_mined");
+        KEY_QUARANTINED = new NamespacedKey(namespace, "quarantined");
     }
 
     private PickaxeData() {}

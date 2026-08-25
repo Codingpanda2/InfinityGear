@@ -1,6 +1,7 @@
 package com.infinitypickaxes.listeners;
 
 import com.infinitypickaxes.InfinityPickaxes;
+import com.infinitypickaxes.core.duplicate.PhysicalStorageKey;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
@@ -13,9 +14,14 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 public final class DuplicateDetectionListener implements Listener {
     private final InfinityPickaxes plugin;
     private final ScanDebouncer debouncer = new ScanDebouncer();
+    private final Map<PhysicalStorageKey, org.bukkit.inventory.Inventory> pendingStorages = new LinkedHashMap<>();
     private BukkitTask periodicScan;
     private BukkitTask pendingScan;
 
@@ -33,6 +39,8 @@ public final class DuplicateDetectionListener implements Listener {
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (plugin.getDuplicateService().isPhysicalStorageInventory(event.getInventory())
                 && plugin.getDuplicateService().containsInfinityPickaxe(event.getInventory())) {
+            PhysicalStorageKey.from(event.getInventory())
+                    .ifPresent(key -> pendingStorages.putIfAbsent(key, event.getInventory()));
             scheduleScan("automatic:storage-open:" + event.getPlayer().getName());
         }
     }
@@ -66,8 +74,10 @@ public final class DuplicateDetectionListener implements Listener {
                 .getLong("duplicate-protection.debounce-ticks", 10L));
         pendingScan = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             String scanActor = debouncer.consume();
+            var retainedStorages = new ArrayList<>(pendingStorages.values());
+            pendingStorages.clear();
             pendingScan = null;
-            plugin.getDuplicateService().scanOnline(scanActor);
+            plugin.getDuplicateService().scanOnline(scanActor, retainedStorages);
         }, delay);
     }
 
@@ -77,6 +87,7 @@ public final class DuplicateDetectionListener implements Listener {
         periodicScan = null;
         pendingScan = null;
         debouncer.clear();
+        pendingStorages.clear();
     }
 
     public void reload() {
