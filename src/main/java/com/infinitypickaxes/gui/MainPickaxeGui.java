@@ -110,7 +110,7 @@ public class MainPickaxeGui extends CustomGui {
                 config.getString("progress-bar.uncompleted-color", "<#555555>")
         );
 
-        int maxSockets = config.getInt("settings.max-sockets", 10);
+        int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel());
         for (String line : lines) {
             result.add(line
                     .replace("%player%", player.getName())

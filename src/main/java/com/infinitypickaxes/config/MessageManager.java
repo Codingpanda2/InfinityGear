@@ -113,7 +113,30 @@ public class MessageManager {
 
         // 1. Chat Message
         List<String> chatLines = config.getStringList("messages.level-up-chat");
-        String summary = config.getString("messages.level-up-unlocks-summary", "");
+        List<String> unlocks = new java.util.ArrayList<>();
+        int oldSockets = plugin.getEnchantManager().getSocketLimit(oldLevel);
+        int newSockets = plugin.getEnchantManager().getSocketLimit(newLevel);
+        if (newSockets > oldSockets) {
+            unlocks.add(config.getString("messages.level-up-sockets-unlocked",
+                            "<center><green>Managed enchantment sockets increased to <yellow>%sockets%</yellow>.</green></center>")
+                    .replace("%sockets%", String.valueOf(newSockets)));
+        }
+        int limitBreakUnlock = plugin.getLimitBreakManager().getUnlockLevel();
+        if (oldLevel < limitBreakUnlock && newLevel >= limitBreakUnlock) {
+            unlocks.add(config.getString("messages.level-up-limitbreak-unlocked",
+                    "<center><light_purple>LimitBreak is now unlocked.</light_purple></center>"));
+        } else {
+            int oldExtra = plugin.getLimitBreakManager().getMaxExtraLevels(oldLevel);
+            int newExtra = plugin.getLimitBreakManager().getMaxExtraLevels(newLevel);
+            if (newExtra > oldExtra) {
+                unlocks.add(config.getString("messages.level-up-limitbreak-increased",
+                                "<center><light_purple>LimitBreak allowance increased to +%extra%.</light_purple></center>")
+                        .replace("%extra%", String.valueOf(newExtra)));
+            }
+        }
+        String summary = unlocks.isEmpty()
+                ? config.getString("messages.level-up-unlocks-summary", "")
+                : String.join("\n", unlocks);
         for (String line : chatLines) {
             String processed = line.replace("%level%", String.valueOf(newLevel))
                                    .replace("%old_level%", String.valueOf(oldLevel))

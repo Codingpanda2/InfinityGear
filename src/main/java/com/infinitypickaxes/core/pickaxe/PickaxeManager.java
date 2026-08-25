@@ -163,7 +163,7 @@ public class PickaxeManager {
             finalLore.add(TextUtil.parse("<yellow>Contact an administrator to resolve this item.</yellow>"));
         }
 
-        int maxSockets = config.getInt("settings.max-sockets", 10);
+        int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel());
         for (String template : loreTemplates) {
             if (template.contains("%enchants_list%")) {
                 continue; // Legacy token: EcoEnchants owns and renders this section.

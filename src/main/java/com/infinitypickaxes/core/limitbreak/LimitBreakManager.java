@@ -41,7 +41,15 @@ public class LimitBreakManager {
     }
 
     public int getMaxExtraLevels() {
-        return getConfig().getInt("settings.max-extra-levels", 5);
+        return plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
+    }
+
+    public int getMaxExtraLevels(int pickaxeLevel) {
+        return plugin.getEnchantManager().getProgressionPolicy().getLimitBreakExtraLevels(pickaxeLevel);
+    }
+
+    public int getUnlockLevel() {
+        return plugin.getEnchantManager().getProgressionPolicy().getLimitBreakUnlockLevel();
     }
 
     /**
@@ -167,6 +175,7 @@ public class LimitBreakManager {
             plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return false;
         }
+        if (!socket.isEnabled()) return false;
 
         if (!isLimitBreakBook(bookItem)) {
             return false;
@@ -187,7 +196,16 @@ public class LimitBreakManager {
             }
         }
 
-        // 2. Check if socket is unlocked by pickaxe level
+        // 2. LimitBreak itself is unlocked by pickaxe progression.
+        if (pickaxe.getLevel() < getUnlockLevel()) {
+            plugin.getMessageManager().sendMessage(player, "messages.limitbreak-locked-pickaxe-level",
+                    "%required%", String.valueOf(getUnlockLevel()),
+                    "%enchant%", socket.getDisplayName());
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
+            return false;
+        }
+
+        // 3. The target enchantment's own unlock policy remains authoritative.
         if (!socket.isUnlocked(pickaxe.getLevel())) {
             plugin.getMessageManager().sendMessage(player, "messages.limitbreak-locked-pickaxe-level",
                     "%required%", String.valueOf(socket.getUnlockPickaxeLevel()),
@@ -197,17 +215,14 @@ public class LimitBreakManager {
         }
 
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
-        if (currentLvl == 0 && !plugin.getEnchantManager().getEcoHook().canApply(
-                pickaxe.getItemStack(), plugin.getEnchantManager().getEnchantment(socket.getKeyString()))) {
-            plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
-                    "%enchant%", socket.getDisplayName());
+        if (currentLvl == 0 && !plugin.getEnchantManager().canIntroduceEnchantment(player, pickaxe, socket)) {
             return false;
         }
         int baseMax = socket.getMaxLevel();
-        int maxExtra = getMaxExtraLevels();
+        int maxExtra = getMaxExtraLevels(pickaxe.getLevel());
         int absoluteMax = baseMax + maxExtra;
 
-        // 3. Check absolute LimitBreak ceiling
+        // 4. Check the pickaxe-level LimitBreak ceiling.
         if (currentLvl >= absoluteMax) {
             plugin.getMessageManager().sendMessage(player, "messages.limitbreak-max-reached",
                     "%enchant%", socket.getDisplayName(),
@@ -219,25 +234,25 @@ public class LimitBreakManager {
 
         int nextLvl = currentLvl + 1;
 
-        // 4. Call Bukkit API Event
+        // 5. Call Bukkit API Event
         LimitBreakApplyEvent event = new LimitBreakApplyEvent(player, pickaxe, socket, bookItem, universal, currentLvl, nextLvl);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
             return false;
         }
 
-        // 5. Consume 1 book from cursor/stack
+        // 6. Consume 1 book from cursor/stack
         if (bookItem.getAmount() > 1) {
             bookItem.setAmount(bookItem.getAmount() - 1);
         } else {
             bookItem.setAmount(0);
         }
 
-        // 6. Update pickaxe
+        // 7. Update pickaxe
         pickaxe.setEnchantmentLevel(socket.getKeyString(), nextLvl);
         pickaxe.saveAndSync();
 
-        // 7. Visual & Audio feedback
+        // 8. Visual & Audio feedback
         FileConfiguration config = getConfig();
         if (config.getBoolean("settings.sound.enabled", true)) {
             String sndName = config.getString("settings.sound.sound", "BLOCK_ENCHANTMENT_TABLE_USE");
@@ -256,7 +271,7 @@ public class LimitBreakManager {
             } catch (IllegalArgumentException ignored) {}
         }
 
-        // 8. Send localized message
+        // 9. Send localized message
         int extraLvl = Math.max(0, nextLvl - baseMax);
         String extraIndicator = (extraLvl > 0) ? " <light_purple>(LimitBreak +" + extraLvl + ")</light_purple>" : "";
 

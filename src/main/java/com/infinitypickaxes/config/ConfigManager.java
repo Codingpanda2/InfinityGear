@@ -162,6 +162,15 @@ public class ConfigManager {
         return enchantsConfig;
     }
 
+    public void saveEnchantsConfig() {
+        if (enchantsConfig == null || enchantsFile == null) return;
+        try {
+            enchantsConfig.save(enchantsFile);
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.SEVERE, "Could not save generated enchants.yml policy", exception);
+        }
+    }
+
     public FileConfiguration getBlocksConfig() {
         return blocksConfig;
     }

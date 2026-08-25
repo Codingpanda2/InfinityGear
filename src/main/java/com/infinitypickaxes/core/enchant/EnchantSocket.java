@@ -7,7 +7,10 @@ import org.bukkit.NamespacedKey;
 import java.util.Collections;
 import java.util.List;
 import java.util.NavigableMap;
+import java.util.Locale;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public class EnchantSocket {
 
@@ -23,8 +26,12 @@ public class EnchantSocket {
     private final NavigableMap<Integer, Integer> levelScaling;
     private final List<String> description;
     private final Integer customModelData;
+    private final Set<String> additionalConflicts;
 
-    public EnchantSocket(String id, String keyString, NamespacedKey namespacedKey, String displayName, Material icon, int slot, boolean enabled, int unlockPickaxeLevel, int maxLevel, NavigableMap<Integer, Integer> levelScaling, List<String> description, Integer customModelData) {
+    public EnchantSocket(String id, String keyString, NamespacedKey namespacedKey, String displayName,
+                         Material icon, int slot, boolean enabled, int unlockPickaxeLevel, int maxLevel,
+                         NavigableMap<Integer, Integer> levelScaling, List<String> description,
+                         Integer customModelData, Set<String> additionalConflicts) {
         this.id = id.toLowerCase();
         this.keyString = keyString != null ? keyString.toLowerCase() : "minecraft:" + this.id;
         this.namespacedKey = namespacedKey;
@@ -37,6 +44,10 @@ public class EnchantSocket {
         this.levelScaling = levelScaling != null ? new TreeMap<>(levelScaling) : new TreeMap<>();
         this.description = description != null ? description : Collections.emptyList();
         this.customModelData = customModelData;
+        this.additionalConflicts = additionalConflicts == null ? Set.of() : additionalConflicts.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     public String getId() {
@@ -89,6 +100,23 @@ public class EnchantSocket {
 
     public Integer getCustomModelData() {
         return customModelData;
+    }
+
+    public Set<String> getAdditionalConflicts() {
+        return additionalConflicts;
+    }
+
+    public boolean additionallyConflictsWith(EnchantSocket other) {
+        if (other == null) return false;
+        return additionallyConflictsWith(other.keyString);
+    }
+
+    public boolean additionallyConflictsWith(String enchantmentKey) {
+        if (enchantmentKey == null || enchantmentKey.isBlank()) return false;
+        String normalized = enchantmentKey.toLowerCase(Locale.ROOT);
+        String idOnly = normalized.contains(":")
+                ? normalized.substring(normalized.indexOf(':') + 1) : normalized;
+        return additionalConflicts.contains(normalized) || additionalConflicts.contains(idOnly);
     }
 
     public boolean isUnlocked(int pickaxeLevel) {

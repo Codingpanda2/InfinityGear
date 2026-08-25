@@ -24,8 +24,6 @@ settings:
   hide-flags: true
   # Max pickaxe level
   max-level: 100
-  # Default maximum sockets allowed at level 100
-  max-sockets: 10
 
 # Trigger to open the Pickaxe Menu
 interaction:
