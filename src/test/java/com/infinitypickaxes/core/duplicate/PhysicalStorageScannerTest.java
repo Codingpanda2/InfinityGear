@@ -11,8 +11,8 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.block.DecoratedPot;
+import org.bukkit.block.ChiseledBookshelf;
 import org.bukkit.block.DoubleChest;
-import org.bukkit.block.Shelf;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.minecart.HopperMinecart;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -159,14 +159,14 @@ class PhysicalStorageScannerTest {
     }
 
     @Test
-    void shelfIsPhysicalBlockStorage() {
+    void chiseledBookshelfIsPhysicalBlockStorage() {
         UUID worldUuid = UUID.randomUUID();
         World world = mock(World.class);
         when(world.getUID()).thenReturn(worldUuid);
-        Shelf shelf = blockStorage(Shelf.class, world, -2, 81, 14);
+        ChiseledBookshelf bookshelf = blockStorage(ChiseledBookshelf.class, world, -2, 81, 14);
 
         assertEquals("block:" + worldUuid + ":-2:81:14",
-                PhysicalStorageKey.from(shelf).orElseThrow().value());
+                PhysicalStorageKey.from(bookshelf).orElseThrow().value());
     }
 
     @Test

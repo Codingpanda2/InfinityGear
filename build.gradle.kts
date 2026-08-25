@@ -16,7 +16,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("com.willfp:EcoEnchants:2026.33")
     compileOnly("com.willfp:eco:2026.33")
     compileOnly("com.willfp:libreforge:2026.33")
@@ -29,18 +29,18 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.mockito:mockito-core:5.20.0")
     mockitoAgent("org.mockito:mockito-core:5.20.0") { isTransitive = false }
-    testImplementation("io.papermc.paper:paper-api:26.2.build.112-stable")
+    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     testImplementation("me.clip:placeholderapi:2.12.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
 }
 
 tasks.compileJava {
     options.encoding = "UTF-8"
-    options.release = 25
+    options.release = 21
 }
 
 tasks.processResources {
@@ -58,12 +58,9 @@ tasks.shadowJar {
     archiveClassifier = ""
     mergeServiceFiles()
 
-    // InfinityPickaxes is deployed exclusively to Linux servers. Keep SQLite's
-    // glibc and musl binaries, but do not ship native libraries for other OSes.
     exclude("org/sqlite/native/FreeBSD/**")
     exclude("org/sqlite/native/Linux-Android/**")
     exclude("org/sqlite/native/Mac/**")
-    exclude("org/sqlite/native/Windows/**")
 }
 
 tasks.jar {
