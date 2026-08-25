@@ -8,7 +8,7 @@ import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.block.Container;
+import io.papermc.paper.block.TileStateInventoryHolder;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Item;
 import org.bukkit.inventory.Inventory;
@@ -74,7 +74,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         return scanOnline(actor, List.of());
     }
 
-    public DuplicateScanResult scanOnline(String actor, Collection<Inventory> retainedStorages) {
+    public DuplicateScanResult scanOnline(String actor, Collection<PhysicalStorageKey> retainedStorages) {
         DuplicateObservations<ItemStack> sightings = new DuplicateObservations<>();
         Set<PhysicalStorageKey> visitedStorages = new HashSet<>();
 
@@ -84,8 +84,10 @@ public final class PickaxeDuplicateService implements AutoCloseable {
             Inventory top = player.getOpenInventory().getTopInventory();
             collectPhysicalInventory(top, "open-container:" + player.getName(), visitedStorages, sightings);
         }
-        for (Inventory retained : retainedStorages) {
-            collectPhysicalInventory(retained, "retained-open-container", visitedStorages, sightings);
+        for (PhysicalStorageKey retained : retainedStorages) {
+            if (!visitedStorages.add(retained)) continue;
+            retained.resolveInventory().ifPresent(inventory ->
+                    collectInventory(inventory, "retained-storage:" + retained.value(), sightings));
         }
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (Item entity : world.getEntitiesByClass(Item.class)) {
@@ -172,7 +174,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         if (PickaxeData.isInfinityPickaxe(item)) return true;
 
         if (!(item.getItemMeta() instanceof BlockStateMeta blockMeta)
-                || !(blockMeta.getBlockState() instanceof Container container)) {
+                || !(blockMeta.getBlockState() instanceof TileStateInventoryHolder container)) {
             return false;
         }
         int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()
@@ -212,7 +214,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         }
 
         if (!(item.getItemMeta() instanceof BlockStateMeta blockMeta)
-                || !(blockMeta.getBlockState() instanceof Container container)) {
+                || !(blockMeta.getBlockState() instanceof TileStateInventoryHolder container)) {
             return;
         }
         int maxDepth = Math.max(0, plugin.getConfigManager().getConfig()

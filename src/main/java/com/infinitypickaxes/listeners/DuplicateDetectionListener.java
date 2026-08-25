@@ -8,6 +8,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -15,13 +16,13 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public final class DuplicateDetectionListener implements Listener {
     private final InfinityPickaxes plugin;
     private final ScanDebouncer debouncer = new ScanDebouncer();
-    private final Map<PhysicalStorageKey, org.bukkit.inventory.Inventory> pendingStorages = new LinkedHashMap<>();
+    private final Set<PhysicalStorageKey> pendingStorages = new LinkedHashSet<>();
     private BukkitTask periodicScan;
     private BukkitTask pendingScan;
 
@@ -40,8 +41,17 @@ public final class DuplicateDetectionListener implements Listener {
         if (plugin.getDuplicateService().isPhysicalStorageInventory(event.getInventory())
                 && plugin.getDuplicateService().containsInfinityPickaxe(event.getInventory())) {
             PhysicalStorageKey.from(event.getInventory())
-                    .ifPresent(key -> pendingStorages.putIfAbsent(key, event.getInventory()));
+                    .ifPresent(pendingStorages::add);
             scheduleScan("automatic:storage-open:" + event.getPlayer().getName());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (plugin.getDuplicateService().isPhysicalStorageInventory(event.getInventory())
+                && plugin.getDuplicateService().containsInfinityPickaxe(event.getInventory())) {
+            PhysicalStorageKey.from(event.getInventory()).ifPresent(pendingStorages::add);
+            scheduleScan("automatic:storage-close:" + event.getPlayer().getName());
         }
     }
 
@@ -74,7 +84,7 @@ public final class DuplicateDetectionListener implements Listener {
                 .getLong("duplicate-protection.debounce-ticks", 10L));
         pendingScan = Bukkit.getScheduler().runTaskLater(plugin, () -> {
             String scanActor = debouncer.consume();
-            var retainedStorages = new ArrayList<>(pendingStorages.values());
+            var retainedStorages = new ArrayList<>(pendingStorages);
             pendingStorages.clear();
             pendingScan = null;
             plugin.getDuplicateService().scanOnline(scanActor, retainedStorages);
