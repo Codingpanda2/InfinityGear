@@ -24,6 +24,16 @@ class EcoEnchantsHookTest {
     }
 
     @Test
+    void universalTargetDoesNotDependOnItsLatePopulatedItemMatcher() {
+        EnchantmentTarget target = mock(EnchantmentTarget.class);
+        ItemStack probe = mock(ItemStack.class);
+        when(target.getID()).thenReturn("all");
+
+        assertTrue(EcoEnchantsHook.isPickaxeTarget(target, probe));
+        verify(target, never()).matches(probe);
+    }
+
+    @Test
     void customTargetCanStillMatchPickaxes() {
         EnchantmentTarget target = mock(EnchantmentTarget.class);
         ItemStack probe = mock(ItemStack.class);

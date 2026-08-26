@@ -49,16 +49,20 @@ public final class EcoEnchantsHook {
     }
 
     /**
-     * EcoEnchants declares pickaxe compatibility with the stable target ID
-     * "pickaxe". Prefer that identity over re-evaluating its item matcher;
-     * the matcher remains a fallback for custom targets that include pickaxes.
+     * EcoEnchants declares pickaxe compatibility with the stable target IDs
+     * "pickaxe" and "all". Prefer those identities over re-evaluating their
+     * item matchers; the matcher remains a fallback for custom targets that
+     * include pickaxes.
      */
     static boolean isPickaxeTarget(EnchantmentTarget target, ItemStack probe) {
         if (target == null) return false;
         String id = target.getID();
-        if (id != null && (id.equalsIgnoreCase("pickaxe")
-                || id.toLowerCase(Locale.ROOT).endsWith(":pickaxe"))) {
-            return true;
+        if (id != null) {
+            String normalized = id.toLowerCase(Locale.ROOT);
+            if (normalized.equals("pickaxe") || normalized.endsWith(":pickaxe")
+                    || normalized.equals("all") || normalized.endsWith(":all")) {
+                return true;
+            }
         }
         return probe != null && target.matches(probe);
     }
