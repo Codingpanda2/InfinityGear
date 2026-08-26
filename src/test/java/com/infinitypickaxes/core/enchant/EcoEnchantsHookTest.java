@@ -5,7 +5,6 @@ import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -13,18 +12,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EcoEnchantsHookTest {
-
-    @Test
-    void plainEcoDisplayNamesReceiveAnExplicitGrayBase() {
-        assertEquals("<gray>Xray<reset>",
-                EcoEnchantsHook.scopeEcoFormatting("<gray>Xray"));
-    }
-
-    @Test
-    void explicitEcoDisplayFormattingIsClosedBeforeGuiSuffixes() {
-        assertEquals("<gray><#0575E6>Xray<reset>",
-                EcoEnchantsHook.scopeEcoFormatting("<gray><#0575E6>Xray"));
-    }
 
     @Test
     void canonicalPickaxeTargetDoesNotDependOnItemMatcher() {

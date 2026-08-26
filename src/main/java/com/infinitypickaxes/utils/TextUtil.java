@@ -66,6 +66,28 @@ public final class TextUtil {
         }
     }
 
+    /**
+     * Parses a template while inserting an already-parsed component at each
+     * marker. Parsing each text segment independently prevents an open style
+     * in the replacement from bleeding into the surrounding template.
+     */
+    public static Component parseWithComponent(String template, String marker, Component replacement) {
+        if (template == null || template.isEmpty()) return Component.empty();
+        if (marker == null || marker.isEmpty() || !template.contains(marker)) return parse(template);
+        Component result = Component.empty();
+        int start = 0;
+        int markerIndex;
+        while ((markerIndex = template.indexOf(marker, start)) >= 0) {
+            if (markerIndex > start) {
+                result = result.append(parse(template.substring(start, markerIndex)));
+            }
+            result = result.append(replacement == null ? Component.empty() : replacement);
+            start = markerIndex + marker.length();
+        }
+        return start < template.length()
+                ? result.append(parse(template.substring(start))) : result;
+    }
+
     private static String convertLegacyCodes(String text) {
         return text.replaceAll("(?i)[&§]0", "<black>")
                    .replaceAll("(?i)[&§]1", "<dark_blue>")

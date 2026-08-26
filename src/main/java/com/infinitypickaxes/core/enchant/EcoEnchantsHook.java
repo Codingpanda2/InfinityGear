@@ -108,16 +108,10 @@ public final class EcoEnchantsHook {
     public String getEnchantmentDisplayName(Enchantment enchantment) {
         EcoEnchant ecoEnchant = findEcoEnchant(enchantment);
         if (ecoEnchant == null) return "";
-        // Use the enchantment's own configured name rather than EcoEnchants'
-        // type-formatted name. In particular, the stock "spell" type injects
-        // a gradient into Xray and Dynamite. Explicit formatting placed on the
-        // enchantment's display-name itself is still preserved.
-        return scopeEcoFormatting("<gray>" + ecoEnchant.getRawDisplayName());
-    }
-
-    static String scopeEcoFormatting(String formattedName) {
-        if (formattedName == null || formattedName.isBlank()) return "";
-        return formattedName + "<reset>";
+        // This is EcoEnchants' live type formatting: for example blue for
+        // spells and pink for special enchantments. The GUI parses this as an
+        // isolated component so its open style cannot bleed into our suffixes.
+        return EnchantmentFormattingKt.getFormattedName(ecoEnchant, 0);
     }
 
     public boolean canApply(ItemStack item, Enchantment enchantment) {
