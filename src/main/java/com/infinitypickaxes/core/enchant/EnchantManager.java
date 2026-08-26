@@ -13,6 +13,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.*;
 
@@ -47,10 +49,21 @@ public class EnchantManager {
         this.upgradeSoundVolume = (float) config.getDouble("settings.upgrade-sound.volume", 1.0);
         this.upgradeSoundPitch = (float) config.getDouble("settings.upgrade-sound.pitch", 1.1);
 
-        // EcoEnchants is the sole source of enchantment identity and metadata.
+        // EcoEnchants supplies custom enchantments. Fortune and Silk Touch are
+        // deliberately managed alongside them as vanilla socket exceptions.
         discoverAndRegisterEcoEnchants();
 
-        plugin.getLogger().info("Loaded " + socketsById.size() + " compatible enchantment sockets.");
+        long enabledSockets = socketsById.values().stream().filter(EnchantSocket::isEnabled).count();
+        plugin.getLogger().info("Loaded " + socketsById.size() + " compatible enchantment sockets ("
+                + enabledSockets + " enabled).");
+        if (socketsById.isEmpty() && ecoHook.isEcoEnchantsPresent()) {
+            plugin.getLogger().warning("EcoEnchants is enabled, but no pickaxe-compatible enchantments "
+                    + "were discovered. The enchantment menu will remain unavailable until EcoEnchants "
+                    + "has loaded its registry; run /ipickaxe reload afterward.");
+        } else if (!socketsById.isEmpty() && enabledSockets == 0) {
+            plugin.getLogger().warning("Every discovered managed enchantment is disabled in enchants.yml; "
+                    + "the enchantment menu has no available sockets.");
+        }
     }
 
     public void discoverAndRegisterEcoEnchants() {
@@ -66,7 +79,8 @@ public class EnchantManager {
             String id = ecoEnchant.getID().toLowerCase(Locale.ROOT);
             String path = "enchants." + id;
 
-            String displayName = ecoHook.getEnchantmentDisplayName(ench);
+            String displayName = ecoHook.getEnchantmentDisplayName(ench,
+                    policy.getString(path + ".display-color", "<gray>"));
             List<String> desc = ecoHook.getEnchantmentDescription(ench);
             int nativeMax = Math.max(1, ecoEnchant.getMaximumLevel());
             int maxLevel = effectiveMaximum(policy.get(path + ".max-level"), nativeMax, id);
@@ -105,6 +119,10 @@ public class EnchantManager {
         if (added > 0) {
             plugin.getLogger().info("Loaded " + added + " pickaxe enchantments from EcoEnchants.");
         }
+        registerVanillaSocket(policy, "fortune", "minecraft:fortune", "<gray>Fortune<reset>",
+                List.of("<gray>Increases the drops from certain blocks.</gray>"), true);
+        registerVanillaSocket(policy, "silk_touch", "minecraft:silk_touch", "<gray>Silk Touch<reset>",
+                List.of("<gray>Allows compatible blocks to drop themselves.</gray>"), false);
         validateAdditionalConflicts();
     }
 
@@ -130,10 +148,7 @@ public class EnchantManager {
         return progressionPolicy == null ? 0 : progressionPolicy.getSocketLimit(pickaxeLevel);
     }
 
-    /**
-     * Counts only managed EcoEnchants. Vanilla enchantments such as the baseline
-     * Efficiency enchantment are real item enchantments, but never consume sockets.
-     */
+    /** Counts every managed socket enchantment, including Fortune and Silk Touch. */
     public int countUsedSockets(InfinityPickaxe pickaxe) {
         if (pickaxe == null) return 0;
         int used = 0;
@@ -173,14 +188,20 @@ public class EnchantManager {
             boolean adminConflict = socket.additionallyConflictsWith(existingKey)
                     || (existingSocket != null
                     && existingSocket.additionallyConflictsWith(socket.getKeyString()));
-            if (adminConflict || ecoHook.conflictsWith(candidate, existing)) {
+            boolean nativeConflict = candidate != null && existing != null
+                    && (candidate.conflictsWith(existing) || existing.conflictsWith(candidate));
+            if (adminConflict || nativeConflict || ecoHook.conflictsWith(candidate, existing)) {
                 plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
                         "%enchant%", socket.getDisplayName());
                 return false;
             }
         }
 
-        if (!ecoHook.canApply(pickaxe.getItemStack(), candidate)) {
+        boolean ecoManaged = ecoHook.findEcoEnchant(candidate) != null;
+        boolean canApply = ecoManaged
+                ? ecoHook.canApply(pickaxe.getItemStack(), candidate)
+                : candidate != null && candidate.canEnchantItem(pickaxe.getItemStack());
+        if (!canApply) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-conflict",
                     "%enchant%", socket.getDisplayName());
             return false;
@@ -230,7 +251,10 @@ public class EnchantManager {
 
         // 4. Extract enchants from provided book item
         Map<String, Integer> bookEnchants = ecoHook.extractEnchantsFromBook(bookItem);
-        Integer bookLevel = bookEnchants.get(socket.getKeyString().toLowerCase());
+        Integer bookLevel = getVanillaOrStoredBookLevel(bookItem, socket);
+        if (bookLevel == null) {
+            bookLevel = bookEnchants.get(socket.getKeyString().toLowerCase());
+        }
 
         // Fallback check by socket ID if namespace wasn't matched
         if (bookLevel == null) {
@@ -282,6 +306,33 @@ public class EnchantManager {
         return true;
     }
 
+    public Integer getBookLevel(ItemStack bookItem, EnchantSocket socket) {
+        if (bookItem == null || socket == null) return null;
+        Integer direct = getVanillaOrStoredBookLevel(bookItem, socket);
+        if (direct != null) return direct;
+        return ecoHook.extractEnchantsFromBook(bookItem).get(socket.getKeyString().toLowerCase(Locale.ROOT));
+    }
+
+    public boolean containsManagedEnchantBook(ItemStack item) {
+        if (item == null || item.getType() != Material.ENCHANTED_BOOK) return false;
+        for (EnchantSocket socket : socketsById.values()) {
+            if (socket.isEnabled() && getBookLevel(item, socket) != null) return true;
+        }
+        return false;
+    }
+
+    private Integer getVanillaOrStoredBookLevel(ItemStack bookItem, EnchantSocket socket) {
+        if (bookItem == null || socket == null || !bookItem.hasItemMeta()) return null;
+        Enchantment enchantment = getEnchantment(socket.getKeyString());
+        if (enchantment == null) return null;
+        ItemMeta meta = bookItem.getItemMeta();
+        if (meta instanceof EnchantmentStorageMeta storageMeta) {
+            Integer stored = storageMeta.getStoredEnchants().get(enchantment);
+            if (stored != null) return stored;
+        }
+        return meta.getEnchants().get(enchantment);
+    }
+
     public Enchantment getEnchantment(String keyStr) {
         if (keyStr == null || keyStr.isEmpty()) return null;
         try {
@@ -294,20 +345,60 @@ public class EnchantManager {
     }
 
     private void synchronizePolicy(FileConfiguration policy, Collection<EcoEnchant> liveEnchants) {
-        List<EnchantPolicySynchronizer.EnchantDescriptor> descriptors = liveEnchants.stream()
+        List<EnchantPolicySynchronizer.EnchantDescriptor> descriptors = new ArrayList<>(liveEnchants.stream()
                 .filter(enchant -> enchant != null && enchant.getEnchantment() != null
                         && enchant.getEnchantment().getKey() != null)
                 .map(enchant -> new EnchantPolicySynchronizer.EnchantDescriptor(
                         enchant.getID().toLowerCase(Locale.ROOT),
-                        enchant.getEnchantment().getKey().toString().toLowerCase(Locale.ROOT)))
-                .toList();
+                        enchant.getEnchantment().getKey().toString().toLowerCase(Locale.ROOT),
+                        EcoEnchantsHook.getDefaultDisplayColor(enchant)))
+                .toList());
+        descriptors.add(new EnchantPolicySynchronizer.EnchantDescriptor("fortune", "minecraft:fortune"));
+        descriptors.add(new EnchantPolicySynchronizer.EnchantDescriptor("silk_touch", "minecraft:silk_touch"));
         EnchantPolicySynchronizer.SyncResult result = EnchantPolicySynchronizer.synchronize(policy, descriptors);
         result.added().forEach(id -> plugin.getLogger().info(
-                "Added EcoEnchant policy entry for '" + id + "' to enchants.yml."));
+                "Added enchantment policy entry for '" + id + "' to enchants.yml."));
+        result.updated().forEach(id -> plugin.getLogger().info(
+                "Added missing display-color for '" + id + "' to enchants.yml."));
         result.orphaned().forEach(id -> plugin.getLogger().warning(
                 "Orphaned enchants.yml entry '" + id
-                        + "' has no matching live pickaxe EcoEnchant; it was preserved."));
+                        + "' has no matching live managed pickaxe enchantment; it was preserved."));
         if (result.changed()) plugin.getConfigManager().saveEnchantsConfig();
+    }
+
+    private void registerVanillaSocket(FileConfiguration policy, String id, String key,
+                                       String displayName, List<String> description,
+                                       boolean supportsLimitBreak) {
+        Enchantment enchantment = getEnchantment(key);
+        if (enchantment == null || enchantment.getKey() == null) {
+            plugin.getLogger().warning("Could not resolve vanilla enchantment '" + key + "'.");
+            return;
+        }
+        String path = "enchants." + id;
+        String canonicalKey = enchantment.getKey().toString().toLowerCase(Locale.ROOT);
+        String configuredKey = policy.getString(path + ".key", canonicalKey);
+        if (!canonicalKey.equalsIgnoreCase(configuredKey)) {
+            plugin.getLogger().warning("Ignoring non-canonical key for vanilla enchantment '" + id
+                    + "' in enchants.yml; live key is " + canonicalKey + ".");
+        }
+        EnchantSocket socket = new EnchantSocket(
+                id,
+                canonicalKey,
+                enchantment.getKey(),
+                displayName,
+                Material.ENCHANTED_BOOK,
+                -1,
+                policy.getBoolean(path + ".enabled", true),
+                Math.max(0, policy.getInt(path + ".unlock-pickaxe-level", 0)),
+                effectiveMaximum(policy.get(path + ".max-level"), enchantment.getMaxLevel(), id),
+                new TreeMap<>(),
+                description,
+                null,
+                new LinkedHashSet<>(policy.getStringList(path + ".additional-conflicts")),
+                supportsLimitBreak
+        );
+        socketsById.put(id, socket);
+        socketsByKey.put(canonicalKey, socket);
     }
 
     private int effectiveMaximum(Object configured, int nativeMaximum, String id) {
@@ -317,8 +408,8 @@ public class EnchantManager {
             try {
                 if (Integer.parseInt(String.valueOf(configured)) < 1) throw new NumberFormatException();
             } catch (NumberFormatException exception) {
-                plugin.getLogger().warning("Invalid max-level for EcoEnchant '" + id
-                        + "'; inheriting EcoEnchants maximum " + nativeMaximum + ".");
+                plugin.getLogger().warning("Invalid max-level for managed enchantment '" + id
+                        + "'; inheriting its native maximum " + nativeMaximum + ".");
             }
         }
         return effective;
@@ -333,7 +424,7 @@ public class EnchantManager {
                         && getEnchantment(configuredConflict) != null;
                 if (!knownSocket && !knownLiveEnchant) {
                     plugin.getLogger().warning("Unknown additional-conflict '" + configuredConflict
-                            + "' for EcoEnchant '" + socket.getId() + "'; policy was preserved.");
+                            + "' for managed enchantment '" + socket.getId() + "'; policy was preserved.");
                 }
             }
         }

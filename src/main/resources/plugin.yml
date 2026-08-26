@@ -14,7 +14,8 @@ softdepend:
 commands:
   infinitypickaxes:
     description: Main command for InfinityPickaxes
-    aliases: [pickaxe, ipickaxe, infinitypickaxe]
+    aliases: [ipickaxe, infinitypickaxe]
+    permission: infinitypickaxes.use
     usage: /<command> [give|reload|setlevel|addxp|gui|duplicate]
 
 permissions:
@@ -29,6 +30,7 @@ permissions:
       infinitypickaxes.admin.duplicates.scan: true
       infinitypickaxes.admin.duplicates.quarantine: true
       infinitypickaxes.admin.duplicates.resolve: true
+      infinitypickaxes.use: true
   infinitypickaxes.admin.duplicates.view:
     default: op
   infinitypickaxes.admin.duplicates.scan:

@@ -12,7 +12,7 @@ mining-actionbar:
 
 messages:
   pickaxe-quarantined: "<red>This pickaxe is quarantined because its UUID was duplicated. Contact an administrator.</red>"
-  enchant-conflict: "<red>%enchant% cannot be applied because EcoEnchants reports a target, conflict, or requirement violation.</red>"
+  enchant-conflict: "<red>%enchant% cannot be applied because of a native or configured conflict, requirement, or invalid target.</red>"
   no-permission: "<red>You don't have permission to execute this command.</red>"
   player-only: "<red>This command can only be executed by in-game players.</red>"
   player-not-found: "<red>The specified player was not found or is offline.</red>"
@@ -47,12 +47,13 @@ messages:
   enchant-locked-pickaxe-level: "<red>Your pickaxe must be <yellow>Level %required%</yellow> to unlock this socket.</red>"
   enchant-invalid-book: "<red>You must place a <aqua>%enchant%</aqua> <yellow>Level %required_book_level%</yellow> book to upgrade this socket.</red>"
   enchant-no-book-in-hand: "<red>You do not have the required enchanted book in your hand/cursor.</red>"
-  enchant-use-socket-menu: "<red>Managed EcoEnchant books must be applied through the enchantment sockets in <yellow>/pickaxe</yellow>.</red>"
+  enchant-use-socket-menu: "<red>Managed enchantment books must be applied through the enchantment sockets in <yellow>/ipickaxe</yellow>.</red>"
 
   # LimitBreak & Special Books
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ LIMITBREAK APPLIED! ✦</b></gradient> <green>Upgraded <aqua>%enchant%</aqua> to <yellow>Level %level%</yellow>!%limitbreak_indicator%</green>"
   limitbreak-max-reached: "<red>This enchantment has reached the absolute LimitBreak maximum (<yellow>Max: %max%</yellow>, includes +%extra% extra levels).</red>"
   limitbreak-invalid-target: "<red>This LimitBreak book is for a different enchantment: <aqua>%enchant%</aqua>.</red>"
+  limitbreak-not-supported: "<red><aqua>%enchant%</aqua> cannot be upgraded with LimitBreak.</red>"
   limitbreak-locked-pickaxe-level: "<red>Your pickaxe must be <yellow>Level %required%</yellow> to apply LimitBreak to <aqua>%enchant%</aqua>.</red>"
   limitbreak-book-received: "<green>You received <yellow>%amount%x</yellow> <gradient:#FF0055:#FFAA00><b>LimitBreak Book: %enchant% +1</b></gradient>!</green>"
   limitbreak-universal-received: "<green>You received <yellow>%amount%x</yellow> <gradient:#FF00FF:#00FFFF><b>✦ UNIVERSAL SUPER BOOK +1 ✦</b></gradient>!</green>"

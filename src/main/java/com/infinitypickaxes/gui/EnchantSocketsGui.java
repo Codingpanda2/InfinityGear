@@ -5,10 +5,12 @@ import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.ItemBuilder;
 import com.infinitypickaxes.utils.TextUtil;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -115,6 +117,24 @@ public class EnchantSocketsGui extends CustomGui {
             }
         }
 
+        if (allSockets.isEmpty()) {
+            int emptySlot = Math.min(invSize - 1, 22);
+            boolean discoveredAny = !plugin.getEnchantManager().getAllSockets().isEmpty();
+            String reason = discoveredAny
+                    ? "<red>All discovered enchantments are disabled in enchants.yml.</red>"
+                    : "<red>No pickaxe EcoEnchants were discovered.</red>";
+            inventory.setItem(emptySlot, new ItemBuilder(Material.BARRIER)
+                    .name("<red><b>No Enchantment Sockets Available</b></red>")
+                    .lore(List.of(
+                            reason,
+                            "",
+                            "<gray>Check the server log for the loaded socket count.</gray>",
+                            "<gray>After EcoEnchants loads or reloads, run:</gray>",
+                            "<yellow>/ipickaxe reload</yellow>"
+                    ))
+                    .build());
+        }
+
         List<Integer> usableSlots = getUsableInnerSlots();
         int pageSize = Math.max(1, usableSlots.size());
         int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / pageSize));
@@ -167,7 +187,7 @@ public class EnchantSocketsGui extends CustomGui {
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxForPickaxe = socket.getMaxAllowedLevel(pickaxeLvl);
         int globalMax = socket.getMaxLevel();
-        int maxExtra = (plugin.getLimitBreakManager() != null)
+        int maxExtra = (socket.supportsLimitBreak() && plugin.getLimitBreakManager() != null)
                 ? plugin.getLimitBreakManager().getMaxExtraLevels(pickaxeLvl) : 0;
         int absoluteMax = globalMax + maxExtra;
 
@@ -177,48 +197,48 @@ public class EnchantSocketsGui extends CustomGui {
         }
 
         if (!unlocked) {
-            String name = menuConfig.getString("enchant-format.locked-name", "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Locked)</red>")
-                    .replace("%enchant_display_name%", socket.getDisplayName());
+            String name = menuConfig.getString("enchant-format.locked-name", "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Locked)</red>");
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-locked");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
-        } else if (currentLvl >= absoluteMax) {
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+        } else if (socket.supportsLimitBreak() && maxExtra > 0 && currentLvl >= absoluteMax) {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
-                    .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax))
                     + " <gradient:#FF00FF:#00FFFF><b>[LB MAX]</b></gradient>";
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl > globalMax) {
             int extra = currentLvl - globalMax;
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
-                    .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax))
                     + " <gradient:#FF00FF:#FFAA00><b>[LB +" + extra + "]</b></gradient>";
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl >= maxForPickaxe && maxForPickaxe > 0) {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
-                    .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
-                    .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
-            builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         }
 
         return builder.build();
     }
 
-    private List<String> formatLoreList(List<String> rawLore, EnchantSocket socket, int currentLvl, int maxForPickaxe, int globalMax, int absoluteMax) {
-        List<String> formatted = new ArrayList<>();
+    private Component formatSocketName(String template, EnchantSocket socket) {
+        return TextUtil.parseWithComponent(template, "%enchant_display_name%",
+                TextUtil.parse(socket.getDisplayName()));
+    }
+
+    private List<Component> formatLoreList(List<String> rawLore, EnchantSocket socket, int currentLvl, int maxForPickaxe, int globalMax, int absoluteMax) {
+        List<Component> formatted = new ArrayList<>();
         int requiredBookLevel = (currentLvl == 0) ? 1 : currentLvl;
 
         for (String line : rawLore) {
@@ -227,10 +247,9 @@ public class EnchantSocketsGui extends CustomGui {
                 if (desc == null || desc.isEmpty()) {
                     desc = plugin.getEnchantManager().getEcoHook().getEnchantmentDescription(plugin.getEnchantManager().getEnchantment(socket.getKeyString()), currentLvl);
                 }
-                formatted.addAll(desc);
+                desc.stream().map(TextUtil::parse).forEach(formatted::add);
             } else {
-                formatted.add(line
-                        .replace("%enchant_display_name%", socket.getDisplayName())
+                String resolved = line
                         .replace("%enchant_name%", socket.getCleanName())
                         .replace("%enchant_clean_name%", socket.getCleanName())
                         .replace("%enchant_raw_name%", socket.getCleanName())
@@ -243,8 +262,8 @@ public class EnchantSocketsGui extends CustomGui {
                         .replace("%required_book_level%", TextUtil.toRoman(requiredBookLevel))
                         .replace("%required_book_level_num%", String.valueOf(requiredBookLevel))
                         .replace("%unlock_level%", String.valueOf(socket.getUnlockPickaxeLevel()))
-                        .replace("%pickaxe_level%", String.valueOf(pickaxe.getLevel()))
-                );
+                        .replace("%pickaxe_level%", String.valueOf(pickaxe.getLevel()));
+                formatted.add(formatSocketName(resolved, socket));
             }
         }
         return formatted;
@@ -278,21 +297,21 @@ public class EnchantSocketsGui extends CustomGui {
                         }
                     }
 
-                    // Otherwise regular book auto-apply
-                    Map<String, Integer> bookEnchants = plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(clickedItem);
-                    for (String keyStr : bookEnchants.keySet()) {
-                        EnchantSocket s = plugin.getEnchantManager().getSocketByKey(keyStr);
-                        if (s == null && keyStr.contains(":")) {
-                            s = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
-                        }
-                        if (s != null) {
-                            if (plugin.getEnchantManager().handleSocketUpgrade(player, pickaxe, s, clickedItem)) {
-                                setupItems();
-                                break;
-                            }
+                    // Otherwise quick-apply the first managed enchantment found
+                    // on the book, including vanilla Fortune and Silk Touch.
+                    for (EnchantSocket socket : plugin.getEnchantManager().getAllSockets()) {
+                        if (plugin.getEnchantManager().getBookLevel(clickedItem, socket) != null
+                                && plugin.getEnchantManager().handleSocketUpgrade(
+                                player, pickaxe, socket, clickedItem)) {
+                            setupItems();
+                            break;
                         }
                     }
                 }
+            } else if (isSafeBottomAction(event.getAction())) {
+                // Let the player put a book on their cursor without exposing the
+                // GUI inventory to shift, collect-to-cursor, hotbar, or drag moves.
+                event.setCancelled(false);
             }
             return;
         }
@@ -359,5 +378,16 @@ public class EnchantSocketsGui extends CustomGui {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
             }
         }
+    }
+
+    static boolean isSafeBottomAction(InventoryAction action) {
+        return action == InventoryAction.PICKUP_ALL
+                || action == InventoryAction.PICKUP_HALF
+                || action == InventoryAction.PICKUP_ONE
+                || action == InventoryAction.PICKUP_SOME
+                || action == InventoryAction.PLACE_ALL
+                || action == InventoryAction.PLACE_ONE
+                || action == InventoryAction.PLACE_SOME
+                || action == InventoryAction.SWAP_WITH_CURSOR;
     }
 }

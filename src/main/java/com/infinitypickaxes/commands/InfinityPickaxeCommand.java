@@ -137,7 +137,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     if (socket == null) {
                         socket = plugin.getEnchantManager().getSocketByKey(enchantArg);
                     }
-                    if (socket == null || !socket.isEnabled()) {
+                    if (socket == null || !socket.isEnabled() || !socket.supportsLimitBreak()) {
                         sender.sendMessage("§cEnchantment '" + enchantArg + "' was not found.");
                         return true;
                     }
@@ -244,14 +244,14 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
         sender.sendMessage("§b§lInfinityPickaxes §7- Available Commands:");
-        sender.sendMessage("§e/pickaxe §7- Opens the menu for your held pickaxe.");
+        sender.sendMessage("§e/ipickaxe §7- Opens the menu for your held pickaxe.");
         if (sender.hasPermission("infinitypickaxes.admin")) {
-            sender.sendMessage("§e/pickaxe give <player> [level] §7- Gives an Infinity Pickaxe.");
-            sender.sendMessage("§e/pickaxe book <enchant|universal> [amount] [player] §7- Gives LimitBreak books.");
-            sender.sendMessage("§e/pickaxe setlevel <player> <level> §7- Sets pickaxe level.");
-            sender.sendMessage("§e/pickaxe addxp <player> <amount> §7- Adds XP to pickaxe.");
-            sender.sendMessage("§e/pickaxe reload §7- Reloads configurations and menus.");
-            sender.sendMessage("§e/pickaxe duplicate §7- Duplicate detection and quarantine administration.");
+            sender.sendMessage("§e/ipickaxe give <player> [level] §7- Gives an Infinity Pickaxe.");
+            sender.sendMessage("§e/ipickaxe book <enchant|universal> [amount] [player] §7- Gives LimitBreak books.");
+            sender.sendMessage("§e/ipickaxe setlevel <player> <level> §7- Sets pickaxe level.");
+            sender.sendMessage("§e/ipickaxe addxp <player> <amount> §7- Adds XP to pickaxe.");
+            sender.sendMessage("§e/ipickaxe reload §7- Reloads configurations and menus.");
+            sender.sendMessage("§e/ipickaxe duplicate §7- Duplicate detection and quarantine administration.");
         }
         sender.sendMessage("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
     }
@@ -376,7 +376,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 List<String> enchants = new ArrayList<>();
                 enchants.add("universal");
                 for (EnchantSocket s : plugin.getEnchantManager().getAllSockets()) {
-                    if (s.isEnabled()) enchants.add(s.getId());
+                    if (s.isEnabled() && s.supportsLimitBreak()) enchants.add(s.getId());
                 }
                 return enchants.stream().filter(s -> s.startsWith(args[1].toLowerCase())).collect(Collectors.toList());
             }

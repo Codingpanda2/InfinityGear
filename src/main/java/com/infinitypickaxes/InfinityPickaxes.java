@@ -111,7 +111,7 @@ public final class InfinityPickaxes extends JavaPlugin {
             InfinityPickaxeCommand executor = new InfinityPickaxeCommand(this);
             cmd.setExecutor(executor);
             cmd.setTabCompleter(executor);
-            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Commands & Events:</white> <green>Registered (/pickaxe, /pickaxe book, /pickaxe reload).</green>"));
+            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Commands & Events:</white> <green>Registered (/ipickaxe, /ipickaxe book, /ipickaxe reload).</green>"));
         }
 
         long elapsed = System.currentTimeMillis() - start;

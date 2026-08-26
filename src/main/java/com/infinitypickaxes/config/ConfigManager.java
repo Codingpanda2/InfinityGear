@@ -56,6 +56,7 @@ public class ConfigManager {
         this.limitbreakFile = loadAndSyncFile("limitbreak.yml");
         this.limitbreakConfig = YamlConfiguration.loadConfiguration(limitbreakFile);
         updateMissingKeys(limitbreakFile, "limitbreak.yml", (YamlConfiguration) this.limitbreakConfig);
+        migrateLegacyCommandAlias(limitbreakFile, (YamlConfiguration) this.limitbreakConfig);
 
         this.enchantsFile = loadAndSyncFile("enchants.yml");
         this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
@@ -71,9 +72,12 @@ public class ConfigManager {
         // 4. Menus
         this.mainMenuFile = loadAndSyncFile("menus/main_menu.yml");
         this.mainMenuConfig = YamlConfiguration.loadConfiguration(mainMenuFile);
+        updateMissingKeys(mainMenuFile, "menus/main_menu.yml", (YamlConfiguration) this.mainMenuConfig);
 
         this.enchantsMenuFile = loadAndSyncFile("menus/enchants_menu.yml");
         this.enchantsMenuConfig = YamlConfiguration.loadConfiguration(enchantsMenuFile);
+        updateMissingKeys(enchantsMenuFile, "menus/enchants_menu.yml", (YamlConfiguration) this.enchantsMenuConfig);
+        migrateEnchantsMenuInstructions((YamlConfiguration) this.enchantsMenuConfig);
 
     }
 
@@ -92,6 +96,7 @@ public class ConfigManager {
                     String langKey = f.getName().replace(".yml", "").toLowerCase();
                     YamlConfiguration yaml = YamlConfiguration.loadConfiguration(f);
                     updateMissingKeys(f, "locales/" + f.getName(), yaml);
+                    migrateLegacyCommandAlias(f, yaml);
                     localeConfigs.put(langKey, yaml);
                 }
             }
@@ -144,6 +149,102 @@ public class ConfigManager {
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    static boolean replaceLegacyCommandAlias(YamlConfiguration config) {
+        boolean changed = false;
+        for (String key : config.getKeys(true)) {
+            if (config.isString(key)) {
+                String current = config.getString(key, "");
+                String migrated = migrateLegacyText(current);
+                if (!current.equals(migrated)) {
+                    config.set(key, migrated);
+                    changed = true;
+                }
+            } else if (config.isList(key)) {
+                List<?> current = config.getList(key, List.of());
+                List<Object> migrated = current.stream()
+                        .map(value -> value instanceof String text
+                                ? migrateLegacyText(text) : value)
+                        .toList();
+                if (!current.equals(migrated)) {
+                    config.set(key, migrated);
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
+
+    private static String migrateLegacyText(String text) {
+        return text
+                .replace("/pickaxe", "/ipickaxe")
+                .replace("Managed EcoEnchant books", "Managed enchantment books")
+                .replace("Los libros de EcoEnchants gestionados",
+                        "Los libros de encantamientos gestionados")
+                .replace("because EcoEnchants reports a target, conflict, or requirement violation",
+                        "because of a native or configured conflict, requirement, or invalid target")
+                .replace("porque EcoEnchants detectó un conflicto, requisito o destino inválido",
+                        "debido a un conflicto nativo o configurado, requisito o destino inválido");
+    }
+
+    private void migrateLegacyCommandAlias(File file, YamlConfiguration config) {
+        if (!replaceLegacyCommandAlias(config)) return;
+        try {
+            config.save(file);
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.WARNING,
+                    "Could not migrate obsolete /pickaxe command references in " + file.getName(), exception);
+        }
+    }
+
+    private void migrateEnchantsMenuInstructions(YamlConfiguration menu) {
+        boolean changed = false;
+
+        List<String> socketLore = menu.getStringList("enchant-format.lore-unlocked");
+        int dragLine = socketLore.indexOf("<green>▶ Drag & drop matching book or</green>");
+        if (dragLine >= 0 && dragLine + 1 < socketLore.size()
+                && socketLore.get(dragLine + 1).equals("<green>  click socket with book on cursor.</green>")) {
+            socketLore.set(dragLine, "<green>▶ Click the book in your inventory, then</green>");
+            socketLore.set(dragLine + 1, "<green>  click this socket with it on your cursor.</green>");
+            socketLore.add(dragLine + 2,
+                    "<dark_green>  Tip: shift-click the book to apply it directly.</dark_green>");
+            menu.set("enchant-format.lore-unlocked", socketLore);
+            changed = true;
+        }
+
+        List<String> infoLore = menu.getStringList("items.info-book.lore");
+        int oldVanillaRule = infoLore.indexOf(
+                "<dark_gray>Vanilla enchantments do not consume sockets.</dark_gray>");
+        if (oldVanillaRule >= 0) {
+            infoLore.set(oldVanillaRule,
+                    "<dark_gray>Efficiency is free; Fortune and Silk Touch consume sockets.</dark_gray>");
+            menu.set("items.info-book.lore", infoLore);
+            changed = true;
+        }
+        int clickLine = infoLore.indexOf("<white>2.</white> <gray>Click the socket or drag the book");
+        if (clickLine >= 0 && clickLine + 2 < infoLore.size()
+                && infoLore.get(clickLine + 1).equals("   <gray>directly onto the desired slot.")
+                && infoLore.get(clickLine + 2).equals(
+                "<white>3.</white> <gray>The book will be consumed and pickaxe upgraded!")) {
+            infoLore.set(clickLine, "<white>2.</white> <gray>Click the book in your inventory to pick it up.");
+            infoLore.set(clickLine + 1,
+                    "<white>3.</white> <gray>Click the matching socket with it on your cursor.");
+            infoLore.set(clickLine + 2, "   <dark_gray>Or shift-click the book for quick apply.</dark_gray>");
+            infoLore.add(clickLine + 3,
+                    "<white>4.</white> <gray>The book will be consumed and pickaxe upgraded!");
+            menu.set("items.info-book.lore", infoLore);
+            changed = true;
+        }
+
+        if (changed) {
+            try {
+                menu.save(enchantsMenuFile);
+            } catch (Exception exception) {
+                plugin.getLogger().log(Level.WARNING,
+                        "Could not migrate enchantment menu instructions", exception);
+            }
+        }
     }
 
     public void reload() {

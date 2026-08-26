@@ -1,6 +1,6 @@
-# InfinityPickaxes policy for the live EcoEnchants catalogue.
-# Enchantment names, effects, targets, native conflicts, descriptions, and native
-# maximum levels are always read live from EcoEnchants and cannot be overridden here.
+# InfinityPickaxes policy for the live EcoEnchants catalogue plus the managed
+# vanilla Fortune and Silk Touch exceptions. Native identities, compatibility,
+# conflicts, and maximum levels remain authoritative and cannot be loosened here.
 settings:
   upgrade-sound:
     sound: BLOCK_ANVIL_USE
@@ -21,6 +21,9 @@ limitbreak:
     75: 3
     100: 5
 
-# Entries for newly discovered pickaxe-compatible EcoEnchants are appended here.
+# Entries for newly discovered compatible managed enchantments are appended here.
 # Existing entries and administrator edits are never overwritten or deleted.
+# display-color accepts a MiniMessage color/format. For EcoEnchants, its live
+# type color is used when the entry is first generated (gradients use their
+# first color so GUI names remain stable rather than rainbow-styled).
 enchants: {}

@@ -14,7 +14,7 @@ settings:
   # Base pickaxe item material (e.g. NETHERITE_PICKAXE, DIAMOND_PICKAXE)
   default-material: NETHERITE_PICKAXE
   # Vanilla Efficiency applied to newly created or explicitly converted pickaxes.
-  # Vanilla enchantments never consume EcoEnchants sockets.
+  # Efficiency is free; managed Fortune and Silk Touch each consume a socket.
   default-efficiency-level: 20
   # Automatically convert any regular vanilla pickaxe held or used by a player into an Infinity Pickaxe
   auto-convert-vanilla: false
