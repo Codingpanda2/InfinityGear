@@ -47,7 +47,7 @@ messages:
   enchant-locked-pickaxe-level: "<red>Tu pico requiere ser <yellow>Nivel %required%</yellow> para desbloquear este socket.</red>"
   enchant-invalid-book: "<red>Debes colocar un libro de <aqua>%enchant%</aqua> <yellow>Nivel %required_book_level%</yellow> para mejorar este socket.</red>"
   enchant-no-book-in-hand: "<red>No tienes el libro requerido en tu cursor para aplicar la mejora.</red>"
-  enchant-use-socket-menu: "<red>Los libros de EcoEnchants gestionados deben aplicarse mediante los espacios de encantamiento en <yellow>/pickaxe</yellow>.</red>"
+  enchant-use-socket-menu: "<red>Los libros de EcoEnchants gestionados deben aplicarse mediante los espacios de encantamiento en <yellow>/ipickaxe</yellow>.</red>"
 
   # LimitBreak & Libros Especiales
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ ¡LIMITBREAK APLICADO! ✦</b></gradient> <green>¡Has mejorado <aqua>%enchant%</aqua> a <yellow>Nivel %level%</yellow>!%limitbreak_indicator%</green>"

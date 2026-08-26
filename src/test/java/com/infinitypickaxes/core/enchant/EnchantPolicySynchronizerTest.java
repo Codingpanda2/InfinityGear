@@ -46,6 +46,15 @@ class EnchantPolicySynchronizerTest {
     }
 
     @Test
+    void newlyDiscoveredRepairingIsDisabledBecausePickaxesAreUnbreakable() {
+        YamlConfiguration policy = new YamlConfiguration();
+
+        EnchantPolicySynchronizer.synchronize(policy, List.of(enchant("repairing")));
+
+        assertFalse(policy.getBoolean("enchants.repairing.enabled"));
+    }
+
+    @Test
     void configuredMaximumCanOnlyTightenEcoMaximum() {
         assertEquals(10, EnchantPolicySynchronizer.effectiveMaximum("inherit", 10));
         assertEquals(6, EnchantPolicySynchronizer.effectiveMaximum(6, 10));

@@ -26,12 +26,12 @@
 
 | Comando | Permiso | Descripción |
 | :--- | :--- | :--- |
-| `/pickaxe` | `infinitypickaxes.use` | Abre el menú interactivo del pico sostenido en la mano. |
-| `/pickaxe give <jugador> [nivel]` | `infinitypickaxes.admin` | Entrega un Infinity Pickaxe a un jugador con nivel inicial. |
-| `/pickaxe setlevel <jugador> <nivel>` | `infinitypickaxes.admin` | Modifica directamente el nivel del pico sostenido. |
-| `/pickaxe addxp <jugador> <cantidad>` | `infinitypickaxes.admin` | Añade experiencia de minado al pico del jugador. |
-| `/pickaxe reload` | `infinitypickaxes.admin` | Recarga todas las configuraciones, menús y registros en caliente. |
-| `/pickaxe duplicate ...` | `infinitypickaxes.admin.duplicates.*` | Audita, pone en cuarentena y resuelve UUID duplicados. |
+| `/ipickaxe` | `infinitypickaxes.use` | Abre el menú interactivo del pico sostenido en la mano. |
+| `/ipickaxe give <jugador> [nivel]` | `infinitypickaxes.admin` | Entrega un Infinity Pickaxe a un jugador con nivel inicial. |
+| `/ipickaxe setlevel <jugador> <nivel>` | `infinitypickaxes.admin` | Modifica directamente el nivel del pico sostenido. |
+| `/ipickaxe addxp <jugador> <cantidad>` | `infinitypickaxes.admin` | Añade experiencia de minado al pico del jugador. |
+| `/ipickaxe reload` | `infinitypickaxes.admin` | Recarga todas las configuraciones, menús y registros en caliente. |
+| `/ipickaxe duplicate ...` | `infinitypickaxes.admin.duplicates.*` | Audita, pone en cuarentena y resuelve UUID duplicados. |
 
 ---
 

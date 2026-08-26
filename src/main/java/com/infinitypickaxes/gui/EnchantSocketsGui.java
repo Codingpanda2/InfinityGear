@@ -129,7 +129,7 @@ public class EnchantSocketsGui extends CustomGui {
                             "",
                             "<gray>Check the server log for the loaded socket count.</gray>",
                             "<gray>After EcoEnchants loads or reloads, run:</gray>",
-                            "<yellow>/pickaxe reload</yellow>"
+                            "<yellow>/ipickaxe reload</yellow>"
                     ))
                     .build());
         }

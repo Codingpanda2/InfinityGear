@@ -27,7 +27,7 @@ public class PickaxeInteractListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
 
@@ -38,24 +38,18 @@ public class PickaxeInteractListener implements Listener {
         ItemStack item = player.getInventory().getItemInMainHand();
         InfinityPickaxe pickaxe = plugin.getPickaxeManager().getOrCreatePickaxe(item, player);
         if (pickaxe == null) return;
+        if (!plugin.getDuplicateService().isUsable(item)) {
+            event.setCancelled(true);
+            return;
+        }
 
         FileConfiguration config = plugin.getConfigManager().getConfig();
         String trigger = config.getString("interaction.trigger", "SHIFT_RIGHT_CLICK");
         boolean allowAir = config.getBoolean("interaction.allow-air-click", true);
 
-        Action action = event.getAction();
-        boolean isRightClick = (action == Action.RIGHT_CLICK_BLOCK || (allowAir && action == Action.RIGHT_CLICK_AIR));
-        boolean isLeftClick = (action == Action.LEFT_CLICK_BLOCK || (allowAir && action == Action.LEFT_CLICK_AIR));
-
-        boolean matched = switch (trigger.toUpperCase()) {
-            case "SHIFT_LEFT_CLICK" -> isLeftClick;
-            case "BOTH" -> isRightClick || isLeftClick;
-            default -> isRightClick; // SHIFT_RIGHT_CLICK
-        };
-
-        if (matched) {
+        if (matchesMenuTrigger(event.getAction(), trigger, allowAir)) {
             event.setCancelled(true);
-            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
+            playMenuOpenSound(player);
 
             String providerType = config.getString("menu-provider.type", "NATIVE");
             if (providerType.equalsIgnoreCase("COMMAND") || providerType.equalsIgnoreCase("ZMENU") || providerType.equalsIgnoreCase("DELUXEMENUS")) {
@@ -66,6 +60,24 @@ public class PickaxeInteractListener implements Listener {
                 new MainPickaxeGui(plugin, player, pickaxe).open();
             }
         }
+    }
+
+    void playMenuOpenSound(Player player) {
+        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
+    }
+
+    static boolean matchesMenuTrigger(Action action, String configuredTrigger, boolean allowAir) {
+        if (action == null) return false;
+        boolean isRightClick = action == Action.RIGHT_CLICK_BLOCK
+                || (allowAir && action == Action.RIGHT_CLICK_AIR);
+        boolean isLeftClick = action == Action.LEFT_CLICK_BLOCK
+                || (allowAir && action == Action.LEFT_CLICK_AIR);
+        String trigger = configuredTrigger == null ? "SHIFT_RIGHT_CLICK" : configuredTrigger;
+        return switch (trigger.toUpperCase(java.util.Locale.ROOT)) {
+            case "SHIFT_LEFT_CLICK" -> isLeftClick;
+            case "BOTH" -> isRightClick || isLeftClick;
+            default -> isRightClick;
+        };
     }
 
     /**

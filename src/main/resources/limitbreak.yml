@@ -36,7 +36,7 @@ specific-book:
     - "<yellow>• Breaks past the maximum level up to <light_purple>+%max_extra% extra levels</light_purple>."
     - ""
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<green><i>Click socket in /pickaxe or drag onto your pickaxe!</i></green>"
+    - "<green><i>Click socket in /ipickaxe or drag onto your pickaxe!</i></green>"
 
 # ------------------------------------------------------------------------------
 # Universal Super Book (Omni Tome) Template
@@ -57,4 +57,4 @@ universal-book:
     - "<yellow>• Activates <light_purple>LimitBreak</light_purple> up to <light_purple>+%max_extra% extra levels</light_purple>."
     - ""
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    - "<green><i>Click any socket in /pickaxe to apply upgrade!</i></green>"
+    - "<green><i>Click any socket in /ipickaxe to apply upgrade!</i></green>"

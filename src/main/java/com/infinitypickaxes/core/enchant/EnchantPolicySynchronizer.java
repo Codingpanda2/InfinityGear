@@ -28,7 +28,10 @@ final class EnchantPolicySynchronizer {
 
             String path = "enchants." + id;
             policy.set(path + ".key", ecoEnchant.key());
-            policy.set(path + ".enabled", true);
+            // Repairing cannot benefit an Infinity Pickaxe because managed
+            // pickaxes are unbreakable by design. Keep it visible to policy
+            // synchronization, but do not offer a no-op socket by default.
+            policy.set(path + ".enabled", !id.equalsIgnoreCase("repairing"));
             policy.set(path + ".unlock-pickaxe-level", 0);
             policy.set(path + ".max-level", "inherit");
             policy.set(path + ".additional-conflicts", List.of());
