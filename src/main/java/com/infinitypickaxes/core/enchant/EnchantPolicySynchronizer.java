@@ -11,7 +11,7 @@ import java.util.TreeSet;
 /** Additive synchronization plus narrowly-scoped, one-time legacy migrations. */
 final class EnchantPolicySynchronizer {
 
-    private static final String REPAIRING_MIGRATION =
+    static final String REPAIRING_MIGRATION =
             "migrations.disable-legacy-repairing-on-unbreakable-pickaxes";
 
     private EnchantPolicySynchronizer() {
@@ -25,14 +25,16 @@ final class EnchantPolicySynchronizer {
         List<String> added = new ArrayList<>();
         List<String> updated = new ArrayList<>();
         List<String> migrated = new ArrayList<>();
-        boolean migrationMarkerAdded = !policy.contains(REPAIRING_MIGRATION);
+        boolean repairingMigrationPending = !policy.contains(REPAIRING_MIGRATION);
+        boolean repairingDescriptorProcessed = false;
         for (EnchantDescriptor ecoEnchant : liveEnchants) {
             if (ecoEnchant == null) continue;
             String id = ecoEnchant.id();
+            if (id.equalsIgnoreCase("repairing")) repairingDescriptorProcessed = true;
             liveIds.add(id);
             String path = "enchants." + id;
             if (entries.isConfigurationSection(id)) {
-                if (migrationMarkerAdded && isLegacyRepairingDefault(policy, ecoEnchant)) {
+                if (repairingMigrationPending && isLegacyRepairingDefault(policy, ecoEnchant)) {
                     policy.set(path + ".enabled", false);
                     migrated.add(id);
                 }
@@ -55,6 +57,7 @@ final class EnchantPolicySynchronizer {
             added.add(id);
         }
 
+        boolean migrationMarkerAdded = repairingMigrationPending && repairingDescriptorProcessed;
         if (migrationMarkerAdded) policy.set(REPAIRING_MIGRATION, true);
 
         List<String> orphaned = entries.getKeys(false).stream()
