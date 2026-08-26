@@ -23,4 +23,7 @@ limitbreak:
 
 # Entries for newly discovered compatible managed enchantments are appended here.
 # Existing entries and administrator edits are never overwritten or deleted.
+# display-color accepts a MiniMessage color/format. For EcoEnchants, its live
+# type color is used when the entry is first generated (gradients use their
+# first color so GUI names remain stable rather than rainbow-styled).
 enchants: {}

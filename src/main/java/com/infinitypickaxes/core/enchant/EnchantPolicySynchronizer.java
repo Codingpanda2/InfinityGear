@@ -20,13 +20,20 @@ final class EnchantPolicySynchronizer {
 
         Set<String> liveIds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         List<String> added = new ArrayList<>();
+        List<String> updated = new ArrayList<>();
         for (EnchantDescriptor ecoEnchant : liveEnchants) {
             if (ecoEnchant == null) continue;
             String id = ecoEnchant.id();
             liveIds.add(id);
-            if (entries.isConfigurationSection(id)) continue;
-
             String path = "enchants." + id;
+            if (entries.isConfigurationSection(id)) {
+                if (!policy.contains(path + ".display-color")) {
+                    policy.set(path + ".display-color", ecoEnchant.defaultDisplayColor());
+                    updated.add(id);
+                }
+                continue;
+            }
+
             policy.set(path + ".key", ecoEnchant.key());
             // Repairing cannot benefit an Infinity Pickaxe because managed
             // pickaxes are unbreakable by design. Keep it visible to policy
@@ -34,6 +41,7 @@ final class EnchantPolicySynchronizer {
             policy.set(path + ".enabled", !id.equalsIgnoreCase("repairing"));
             policy.set(path + ".unlock-pickaxe-level", 0);
             policy.set(path + ".max-level", "inherit");
+            policy.set(path + ".display-color", ecoEnchant.defaultDisplayColor());
             policy.set(path + ".additional-conflicts", List.of());
             added.add(id);
         }
@@ -42,7 +50,7 @@ final class EnchantPolicySynchronizer {
                 .filter(id -> !liveIds.contains(id))
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
-        return new SyncResult(List.copyOf(added), orphaned);
+        return new SyncResult(List.copyOf(added), orphaned, List.copyOf(updated));
     }
 
     static int effectiveMaximum(Object configured, int nativeMaximum) {
@@ -59,12 +67,15 @@ final class EnchantPolicySynchronizer {
         }
     }
 
-    record SyncResult(List<String> added, List<String> orphaned) {
+    record SyncResult(List<String> added, List<String> orphaned, List<String> updated) {
         boolean changed() {
-            return !added.isEmpty();
+            return !added.isEmpty() || !updated.isEmpty();
         }
     }
 
-    record EnchantDescriptor(String id, String key) {
+    record EnchantDescriptor(String id, String key, String defaultDisplayColor) {
+        EnchantDescriptor(String id, String key) {
+            this(id, key, "<gray>");
+        }
     }
 }

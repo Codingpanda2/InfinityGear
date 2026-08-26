@@ -79,7 +79,8 @@ public class EnchantManager {
             String id = ecoEnchant.getID().toLowerCase(Locale.ROOT);
             String path = "enchants." + id;
 
-            String displayName = ecoHook.getEnchantmentDisplayName(ench);
+            String displayName = ecoHook.getEnchantmentDisplayName(ench,
+                    policy.getString(path + ".display-color", "<gray>"));
             List<String> desc = ecoHook.getEnchantmentDescription(ench);
             int nativeMax = Math.max(1, ecoEnchant.getMaximumLevel());
             int maxLevel = effectiveMaximum(policy.get(path + ".max-level"), nativeMax, id);
@@ -349,13 +350,16 @@ public class EnchantManager {
                         && enchant.getEnchantment().getKey() != null)
                 .map(enchant -> new EnchantPolicySynchronizer.EnchantDescriptor(
                         enchant.getID().toLowerCase(Locale.ROOT),
-                        enchant.getEnchantment().getKey().toString().toLowerCase(Locale.ROOT)))
+                        enchant.getEnchantment().getKey().toString().toLowerCase(Locale.ROOT),
+                        EcoEnchantsHook.getDefaultDisplayColor(enchant)))
                 .toList());
         descriptors.add(new EnchantPolicySynchronizer.EnchantDescriptor("fortune", "minecraft:fortune"));
         descriptors.add(new EnchantPolicySynchronizer.EnchantDescriptor("silk_touch", "minecraft:silk_touch"));
         EnchantPolicySynchronizer.SyncResult result = EnchantPolicySynchronizer.synchronize(policy, descriptors);
         result.added().forEach(id -> plugin.getLogger().info(
                 "Added enchantment policy entry for '" + id + "' to enchants.yml."));
+        result.updated().forEach(id -> plugin.getLogger().info(
+                "Added missing display-color for '" + id + "' to enchants.yml."));
         result.orphaned().forEach(id -> plugin.getLogger().warning(
                 "Orphaned enchants.yml entry '" + id
                         + "' has no matching live managed pickaxe enchantment; it was preserved."));

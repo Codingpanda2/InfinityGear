@@ -18,6 +18,7 @@ class EnchantPolicySynchronizerTest {
         policy.set("enchants.telekinesis.enabled", false);
         policy.set("enchants.telekinesis.unlock-pickaxe-level", 42);
         policy.set("enchants.telekinesis.max-level", 3);
+        policy.set("enchants.telekinesis.display-color", "<aqua>");
         policy.set("enchants.telekinesis.additional-conflicts", List.of("explosive"));
         policy.set("enchants.removed_enchant.enabled", true);
 
@@ -30,10 +31,12 @@ class EnchantPolicySynchronizerTest {
         assertFalse(policy.getBoolean("enchants.telekinesis.enabled"));
         assertEquals(42, policy.getInt("enchants.telekinesis.unlock-pickaxe-level"));
         assertEquals(3, policy.getInt("enchants.telekinesis.max-level"));
+        assertEquals("<aqua>", policy.getString("enchants.telekinesis.display-color"));
         assertEquals(List.of("explosive"), policy.getStringList("enchants.telekinesis.additional-conflicts"));
         assertEquals("ecoenchants:replenish", policy.getString("enchants.replenish.key"));
         assertTrue(policy.getBoolean("enchants.replenish.enabled"));
         assertEquals("inherit", policy.getString("enchants.replenish.max-level"));
+        assertEquals("<gray>", policy.getString("enchants.replenish.display-color"));
     }
 
     @Test
@@ -43,6 +46,23 @@ class EnchantPolicySynchronizerTest {
 
         assertTrue(EnchantPolicySynchronizer.synchronize(policy, List.of(enchant)).changed());
         assertFalse(EnchantPolicySynchronizer.synchronize(policy, List.of(enchant)).changed());
+    }
+
+    @Test
+    void addsMissingDisplayColorWithoutOverwritingTheRestOfAnExistingEntry() {
+        YamlConfiguration policy = new YamlConfiguration();
+        policy.set("enchants.dynamite.key", "administrator:preserved");
+        policy.set("enchants.dynamite.enabled", false);
+
+        EnchantPolicySynchronizer.SyncResult result = EnchantPolicySynchronizer.synchronize(policy,
+                List.of(new EnchantPolicySynchronizer.EnchantDescriptor(
+                        "dynamite", "minecraft:dynamite", "<#0575E6>")));
+
+        assertTrue(result.changed());
+        assertEquals(List.of("dynamite"), result.updated());
+        assertEquals("<#0575E6>", policy.getString("enchants.dynamite.display-color"));
+        assertEquals("administrator:preserved", policy.getString("enchants.dynamite.key"));
+        assertFalse(policy.getBoolean("enchants.dynamite.enabled"));
     }
 
     @Test

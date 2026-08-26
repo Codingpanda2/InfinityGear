@@ -5,6 +5,7 @@ import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -12,6 +13,28 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EcoEnchantsHookTest {
+
+    @Test
+    void gradientTypeFormatsUseAStableFirstColorInTheGui() {
+        assertEquals("<#0575E6>",
+                EcoEnchantsHook.collapseGradientToFirstColor("<gradient:#0575E6:#1E3FBA>"));
+        assertEquals("<#FB57EC>",
+                EcoEnchantsHook.collapseGradientToFirstColor("<gradient:#FB57EC:#EF1DEC>"));
+    }
+
+    @Test
+    void nonGradientTypeColorsArePreserved() {
+        assertEquals("&7", EcoEnchantsHook.collapseGradientToFirstColor("&7"));
+        assertEquals("&c", EcoEnchantsHook.collapseGradientToFirstColor("&c"));
+    }
+
+    @Test
+    void configuredColorWrapsTheRawNameWithoutEcoTypeGradient() {
+        assertEquals("<#0575E6>Dynamite<reset>",
+                EcoEnchantsHook.formatDisplayName("Dynamite", "<#0575E6>"));
+        assertEquals("<gray>Dynamite<reset>",
+                EcoEnchantsHook.formatDisplayName("Dynamite", null));
+    }
 
     @Test
     void canonicalPickaxeTargetDoesNotDependOnItemMatcher() {
