@@ -8,8 +8,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-/** Additive-only synchronization for the administrator-owned enchant policy. */
+/** Additive synchronization plus narrowly-scoped, one-time legacy migrations. */
 final class EnchantPolicySynchronizer {
+
+    private static final String REPAIRING_MIGRATION =
+            "migrations.disable-legacy-repairing-on-unbreakable-pickaxes";
 
     private EnchantPolicySynchronizer() {
     }
@@ -21,12 +24,18 @@ final class EnchantPolicySynchronizer {
         Set<String> liveIds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         List<String> added = new ArrayList<>();
         List<String> updated = new ArrayList<>();
+        List<String> migrated = new ArrayList<>();
+        boolean migrationMarkerAdded = !policy.contains(REPAIRING_MIGRATION);
         for (EnchantDescriptor ecoEnchant : liveEnchants) {
             if (ecoEnchant == null) continue;
             String id = ecoEnchant.id();
             liveIds.add(id);
             String path = "enchants." + id;
             if (entries.isConfigurationSection(id)) {
+                if (migrationMarkerAdded && isLegacyRepairingDefault(policy, ecoEnchant)) {
+                    policy.set(path + ".enabled", false);
+                    migrated.add(id);
+                }
                 if (!policy.contains(path + ".display-color")) {
                     policy.set(path + ".display-color", ecoEnchant.defaultDisplayColor());
                     updated.add(id);
@@ -46,11 +55,29 @@ final class EnchantPolicySynchronizer {
             added.add(id);
         }
 
+        if (migrationMarkerAdded) policy.set(REPAIRING_MIGRATION, true);
+
         List<String> orphaned = entries.getKeys(false).stream()
                 .filter(id -> !liveIds.contains(id))
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
-        return new SyncResult(List.copyOf(added), orphaned, List.copyOf(updated));
+        return new SyncResult(List.copyOf(added), orphaned, List.copyOf(updated),
+                List.copyOf(migrated), migrationMarkerAdded);
+    }
+
+    private static boolean isLegacyRepairingDefault(FileConfiguration policy, EnchantDescriptor enchant) {
+        if (!enchant.id().equalsIgnoreCase("repairing")) return false;
+        String path = "enchants." + enchant.id();
+        var section = policy.getConfigurationSection(path);
+        if (section == null) return false;
+        Set<String> legacyKeys = Set.of("key", "enabled", "unlock-pickaxe-level", "max-level",
+                "additional-conflicts", "display-color");
+        if (section.getKeys(false).stream().anyMatch(key -> !legacyKeys.contains(key))) return false;
+        return enchant.key().equalsIgnoreCase(policy.getString(path + ".key", ""))
+                && policy.getBoolean(path + ".enabled", true)
+                && policy.getInt(path + ".unlock-pickaxe-level", 0) == 0
+                && "inherit".equalsIgnoreCase(policy.getString(path + ".max-level", "inherit"))
+                && policy.getStringList(path + ".additional-conflicts").isEmpty();
     }
 
     static int effectiveMaximum(Object configured, int nativeMaximum) {
@@ -67,9 +94,11 @@ final class EnchantPolicySynchronizer {
         }
     }
 
-    record SyncResult(List<String> added, List<String> orphaned, List<String> updated) {
+    record SyncResult(List<String> added, List<String> orphaned, List<String> updated,
+                      List<String> migrated, boolean migrationMarkerAdded) {
         boolean changed() {
-            return !added.isEmpty() || !updated.isEmpty();
+            return !added.isEmpty() || !updated.isEmpty() || !migrated.isEmpty()
+                    || migrationMarkerAdded;
         }
     }
 

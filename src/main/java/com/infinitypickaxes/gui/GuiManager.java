@@ -29,13 +29,21 @@ public class GuiManager implements Listener {
         try {
             InventoryHolder holder = inv.getHolder();
             if (holder instanceof CustomGui gui) {
+                boolean incomingCancellation = event.isCancelled();
                 event.setCancelled(true);
                 if (!plugin.getDuplicateService().isUsable(gui.getPickaxe().getItemStack())) {
                     gui.getPlayer().closeInventory();
                     plugin.getMessageManager().sendMessage(gui.getPlayer(), "messages.pickaxe-quarantined");
                     return;
                 }
-                gui.handleClick(event);
+                try {
+                    gui.handleClick(event);
+                } finally {
+                    // A GUI may allow a narrowly-scoped bottom-inventory action,
+                    // but it must never resurrect an event cancelled earlier by
+                    // LimitBreak, another plugin, or another protection handler.
+                    if (incomingCancellation) event.setCancelled(true);
+                }
             }
         } catch (RuntimeException exception) {
             failClosed(event.getWhoClicked().getName(), inv, exception);

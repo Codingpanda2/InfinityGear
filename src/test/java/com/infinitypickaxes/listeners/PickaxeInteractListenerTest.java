@@ -9,10 +9,12 @@ import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -68,19 +70,22 @@ class PickaxeInteractListenerTest {
     }
 
     @Test
-    void anvilEcoBookResultForManagedPickaxeIsCleared() {
+    void anvilEnchantedToolResultThatRaisesManagedEnchantIsCleared() {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         EnchantManager enchantManager = mock(EnchantManager.class);
         when(plugin.getEnchantManager()).thenReturn(enchantManager);
 
         ItemStack pickaxe = mock(ItemStack.class);
-        ItemStack book = mock(ItemStack.class);
+        ItemStack enchantedTool = mock(ItemStack.class);
+        ItemStack result = mock(ItemStack.class);
         AnvilInventory inventory = mock(AnvilInventory.class);
         when(inventory.getFirstItem()).thenReturn(pickaxe);
-        when(inventory.getSecondItem()).thenReturn(book);
-        when(enchantManager.containsManagedEnchantBook(book)).thenReturn(true);
+        when(inventory.getSecondItem()).thenReturn(enchantedTool);
+        when(enchantedTool.getType()).thenReturn(Material.DIAMOND_PICKAXE);
+        when(enchantManager.hasManagedEnchantIncrease(pickaxe, result)).thenReturn(true);
         PrepareAnvilEvent event = mock(PrepareAnvilEvent.class);
         when(event.getInventory()).thenReturn(inventory);
+        when(event.getResult()).thenReturn(result);
 
         try (MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
             pickaxeData.when(() -> PickaxeData.isInfinityPickaxe(pickaxe)).thenReturn(true);
@@ -88,6 +93,21 @@ class PickaxeInteractListenerTest {
         }
 
         verify(event).setResult(null);
+    }
+
+    @Test
+    void enchantingTableUseForManagedPickaxeIsCancelled() {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        ItemStack pickaxe = mock(ItemStack.class);
+        EnchantItemEvent event = mock(EnchantItemEvent.class);
+        when(event.getItem()).thenReturn(pickaxe);
+
+        try (MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
+            pickaxeData.when(() -> PickaxeData.isInfinityPickaxe(pickaxe)).thenReturn(true);
+            new PickaxeInteractListener(plugin).onEnchantItem(event);
+        }
+
+        verify(event).setCancelled(true);
     }
 
     @Test

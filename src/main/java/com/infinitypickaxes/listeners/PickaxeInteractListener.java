@@ -15,6 +15,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -151,14 +152,22 @@ public class PickaxeInteractListener implements Listener {
         plugin.getMessageManager().sendMessage(player, "messages.enchant-use-socket-menu");
     }
 
-    /** Prevents managed enchantment books from bypassing socket policy through anvils. */
+    /** Prevents any anvil ingredient from raising managed enchantments outside socket policy. */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareAnvil(PrepareAnvilEvent event) {
         ItemStack pickaxe = event.getInventory().getFirstItem();
-        ItemStack addition = event.getInventory().getSecondItem();
+        ItemStack result = event.getResult();
         if (PickaxeData.isInfinityPickaxe(pickaxe)
-                && plugin.getEnchantManager().containsManagedEnchantBook(addition)) {
+                && plugin.getEnchantManager().hasManagedEnchantIncrease(pickaxe, result)) {
             event.setResult(null);
+        }
+    }
+
+    /** Managed pickaxes must not bypass progression through an enchanting table. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
+    public void onEnchantItem(EnchantItemEvent event) {
+        if (PickaxeData.isInfinityPickaxe(event.getItem())) {
+            event.setCancelled(true);
         }
     }
 }

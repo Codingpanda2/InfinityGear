@@ -15,8 +15,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -24,6 +28,29 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class GuiManagerTest {
+
+    @Test
+    void guiCannotResurrectClickCancelledByEarlierHandler() {
+        Harness harness = new Harness();
+        InventoryClickEvent event = mock(InventoryClickEvent.class);
+        AtomicBoolean cancelled = new AtomicBoolean(true);
+        when(event.getInventory()).thenReturn(harness.inventory);
+        when(event.getWhoClicked()).thenReturn(harness.viewer);
+        when(event.isCancelled()).thenAnswer(invocation -> cancelled.get());
+        doAnswer(invocation -> {
+            cancelled.set(invocation.getArgument(0));
+            return null;
+        }).when(event).setCancelled(anyBoolean());
+        doAnswer(invocation -> {
+            event.setCancelled(false); // Simulates SWAP_WITH_CURSOR in the bottom inventory.
+            return null;
+        }).when(harness.gui).handleClick(event);
+
+        harness.manager.onInventoryClick(event);
+
+        assertTrue(cancelled.get());
+        verify(harness.gui).handleClick(event);
+    }
 
     @ParameterizedTest
     @EnumSource(ClickType.class)

@@ -75,6 +75,29 @@ class EnchantPolicySynchronizerTest {
     }
 
     @Test
+    void exactLegacyRepairingDefaultIsDisabledOnceButLaterAdminChoiceIsPreserved() {
+        YamlConfiguration policy = new YamlConfiguration();
+        policy.set("enchants.repairing.key", "ecoenchants:repairing");
+        policy.set("enchants.repairing.enabled", true);
+        policy.set("enchants.repairing.unlock-pickaxe-level", 0);
+        policy.set("enchants.repairing.max-level", "inherit");
+        policy.set("enchants.repairing.additional-conflicts", List.of());
+
+        EnchantPolicySynchronizer.SyncResult first = EnchantPolicySynchronizer.synchronize(
+                policy, List.of(enchant("repairing")));
+
+        assertEquals(List.of("repairing"), first.migrated());
+        assertFalse(policy.getBoolean("enchants.repairing.enabled"));
+
+        policy.set("enchants.repairing.enabled", true);
+        EnchantPolicySynchronizer.SyncResult second = EnchantPolicySynchronizer.synchronize(
+                policy, List.of(enchant("repairing")));
+
+        assertTrue(policy.getBoolean("enchants.repairing.enabled"));
+        assertFalse(second.changed());
+    }
+
+    @Test
     void vanillaManagedEnchantmentsReceiveNormalPolicyEntries() {
         YamlConfiguration policy = new YamlConfiguration();
 
