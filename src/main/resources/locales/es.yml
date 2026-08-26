@@ -12,7 +12,7 @@ mining-actionbar:
 
 messages:
   pickaxe-quarantined: "<red>Este pico está en cuarentena porque su UUID fue duplicado. Contacta a un administrador.</red>"
-  enchant-conflict: "<red>%enchant% no se puede aplicar porque EcoEnchants detectó un conflicto, requisito o destino inválido.</red>"
+  enchant-conflict: "<red>%enchant% no se puede aplicar debido a un conflicto nativo o configurado, requisito o destino inválido.</red>"
   no-permission: "<red>No tienes permisos suficientes para ejecutar este comando.</red>"
   player-only: "<red>Este comando solo puede ser ejecutado por jugadores en el servidor.</red>"
   player-not-found: "<red>El jugador especificado no fue encontrado o está desconectado.</red>"
@@ -47,12 +47,13 @@ messages:
   enchant-locked-pickaxe-level: "<red>Tu pico requiere ser <yellow>Nivel %required%</yellow> para desbloquear este socket.</red>"
   enchant-invalid-book: "<red>Debes colocar un libro de <aqua>%enchant%</aqua> <yellow>Nivel %required_book_level%</yellow> para mejorar este socket.</red>"
   enchant-no-book-in-hand: "<red>No tienes el libro requerido en tu cursor para aplicar la mejora.</red>"
-  enchant-use-socket-menu: "<red>Los libros de EcoEnchants gestionados deben aplicarse mediante los espacios de encantamiento en <yellow>/ipickaxe</yellow>.</red>"
+  enchant-use-socket-menu: "<red>Los libros de encantamientos gestionados deben aplicarse mediante los espacios de encantamiento en <yellow>/ipickaxe</yellow>.</red>"
 
   # LimitBreak & Libros Especiales
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ ¡LIMITBREAK APLICADO! ✦</b></gradient> <green>¡Has mejorado <aqua>%enchant%</aqua> a <yellow>Nivel %level%</yellow>!%limitbreak_indicator%</green>"
   limitbreak-max-reached: "<red>Este encantamiento ha alcanzado el límite absoluto de LimitBreak (<yellow>Máx: %max%</yellow>, incluye +%extra% niveles extra).</red>"
   limitbreak-invalid-target: "<red>Este libro LimitBreak pertenece a otro encantamiento: <aqua>%enchant%</aqua>.</red>"
+  limitbreak-not-supported: "<red><aqua>%enchant%</aqua> no se puede mejorar con LimitBreak.</red>"
   limitbreak-locked-pickaxe-level: "<red>Tu pico requiere ser <yellow>Nivel %required%</yellow> para aplicar LimitBreak a <aqua>%enchant%</aqua>.</red>"
   limitbreak-book-received: "<green>¡Has recibido <yellow>%amount%x</yellow> <gradient:#FF0055:#FFAA00><b>Libro LimitBreak: %enchant% +1</b></gradient>!</green>"
   limitbreak-universal-received: "<green>¡Has recibido <yellow>%amount%x</yellow> <gradient:#FF00FF:#00FFFF><b>✦ SÚPER LIBRO UNIVERSAL +1 ✦</b></gradient>!</green>"

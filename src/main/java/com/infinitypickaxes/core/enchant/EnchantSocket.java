@@ -27,11 +27,22 @@ public class EnchantSocket {
     private final List<String> description;
     private final Integer customModelData;
     private final Set<String> additionalConflicts;
+    private final boolean supportsLimitBreak;
 
     public EnchantSocket(String id, String keyString, NamespacedKey namespacedKey, String displayName,
                          Material icon, int slot, boolean enabled, int unlockPickaxeLevel, int maxLevel,
                          NavigableMap<Integer, Integer> levelScaling, List<String> description,
                          Integer customModelData, Set<String> additionalConflicts) {
+        this(id, keyString, namespacedKey, displayName, icon, slot, enabled,
+                unlockPickaxeLevel, maxLevel, levelScaling, description,
+                customModelData, additionalConflicts, true);
+    }
+
+    public EnchantSocket(String id, String keyString, NamespacedKey namespacedKey, String displayName,
+                         Material icon, int slot, boolean enabled, int unlockPickaxeLevel, int maxLevel,
+                         NavigableMap<Integer, Integer> levelScaling, List<String> description,
+                         Integer customModelData, Set<String> additionalConflicts,
+                         boolean supportsLimitBreak) {
         this.id = id.toLowerCase();
         this.keyString = keyString != null ? keyString.toLowerCase() : "minecraft:" + this.id;
         this.namespacedKey = namespacedKey;
@@ -48,6 +59,7 @@ public class EnchantSocket {
                 .filter(value -> value != null && !value.isBlank())
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .collect(Collectors.toUnmodifiableSet());
+        this.supportsLimitBreak = supportsLimitBreak;
     }
 
     public String getId() {
@@ -104,6 +116,10 @@ public class EnchantSocket {
 
     public Set<String> getAdditionalConflicts() {
         return additionalConflicts;
+    }
+
+    public boolean supportsLimitBreak() {
+        return supportsLimitBreak;
     }
 
     public boolean additionallyConflictsWith(EnchantSocket other) {

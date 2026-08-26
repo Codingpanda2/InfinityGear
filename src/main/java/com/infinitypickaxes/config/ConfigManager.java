@@ -156,7 +156,7 @@ public class ConfigManager {
         for (String key : config.getKeys(true)) {
             if (config.isString(key)) {
                 String current = config.getString(key, "");
-                String migrated = current.replace("/pickaxe", "/ipickaxe");
+                String migrated = migrateLegacyText(current);
                 if (!current.equals(migrated)) {
                     config.set(key, migrated);
                     changed = true;
@@ -165,7 +165,7 @@ public class ConfigManager {
                 List<?> current = config.getList(key, List.of());
                 List<Object> migrated = current.stream()
                         .map(value -> value instanceof String text
-                                ? text.replace("/pickaxe", "/ipickaxe") : value)
+                                ? migrateLegacyText(text) : value)
                         .toList();
                 if (!current.equals(migrated)) {
                     config.set(key, migrated);
@@ -174,6 +174,18 @@ public class ConfigManager {
             }
         }
         return changed;
+    }
+
+    private static String migrateLegacyText(String text) {
+        return text
+                .replace("/pickaxe", "/ipickaxe")
+                .replace("Managed EcoEnchant books", "Managed enchantment books")
+                .replace("Los libros de EcoEnchants gestionados",
+                        "Los libros de encantamientos gestionados")
+                .replace("because EcoEnchants reports a target, conflict, or requirement violation",
+                        "because of a native or configured conflict, requirement, or invalid target")
+                .replace("porque EcoEnchants detectó un conflicto, requisito o destino inválido",
+                        "debido a un conflicto nativo o configurado, requisito o destino inválido");
     }
 
     private void migrateLegacyCommandAlias(File file, YamlConfiguration config) {
@@ -202,6 +214,14 @@ public class ConfigManager {
         }
 
         List<String> infoLore = menu.getStringList("items.info-book.lore");
+        int oldVanillaRule = infoLore.indexOf(
+                "<dark_gray>Vanilla enchantments do not consume sockets.</dark_gray>");
+        if (oldVanillaRule >= 0) {
+            infoLore.set(oldVanillaRule,
+                    "<dark_gray>Efficiency is free; Fortune and Silk Touch consume sockets.</dark_gray>");
+            menu.set("items.info-book.lore", infoLore);
+            changed = true;
+        }
         int clickLine = infoLore.indexOf("<white>2.</white> <gray>Click the socket or drag the book");
         if (clickLine >= 0 && clickLine + 2 < infoLore.size()
                 && infoLore.get(clickLine + 1).equals("   <gray>directly onto the desired slot.")

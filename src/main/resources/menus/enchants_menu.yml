@@ -65,7 +65,7 @@ items:
       - "   <dark_gray>Or shift-click the book for quick apply.</dark_gray>"
       - "<white>4.</white> <gray>The book will be consumed and pickaxe upgraded!"
       - ""
-      - "<dark_gray>Vanilla enchantments do not consume sockets.</dark_gray>"
+      - "<dark_gray>Efficiency is free; Fortune and Silk Touch consume sockets.</dark_gray>"
 
   # Back Button to Main Menu
   back-button:

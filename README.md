@@ -11,9 +11,9 @@
 * ⛏️ **Picos Administrados Irrompibles:** Los Infinity Pickaxes generados por el plugin son irrompibles por defecto.
 * 🔄 **Conversión Vanilla Opcional:** La conversión automática está desactivada por defecto para que un pico cualquiera no entre al sistema accidentalmente.
 * 📈 **Sistema de Nivel Progresivo (0 a 100):** Gana experiencia minando bloques configurables (`blocks.yml`). Incluye protección anti-exploit para bloques colocados por jugadores.
-* 🔮 **Integración Nativa con EcoEnchants:** EcoEnchants 2026.33 es la única fuente de encantamientos, efectos, niveles máximos, nombres y descripciones.
-* 📖 **Mejora Interactiva por Libros:** Arrastra y suelta un libro del mismo nivel en el socket para subirlo de nivel.
-* 🧩 **Progresión de Sockets:** Los niveles 0/10/25/50/75 permiten 3/4/6/8/10 EcoEnchants gestionados. Los encantamientos vanilla, incluido Efficiency XX, no consumen sockets.
+* 🔮 **Integración Nativa con EcoEnchants:** EcoEnchants 2026.33 aporta los encantamientos personalizados; Fortune y Silk Touch se gestionan como excepciones vanilla.
+* 📖 **Mejora Interactiva por Libros:** Selecciona un libro del mismo nivel y pulsa el socket correspondiente para subirlo de nivel.
+* 🧩 **Progresión de Sockets:** Los niveles 0/10/25/50/75 permiten 3/4/6/8/10 encantamientos gestionados. Efficiency XX es gratuito; Fortune y Silk Touch consumen un socket.
 * ✦ **LimitBreak por Hitos:** Se desbloquea al nivel 50 con límites extra configurables por nivel (+1/+3/+5 por defecto).
 * 🛡️ **Protección contra Duplicados:** Los UUID duplicados quedan en cuarentena hasta que un administrador conserva y reasigna el ejemplar legítimo.
 * 🎨 **Soporte para TexturePacks & Bridges:**
@@ -41,9 +41,9 @@ La detección es heurística: pone en cuarentena UUID que aparecen simultáneame
 
 Los inventarios GUI arbitrarios de otros plugins no se escanean. Las solicitudes automáticas relevantes se agrupan para evitar ejecutar numerosos escaneos globales durante una ráfaga de eventos.
 
-## 🔮 Política de EcoEnchants
+## 🔮 Política de encantamientos
 
-`enchants.yml` se sincroniza de forma aditiva al iniciar y recargar: cada EcoEnchant compatible nuevo recibe una entrada, pero las ediciones del administrador y las entradas huérfanas nunca se sobrescriben ni eliminan. EcoEnchants conserva autoridad sobre claves reales, objetivos, conflictos nativos, metadatos y máximos nativos.
+`enchants.yml` se sincroniza de forma aditiva al iniciar y recargar: cada EcoEnchant compatible, Fortune y Silk Touch reciben una entrada, pero las ediciones del administrador y las entradas huérfanas nunca se sobrescriben ni eliminan. EcoEnchants y Bukkit conservan autoridad sobre claves reales, objetivos, conflictos nativos, metadatos y máximos nativos.
 
 Los administradores pueden habilitar o deshabilitar sockets, definir el nivel de desbloqueo, reducir el máximo efectivo y añadir conflictos simétricos. Los picos que ya superen una capacidad o política nueva se conservan sin eliminar encantamientos; simplemente no pueden añadir otro socket hasta recuperar capacidad.
 

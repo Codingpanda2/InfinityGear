@@ -55,6 +55,22 @@ class EnchantPolicySynchronizerTest {
     }
 
     @Test
+    void vanillaManagedEnchantmentsReceiveNormalPolicyEntries() {
+        YamlConfiguration policy = new YamlConfiguration();
+
+        EnchantPolicySynchronizer.synchronize(policy,
+                List.of(new EnchantPolicySynchronizer.EnchantDescriptor(
+                                "fortune", "minecraft:fortune"),
+                        new EnchantPolicySynchronizer.EnchantDescriptor(
+                                "silk_touch", "minecraft:silk_touch")));
+
+        assertTrue(policy.getBoolean("enchants.fortune.enabled"));
+        assertEquals("minecraft:fortune", policy.getString("enchants.fortune.key"));
+        assertTrue(policy.getBoolean("enchants.silk_touch.enabled"));
+        assertEquals("minecraft:silk_touch", policy.getString("enchants.silk_touch.key"));
+    }
+
+    @Test
     void configuredMaximumCanOnlyTightenEcoMaximum() {
         assertEquals(10, EnchantPolicySynchronizer.effectiveMaximum("inherit", 10));
         assertEquals(6, EnchantPolicySynchronizer.effectiveMaximum(6, 10));

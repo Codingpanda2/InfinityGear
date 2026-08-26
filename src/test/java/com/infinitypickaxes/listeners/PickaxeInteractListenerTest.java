@@ -4,7 +4,6 @@ import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.config.MessageManager;
 import com.infinitypickaxes.config.ConfigManager;
 import com.infinitypickaxes.core.duplicate.PickaxeDuplicateService;
-import com.infinitypickaxes.core.enchant.EcoEnchantsHook;
 import com.infinitypickaxes.core.enchant.EnchantManager;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
@@ -26,8 +25,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -40,14 +37,12 @@ import static org.mockito.Mockito.when;
 class PickaxeInteractListenerTest {
 
     @Test
-    void directEcoBookDropOntoManagedPickaxeIsCancelled() {
+    void directManagedBookDropOntoManagedPickaxeIsCancelled() {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         EnchantManager enchantManager = mock(EnchantManager.class);
-        EcoEnchantsHook ecoHook = mock(EcoEnchantsHook.class);
         MessageManager messages = mock(MessageManager.class);
         when(plugin.getEnchantManager()).thenReturn(enchantManager);
         when(plugin.getMessageManager()).thenReturn(messages);
-        when(enchantManager.getEcoHook()).thenReturn(ecoHook);
 
         Player player = mock(Player.class);
         Inventory bottom = mock(Inventory.class);
@@ -61,11 +56,11 @@ class PickaxeInteractListenerTest {
         when(view.getBottomInventory()).thenReturn(bottom);
         when(event.getCurrentItem()).thenReturn(pickaxe);
         when(event.getCursor()).thenReturn(book);
-        when(ecoHook.extractEnchantsFromBook(book)).thenReturn(Map.of("ecoenchants:test", 1));
+        when(enchantManager.containsManagedEnchantBook(book)).thenReturn(true);
 
         try (MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
             pickaxeData.when(() -> PickaxeData.isInfinityPickaxe(pickaxe)).thenReturn(true);
-            new PickaxeInteractListener(plugin).onDirectEcoEnchantDrop(event);
+            new PickaxeInteractListener(plugin).onDirectManagedEnchantDrop(event);
         }
 
         verify(event).setCancelled(true);
@@ -76,16 +71,14 @@ class PickaxeInteractListenerTest {
     void anvilEcoBookResultForManagedPickaxeIsCleared() {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         EnchantManager enchantManager = mock(EnchantManager.class);
-        EcoEnchantsHook ecoHook = mock(EcoEnchantsHook.class);
         when(plugin.getEnchantManager()).thenReturn(enchantManager);
-        when(enchantManager.getEcoHook()).thenReturn(ecoHook);
 
         ItemStack pickaxe = mock(ItemStack.class);
         ItemStack book = mock(ItemStack.class);
         AnvilInventory inventory = mock(AnvilInventory.class);
         when(inventory.getFirstItem()).thenReturn(pickaxe);
         when(inventory.getSecondItem()).thenReturn(book);
-        when(ecoHook.extractEnchantsFromBook(book)).thenReturn(Map.of("ecoenchants:test", 1));
+        when(enchantManager.containsManagedEnchantBook(book)).thenReturn(true);
         PrepareAnvilEvent event = mock(PrepareAnvilEvent.class);
         when(event.getInventory()).thenReturn(inventory);
 

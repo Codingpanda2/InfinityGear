@@ -135,29 +135,29 @@ public class PickaxeInteractListener implements Listener {
     }
 
     /**
-     * Managed EcoEnchant books must go through the socket UI so capacity,
+     * Managed enchantment books must go through the socket UI so capacity,
      * unlocks, configured maxima, and additional conflicts cannot be bypassed.
      */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onDirectEcoEnchantDrop(InventoryClickEvent event) {
+    public void onDirectManagedEnchantDrop(InventoryClickEvent event) {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         ItemStack target = event.getCurrentItem();
         ItemStack cursor = event.getCursor();
         if (!PickaxeData.isInfinityPickaxe(target)
-                || plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(cursor).isEmpty()) {
+                || !plugin.getEnchantManager().containsManagedEnchantBook(cursor)) {
             return;
         }
         event.setCancelled(true);
         plugin.getMessageManager().sendMessage(player, "messages.enchant-use-socket-menu");
     }
 
-    /** Prevents EcoEnchant books from bypassing socket policy through anvils. */
+    /** Prevents managed enchantment books from bypassing socket policy through anvils. */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareAnvil(PrepareAnvilEvent event) {
         ItemStack pickaxe = event.getInventory().getFirstItem();
         ItemStack addition = event.getInventory().getSecondItem();
         if (PickaxeData.isInfinityPickaxe(pickaxe)
-                && !plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(addition).isEmpty()) {
+                && plugin.getEnchantManager().containsManagedEnchantBook(addition)) {
             event.setResult(null);
         }
     }

@@ -186,7 +186,7 @@ public class EnchantSocketsGui extends CustomGui {
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxForPickaxe = socket.getMaxAllowedLevel(pickaxeLvl);
         int globalMax = socket.getMaxLevel();
-        int maxExtra = (plugin.getLimitBreakManager() != null)
+        int maxExtra = (socket.supportsLimitBreak() && plugin.getLimitBreakManager() != null)
                 ? plugin.getLimitBreakManager().getMaxExtraLevels(pickaxeLvl) : 0;
         int absoluteMax = globalMax + maxExtra;
 
@@ -200,7 +200,7 @@ public class EnchantSocketsGui extends CustomGui {
                     .replace("%enchant_display_name%", socket.getDisplayName());
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-locked");
             builder.name(name).lore(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
-        } else if (currentLvl >= absoluteMax) {
+        } else if (socket.supportsLimitBreak() && maxExtra > 0 && currentLvl >= absoluteMax) {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%enchant_display_name%", socket.getDisplayName())
                     .replace("%current_level%", String.valueOf(currentLvl))
@@ -297,18 +297,14 @@ public class EnchantSocketsGui extends CustomGui {
                         }
                     }
 
-                    // Otherwise regular book auto-apply
-                    Map<String, Integer> bookEnchants = plugin.getEnchantManager().getEcoHook().extractEnchantsFromBook(clickedItem);
-                    for (String keyStr : bookEnchants.keySet()) {
-                        EnchantSocket s = plugin.getEnchantManager().getSocketByKey(keyStr);
-                        if (s == null && keyStr.contains(":")) {
-                            s = plugin.getEnchantManager().getSocket(keyStr.substring(keyStr.indexOf(":") + 1));
-                        }
-                        if (s != null) {
-                            if (plugin.getEnchantManager().handleSocketUpgrade(player, pickaxe, s, clickedItem)) {
-                                setupItems();
-                                break;
-                            }
+                    // Otherwise quick-apply the first managed enchantment found
+                    // on the book, including vanilla Fortune and Silk Touch.
+                    for (EnchantSocket socket : plugin.getEnchantManager().getAllSockets()) {
+                        if (plugin.getEnchantManager().getBookLevel(clickedItem, socket) != null
+                                && plugin.getEnchantManager().handleSocketUpgrade(
+                                player, pickaxe, socket, clickedItem)) {
+                            setupItems();
+                            break;
                         }
                     }
                 }

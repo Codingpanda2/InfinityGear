@@ -56,7 +56,7 @@ public class LimitBreakManager {
      * Creates a Specific (+1) LimitBreak Book for a designated enchantment socket.
      */
     public ItemStack createSpecificBook(EnchantSocket socket, int amount) {
-        if (socket == null) return null;
+        if (socket == null || !socket.supportsLimitBreak()) return null;
         FileConfiguration config = getConfig();
 
         Material mat = Material.matchMaterial(config.getString("specific-book.material", "ENCHANTED_BOOK"));
@@ -176,6 +176,11 @@ public class LimitBreakManager {
             return false;
         }
         if (!socket.isEnabled()) return false;
+        if (!socket.supportsLimitBreak()) {
+            plugin.getMessageManager().sendMessage(player, "messages.limitbreak-not-supported",
+                    "%enchant%", socket.getDisplayName());
+            return false;
+        }
 
         if (!isLimitBreakBook(bookItem)) {
             return false;
