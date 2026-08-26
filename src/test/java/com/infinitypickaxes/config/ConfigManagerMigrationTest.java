@@ -26,4 +26,16 @@ class ConfigManagerMigrationTest {
         assertEquals(4, config.getInt("number"));
         assertFalse(ConfigManager.replaceLegacyCommandAlias(config));
     }
+
+    @Test
+    void obsoleteUniversalBookCompatibilityClaimIsNarrowed() {
+        YamlConfiguration config = new YamlConfiguration();
+        config.set("lore", List.of(
+                "<yellow>• Compatible with every socket registered on your pickaxe."));
+
+        assertTrue(ConfigManager.replaceLegacyCommandAlias(config));
+        assertEquals(List.of(
+                        "<yellow>• Compatible with every LimitBreak-enabled socket on your pickaxe."),
+                config.getStringList("lore"));
+    }
 }

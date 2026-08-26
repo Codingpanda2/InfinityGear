@@ -119,9 +119,9 @@ public class EnchantManager {
         if (added > 0) {
             plugin.getLogger().info("Loaded " + added + " pickaxe enchantments from EcoEnchants.");
         }
-        registerVanillaSocket(policy, "fortune", "minecraft:fortune", "<gray>Fortune<reset>",
+        registerVanillaSocket(policy, "fortune", "minecraft:fortune", "Fortune",
                 List.of("<gray>Increases the drops from certain blocks.</gray>"), true);
-        registerVanillaSocket(policy, "silk_touch", "minecraft:silk_touch", "<gray>Silk Touch<reset>",
+        registerVanillaSocket(policy, "silk_touch", "minecraft:silk_touch", "Silk Touch",
                 List.of("<gray>Allows compatible blocks to drop themselves.</gray>"), false);
         validateAdditionalConflicts();
     }
@@ -151,10 +151,17 @@ public class EnchantManager {
     /** Counts every managed socket enchantment, including Fortune and Silk Touch. */
     public int countUsedSockets(InfinityPickaxe pickaxe) {
         if (pickaxe == null) return 0;
+        return countRecognizedSockets(pickaxe.getEnchantments().keySet(), socketsByKey);
+    }
+
+    static int countRecognizedSockets(Collection<String> enchantmentKeys,
+                                      Map<String, EnchantSocket> socketsByKey) {
+        if (enchantmentKeys == null || socketsByKey == null) return 0;
         int used = 0;
-        for (String enchantmentKey : pickaxe.getEnchantments().keySet()) {
+        for (String enchantmentKey : enchantmentKeys) {
+            if (enchantmentKey == null) continue;
             EnchantSocket socket = socketsByKey.get(enchantmentKey.toLowerCase(Locale.ROOT));
-            if (socket != null && socket.isEnabled()) {
+            if (socket != null) {
                 used++;
             }
         }
@@ -217,6 +224,9 @@ public class EnchantManager {
         if (player == null || pickaxe == null || socket == null || bookItem == null) {
             return false;
         }
+        // Regular socket progression consumes actual enchanted books only.
+        // LimitBreak validates its independently configurable PDC item.
+        if (bookItem.getType() != Material.ENCHANTED_BOOK) return false;
         if (!plugin.getDuplicateService().isUsable(pickaxe.getItemStack())) {
             plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return false;
@@ -308,6 +318,7 @@ public class EnchantManager {
 
     public Integer getBookLevel(ItemStack bookItem, EnchantSocket socket) {
         if (bookItem == null || socket == null) return null;
+        if (bookItem.getType() != Material.ENCHANTED_BOOK) return null;
         Integer direct = getVanillaOrStoredBookLevel(bookItem, socket);
         if (direct != null) return direct;
         return ecoHook.extractEnchantsFromBook(bookItem).get(socket.getKeyString().toLowerCase(Locale.ROOT));
@@ -317,6 +328,32 @@ public class EnchantManager {
         if (item == null || item.getType() != Material.ENCHANTED_BOOK) return false;
         for (EnchantSocket socket : socketsById.values()) {
             if (socket.isEnabled() && getBookLevel(item, socket) != null) return true;
+        }
+        return false;
+    }
+
+    /** Returns true when an anvil result introduces or raises a managed enchantment. */
+    public boolean hasManagedEnchantIncrease(ItemStack original, ItemStack result) {
+        if (original == null || result == null) return false;
+        Map<String, Integer> originalLevels = new HashMap<>();
+        Map<String, Integer> resultLevels = new HashMap<>();
+        for (EnchantSocket socket : socketsById.values()) {
+            Enchantment enchantment = getEnchantment(socket.getKeyString());
+            if (enchantment == null) continue;
+            originalLevels.put(socket.getKeyString(), original.getEnchantmentLevel(enchantment));
+            resultLevels.put(socket.getKeyString(), result.getEnchantmentLevel(enchantment));
+        }
+        return hasAnyManagedLevelIncrease(originalLevels, resultLevels, socketsByKey.keySet());
+    }
+
+    static boolean hasAnyManagedLevelIncrease(Map<String, Integer> originalLevels,
+                                              Map<String, Integer> resultLevels,
+                                              Collection<String> managedKeys) {
+        if (originalLevels == null || resultLevels == null || managedKeys == null) return false;
+        for (String key : managedKeys) {
+            if (key != null && resultLevels.getOrDefault(key, 0) > originalLevels.getOrDefault(key, 0)) {
+                return true;
+            }
         }
         return false;
     }
@@ -360,6 +397,9 @@ public class EnchantManager {
                 "Added enchantment policy entry for '" + id + "' to enchants.yml."));
         result.updated().forEach(id -> plugin.getLogger().info(
                 "Added missing display-color for '" + id + "' to enchants.yml."));
+        result.migrated().forEach(id -> plugin.getLogger().warning(
+                "Disabled legacy no-op enchantment '" + id
+                        + "' because Infinity Pickaxes are unbreakable; administrators may re-enable it explicitly."));
         result.orphaned().forEach(id -> plugin.getLogger().warning(
                 "Orphaned enchants.yml entry '" + id
                         + "' has no matching live managed pickaxe enchantment; it was preserved."));
@@ -367,7 +407,7 @@ public class EnchantManager {
     }
 
     private void registerVanillaSocket(FileConfiguration policy, String id, String key,
-                                       String displayName, List<String> description,
+                                       String rawDisplayName, List<String> description,
                                        boolean supportsLimitBreak) {
         Enchantment enchantment = getEnchantment(key);
         if (enchantment == null || enchantment.getKey() == null) {
@@ -385,7 +425,7 @@ public class EnchantManager {
                 id,
                 canonicalKey,
                 enchantment.getKey(),
-                displayName,
+                configuredDisplayName(policy, path, rawDisplayName),
                 Material.ENCHANTED_BOOK,
                 -1,
                 policy.getBoolean(path + ".enabled", true),
@@ -399,6 +439,12 @@ public class EnchantManager {
         );
         socketsById.put(id, socket);
         socketsByKey.put(canonicalKey, socket);
+    }
+
+    static String configuredDisplayName(FileConfiguration policy, String path, String rawDisplayName) {
+        String color = policy == null ? "<gray>"
+                : policy.getString(path + ".display-color", "<gray>");
+        return EcoEnchantsHook.formatDisplayName(rawDisplayName, color);
     }
 
     private int effectiveMaximum(Object configured, int nativeMaximum, String id) {

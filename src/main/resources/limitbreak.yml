@@ -53,7 +53,7 @@ universal-book:
     - ""
     - "<white><b>LEGENDARY EFFECT:</b></white>"
     - "<yellow>• Grants <gold>+1 Level</gold> to any enchantment you choose."
-    - "<yellow>• Compatible with every socket registered on your pickaxe."
+    - "<yellow>• Compatible with every LimitBreak-enabled socket on your pickaxe."
     - "<yellow>• Activates <light_purple>LimitBreak</light_purple> up to <light_purple>+%max_extra% extra levels</light_purple>."
     - ""
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"

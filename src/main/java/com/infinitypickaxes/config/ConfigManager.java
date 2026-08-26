@@ -185,7 +185,9 @@ public class ConfigManager {
                 .replace("because EcoEnchants reports a target, conflict, or requirement violation",
                         "because of a native or configured conflict, requirement, or invalid target")
                 .replace("porque EcoEnchants detectó un conflicto, requisito o destino inválido",
-                        "debido a un conflicto nativo o configurado, requisito o destino inválido");
+                        "debido a un conflicto nativo o configurado, requisito o destino inválido")
+                .replace("Compatible with every socket registered on your pickaxe.",
+                        "Compatible with every LimitBreak-enabled socket on your pickaxe.");
     }
 
     private void migrateLegacyCommandAlias(File file, YamlConfiguration config) {
