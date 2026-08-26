@@ -31,6 +31,9 @@ dependencies {
     mockitoAgent("org.mockito:mockito-core:5.20.0") { isTransitive = false }
     testImplementation("io.papermc.paper:paper-api:26.2.build.112-stable")
     testImplementation("me.clip:placeholderapi:2.12.3")
+    testCompileOnly("com.willfp:EcoEnchants:2026.33")
+    testCompileOnly("com.willfp:eco:2026.33")
+    testCompileOnly("com.willfp:libreforge:2026.33")
     testRuntimeOnly("com.willfp:EcoEnchants:2026.33") { isTransitive = false }
     testRuntimeOnly("com.willfp:eco:2026.33") { isTransitive = false }
     testRuntimeOnly("com.willfp:libreforge:2026.33:shadow") { isTransitive = false }

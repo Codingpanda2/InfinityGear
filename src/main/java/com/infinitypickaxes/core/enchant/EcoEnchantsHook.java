@@ -5,6 +5,7 @@ import com.infinitypickaxes.utils.TextUtil;
 import com.willfp.ecoenchants.display.EnchantmentFormattingKt;
 import com.willfp.ecoenchants.enchant.EcoEnchant;
 import com.willfp.ecoenchants.enchant.EcoEnchants;
+import com.willfp.ecoenchants.target.EnchantmentTarget;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
@@ -39,12 +40,27 @@ public final class EcoEnchantsHook {
         List<EcoEnchant> result = new ArrayList<>();
         for (EcoEnchant enchant : EcoEnchants.INSTANCE.values()) {
             if (enchant == null || enchant.isHiddenFromGui() || enchant.getEnchantment() == null) continue;
-            if (enchant.getTargets().stream().anyMatch(target -> target.matches(probe))) {
+            if (enchant.getTargets().stream().anyMatch(target -> isPickaxeTarget(target, probe))) {
                 result.add(enchant);
             }
         }
         result.sort(Comparator.comparing(EcoEnchant::getID, String.CASE_INSENSITIVE_ORDER));
         return List.copyOf(result);
+    }
+
+    /**
+     * EcoEnchants declares pickaxe compatibility with the stable target ID
+     * "pickaxe". Prefer that identity over re-evaluating its item matcher;
+     * the matcher remains a fallback for custom targets that include pickaxes.
+     */
+    static boolean isPickaxeTarget(EnchantmentTarget target, ItemStack probe) {
+        if (target == null) return false;
+        String id = target.getID();
+        if (id != null && (id.equalsIgnoreCase("pickaxe")
+                || id.toLowerCase(Locale.ROOT).endsWith(":pickaxe"))) {
+            return true;
+        }
+        return probe != null && target.matches(probe);
     }
 
     public EcoEnchant findEcoEnchant(Enchantment enchantment) {

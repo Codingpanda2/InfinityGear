@@ -50,7 +50,17 @@ public class EnchantManager {
         // EcoEnchants is the sole source of enchantment identity and metadata.
         discoverAndRegisterEcoEnchants();
 
-        plugin.getLogger().info("Loaded " + socketsById.size() + " compatible enchantment sockets.");
+        long enabledSockets = socketsById.values().stream().filter(EnchantSocket::isEnabled).count();
+        plugin.getLogger().info("Loaded " + socketsById.size() + " compatible enchantment sockets ("
+                + enabledSockets + " enabled).");
+        if (socketsById.isEmpty() && ecoHook.isEcoEnchantsPresent()) {
+            plugin.getLogger().warning("EcoEnchants is enabled, but no pickaxe-compatible enchantments "
+                    + "were discovered. The enchantment menu will remain unavailable until EcoEnchants "
+                    + "has loaded its registry; run /pickaxe reload afterward.");
+        } else if (!socketsById.isEmpty() && enabledSockets == 0) {
+            plugin.getLogger().warning("Every discovered EcoEnchant is disabled in enchants.yml; "
+                    + "the enchantment menu has no available sockets.");
+        }
     }
 
     public void discoverAndRegisterEcoEnchants() {

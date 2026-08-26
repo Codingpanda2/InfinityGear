@@ -24,8 +24,9 @@ enchant-format:
     - "<white><b>Upgrade Requirement:</b></white>"
     - "<yellow>• Book of %enchant_display_name% <gold>Lv. %required_book_level%</gold></yellow>"
     - ""
-    - "<green>▶ Drag & drop matching book or</green>"
-    - "<green>  click socket with book on cursor.</green>"
+    - "<green>▶ Click the book in your inventory, then</green>"
+    - "<green>  click this socket with it on your cursor.</green>"
+    - "<dark_green>  Tip: shift-click the book to apply it directly.</dark_green>"
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
   lore-maxed:
@@ -59,9 +60,10 @@ items:
       - "<gray>To level up an enchantment:"
       - "<white>1.</white> <gray>Obtain an enchanted book of the <yellow>same level</yellow>"
       - "   <gray>your pickaxe currently has."
-      - "<white>2.</white> <gray>Click the socket or drag the book"
-      - "   <gray>directly onto the desired slot."
-      - "<white>3.</white> <gray>The book will be consumed and pickaxe upgraded!"
+      - "<white>2.</white> <gray>Click the book in your inventory to pick it up."
+      - "<white>3.</white> <gray>Click the matching socket with it on your cursor."
+      - "   <dark_gray>Or shift-click the book for quick apply.</dark_gray>"
+      - "<white>4.</white> <gray>The book will be consumed and pickaxe upgraded!"
       - ""
       - "<dark_gray>Vanilla enchantments do not consume sockets.</dark_gray>"
 

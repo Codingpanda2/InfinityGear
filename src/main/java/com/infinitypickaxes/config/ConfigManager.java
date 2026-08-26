@@ -71,9 +71,12 @@ public class ConfigManager {
         // 4. Menus
         this.mainMenuFile = loadAndSyncFile("menus/main_menu.yml");
         this.mainMenuConfig = YamlConfiguration.loadConfiguration(mainMenuFile);
+        updateMissingKeys(mainMenuFile, "menus/main_menu.yml", (YamlConfiguration) this.mainMenuConfig);
 
         this.enchantsMenuFile = loadAndSyncFile("menus/enchants_menu.yml");
         this.enchantsMenuConfig = YamlConfiguration.loadConfiguration(enchantsMenuFile);
+        updateMissingKeys(enchantsMenuFile, "menus/enchants_menu.yml", (YamlConfiguration) this.enchantsMenuConfig);
+        migrateEnchantsMenuInstructions((YamlConfiguration) this.enchantsMenuConfig);
 
     }
 
@@ -144,6 +147,47 @@ public class ConfigManager {
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    private void migrateEnchantsMenuInstructions(YamlConfiguration menu) {
+        boolean changed = false;
+
+        List<String> socketLore = menu.getStringList("enchant-format.lore-unlocked");
+        int dragLine = socketLore.indexOf("<green>▶ Drag & drop matching book or</green>");
+        if (dragLine >= 0 && dragLine + 1 < socketLore.size()
+                && socketLore.get(dragLine + 1).equals("<green>  click socket with book on cursor.</green>")) {
+            socketLore.set(dragLine, "<green>▶ Click the book in your inventory, then</green>");
+            socketLore.set(dragLine + 1, "<green>  click this socket with it on your cursor.</green>");
+            socketLore.add(dragLine + 2,
+                    "<dark_green>  Tip: shift-click the book to apply it directly.</dark_green>");
+            menu.set("enchant-format.lore-unlocked", socketLore);
+            changed = true;
+        }
+
+        List<String> infoLore = menu.getStringList("items.info-book.lore");
+        int clickLine = infoLore.indexOf("<white>2.</white> <gray>Click the socket or drag the book");
+        if (clickLine >= 0 && clickLine + 2 < infoLore.size()
+                && infoLore.get(clickLine + 1).equals("   <gray>directly onto the desired slot.")
+                && infoLore.get(clickLine + 2).equals(
+                "<white>3.</white> <gray>The book will be consumed and pickaxe upgraded!")) {
+            infoLore.set(clickLine, "<white>2.</white> <gray>Click the book in your inventory to pick it up.");
+            infoLore.set(clickLine + 1,
+                    "<white>3.</white> <gray>Click the matching socket with it on your cursor.");
+            infoLore.set(clickLine + 2, "   <dark_gray>Or shift-click the book for quick apply.</dark_gray>");
+            infoLore.add(clickLine + 3,
+                    "<white>4.</white> <gray>The book will be consumed and pickaxe upgraded!");
+            menu.set("items.info-book.lore", infoLore);
+            changed = true;
+        }
+
+        if (changed) {
+            try {
+                menu.save(enchantsMenuFile);
+            } catch (Exception exception) {
+                plugin.getLogger().log(Level.WARNING,
+                        "Could not migrate enchantment menu instructions", exception);
+            }
+        }
     }
 
     public void reload() {

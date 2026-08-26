@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -113,6 +114,24 @@ public class EnchantSocketsGui extends CustomGui {
             if (s.isEnabled()) {
                 allSockets.add(s);
             }
+        }
+
+        if (allSockets.isEmpty()) {
+            int emptySlot = Math.min(invSize - 1, 22);
+            boolean discoveredAny = !plugin.getEnchantManager().getAllSockets().isEmpty();
+            String reason = discoveredAny
+                    ? "<red>All discovered enchantments are disabled in enchants.yml.</red>"
+                    : "<red>No pickaxe EcoEnchants were discovered.</red>";
+            inventory.setItem(emptySlot, new ItemBuilder(Material.BARRIER)
+                    .name("<red><b>No Enchantment Sockets Available</b></red>")
+                    .lore(List.of(
+                            reason,
+                            "",
+                            "<gray>Check the server log for the loaded socket count.</gray>",
+                            "<gray>After EcoEnchants loads or reloads, run:</gray>",
+                            "<yellow>/pickaxe reload</yellow>"
+                    ))
+                    .build());
         }
 
         List<Integer> usableSlots = getUsableInnerSlots();
@@ -293,6 +312,10 @@ public class EnchantSocketsGui extends CustomGui {
                         }
                     }
                 }
+            } else if (isSafeBottomAction(event.getAction())) {
+                // Let the player put a book on their cursor without exposing the
+                // GUI inventory to shift, collect-to-cursor, hotbar, or drag moves.
+                event.setCancelled(false);
             }
             return;
         }
@@ -359,5 +382,16 @@ public class EnchantSocketsGui extends CustomGui {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
             }
         }
+    }
+
+    static boolean isSafeBottomAction(InventoryAction action) {
+        return action == InventoryAction.PICKUP_ALL
+                || action == InventoryAction.PICKUP_HALF
+                || action == InventoryAction.PICKUP_ONE
+                || action == InventoryAction.PICKUP_SOME
+                || action == InventoryAction.PLACE_ALL
+                || action == InventoryAction.PLACE_ONE
+                || action == InventoryAction.PLACE_SOME
+                || action == InventoryAction.SWAP_WITH_CURSOR;
     }
 }
