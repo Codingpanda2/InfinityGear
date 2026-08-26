@@ -15,9 +15,15 @@ import static org.mockito.Mockito.when;
 class EcoEnchantsHookTest {
 
     @Test
+    void plainEcoDisplayNamesReceiveAnExplicitGrayBase() {
+        assertEquals("<gray>Xray<reset>",
+                EcoEnchantsHook.scopeEcoFormatting("<gray>Xray"));
+    }
+
+    @Test
     void explicitEcoDisplayFormattingIsClosedBeforeGuiSuffixes() {
-        assertEquals("<#0575E6>Xray<reset>",
-                EcoEnchantsHook.scopeEcoFormatting("<#0575E6>Xray"));
+        assertEquals("<gray><#0575E6>Xray<reset>",
+                EcoEnchantsHook.scopeEcoFormatting("<gray><#0575E6>Xray"));
     }
 
     @Test

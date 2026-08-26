@@ -112,7 +112,7 @@ public final class EcoEnchantsHook {
         // type-formatted name. In particular, the stock "spell" type injects
         // a gradient into Xray and Dynamite. Explicit formatting placed on the
         // enchantment's display-name itself is still preserved.
-        return scopeEcoFormatting(ecoEnchant.getRawDisplayName());
+        return scopeEcoFormatting("<gray>" + ecoEnchant.getRawDisplayName());
     }
 
     static String scopeEcoFormatting(String formattedName) {
