@@ -108,10 +108,11 @@ public final class EcoEnchantsHook {
     public String getEnchantmentDisplayName(Enchantment enchantment) {
         EcoEnchant ecoEnchant = findEcoEnchant(enchantment);
         if (ecoEnchant == null) return "";
-        // Level zero tells EcoEnchants to omit its numeral while retaining the
-        // enchantment type's live format. Reset afterward so an open gradient
-        // cannot bleed into InfinityPickaxes' socket level/status suffix.
-        return scopeEcoFormatting(EnchantmentFormattingKt.getFormattedName(ecoEnchant, 0));
+        // Use the enchantment's own configured name rather than EcoEnchants'
+        // type-formatted name. In particular, the stock "spell" type injects
+        // a gradient into Xray and Dynamite. Explicit formatting placed on the
+        // enchantment's display-name itself is still preserved.
+        return scopeEcoFormatting(ecoEnchant.getRawDisplayName());
     }
 
     static String scopeEcoFormatting(String formattedName) {

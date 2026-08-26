@@ -15,9 +15,9 @@ import static org.mockito.Mockito.when;
 class EcoEnchantsHookTest {
 
     @Test
-    void ecoDisplayFormattingIsClosedBeforeGuiSuffixes() {
-        assertEquals("<gradient:#0575E6:#1E3FBA>Xray<reset>",
-                EcoEnchantsHook.scopeEcoFormatting("<gradient:#0575E6:#1E3FBA>Xray"));
+    void explicitEcoDisplayFormattingIsClosedBeforeGuiSuffixes() {
+        assertEquals("<#0575E6>Xray<reset>",
+                EcoEnchantsHook.scopeEcoFormatting("<#0575E6>Xray"));
     }
 
     @Test
