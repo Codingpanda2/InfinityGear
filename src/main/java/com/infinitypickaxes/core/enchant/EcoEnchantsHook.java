@@ -106,7 +106,17 @@ public final class EcoEnchantsHook {
     }
 
     public String getEnchantmentDisplayName(Enchantment enchantment) {
-        return getEnchantmentHeader(enchantment, 1);
+        EcoEnchant ecoEnchant = findEcoEnchant(enchantment);
+        if (ecoEnchant == null) return "";
+        // Level zero tells EcoEnchants to omit its numeral while retaining the
+        // enchantment type's live format. Reset afterward so an open gradient
+        // cannot bleed into InfinityPickaxes' socket level/status suffix.
+        return scopeEcoFormatting(EnchantmentFormattingKt.getFormattedName(ecoEnchant, 0));
+    }
+
+    static String scopeEcoFormatting(String formattedName) {
+        if (formattedName == null || formattedName.isBlank()) return "";
+        return formattedName + "<reset>";
     }
 
     public boolean canApply(ItemStack item, Enchantment enchantment) {
