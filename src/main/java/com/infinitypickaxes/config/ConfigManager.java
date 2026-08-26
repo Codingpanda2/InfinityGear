@@ -56,6 +56,7 @@ public class ConfigManager {
         this.limitbreakFile = loadAndSyncFile("limitbreak.yml");
         this.limitbreakConfig = YamlConfiguration.loadConfiguration(limitbreakFile);
         updateMissingKeys(limitbreakFile, "limitbreak.yml", (YamlConfiguration) this.limitbreakConfig);
+        migrateLegacyCommandAlias(limitbreakFile, (YamlConfiguration) this.limitbreakConfig);
 
         this.enchantsFile = loadAndSyncFile("enchants.yml");
         this.enchantsConfig = YamlConfiguration.loadConfiguration(enchantsFile);
@@ -95,6 +96,7 @@ public class ConfigManager {
                     String langKey = f.getName().replace(".yml", "").toLowerCase();
                     YamlConfiguration yaml = YamlConfiguration.loadConfiguration(f);
                     updateMissingKeys(f, "locales/" + f.getName(), yaml);
+                    migrateLegacyCommandAlias(f, yaml);
                     localeConfigs.put(langKey, yaml);
                 }
             }
@@ -147,6 +149,41 @@ public class ConfigManager {
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    static boolean replaceLegacyCommandAlias(YamlConfiguration config) {
+        boolean changed = false;
+        for (String key : config.getKeys(true)) {
+            if (config.isString(key)) {
+                String current = config.getString(key, "");
+                String migrated = current.replace("/pickaxe", "/ipickaxe");
+                if (!current.equals(migrated)) {
+                    config.set(key, migrated);
+                    changed = true;
+                }
+            } else if (config.isList(key)) {
+                List<?> current = config.getList(key, List.of());
+                List<Object> migrated = current.stream()
+                        .map(value -> value instanceof String text
+                                ? text.replace("/pickaxe", "/ipickaxe") : value)
+                        .toList();
+                if (!current.equals(migrated)) {
+                    config.set(key, migrated);
+                    changed = true;
+                }
+            }
+        }
+        return changed;
+    }
+
+    private void migrateLegacyCommandAlias(File file, YamlConfiguration config) {
+        if (!replaceLegacyCommandAlias(config)) return;
+        try {
+            config.save(file);
+        } catch (Exception exception) {
+            plugin.getLogger().log(Level.WARNING,
+                    "Could not migrate obsolete /pickaxe command references in " + file.getName(), exception);
+        }
     }
 
     private void migrateEnchantsMenuInstructions(YamlConfiguration menu) {
