@@ -40,6 +40,8 @@ Station menus select live player inventory slots and render clones. Inputs never
 
 All player-visible station inventory titles, button names/lore, payment formatting, preview labels, policy-state labels, and dynamic preview lines are configured in `menus/stations_menu.yml`. MiniMessage and the documented `%placeholder%` tokens are supported. Synchronization is additive: reloads append missing defaults without replacing administrator-edited text.
 
+The legacy pickaxe overview and socket browser remain configurable through `menus/main_menu.yml` and `menus/enchants_menu.yml`. The socket file includes separate no-enchantments fallback states, page-button materials/names/lore/slots, and active/maximum LimitBreak badges. The duplicate warning prepended to migrated pickaxe lore is configured at `pickaxe-lore.quarantine-lore` in `config.yml`; hiding that visual warning does not weaken quarantine enforcement.
+
 ### Runic Table
 
 - Apply: a normal book must contain exactly one managed enchantment. A higher book installs its target level directly; equal/lower is rejected. A new enchantment consumes one socket, while raising an existing one does not. Normal books cannot pass the standard maximum. Existing oversocketed/overcap/disabled equipment is not stripped or deactivated.

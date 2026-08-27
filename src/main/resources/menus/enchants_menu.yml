@@ -14,6 +14,14 @@ enchant-format:
   unlocked-name: "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]"
   locked-name: "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Locked)</red>"
 
+  # Appended to unlocked-name for installed over-standard enchantments.
+  # Placeholders: %extra_level%, %current_level%, %standard_maximum%,
+  # %max_level% (alias of standard maximum), and %absolute_maximum%.
+  # Set either value to "" to hide that badge without changing policy.
+  limitbreak-badges:
+    active: " <gradient:#FF00FF:#FFAA00><b>[LB +%extra_level%]</b></gradient>"
+    maximum: " <gradient:#FF00FF:#00FFFF><b>[LB MAX]</b></gradient>"
+
   lore-unlocked:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
     - "%enchant_description%"
@@ -47,6 +55,45 @@ enchant-format:
     - "<dark_gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
 
 items:
+  # Shown when the socket catalog cannot render any entries. These two states
+  # remain separate so a missing provider can be distinguished from a policy
+  # where every discovered enchantment was intentionally disabled.
+  empty-sockets:
+    slot: 22
+    material: BARRIER
+    none-discovered:
+      name: "<red><b>No Enchantment Sockets Available</b></red>"
+      lore:
+        - "<red>No pickaxe EcoEnchants were discovered.</red>"
+        - ""
+        - "<gray>Check the server log for the loaded socket count.</gray>"
+        - "<gray>After EcoEnchants loads or reloads, run:</gray>"
+        - "<yellow>/ipickaxe reload</yellow>"
+    all-disabled:
+      name: "<red><b>No Enchantment Sockets Available</b></red>"
+      lore:
+        - "<red>All discovered enchantments are disabled in enchants.yml.</red>"
+        - ""
+        - "<gray>Enable at least one compatible policy entry, then run:</gray>"
+        - "<yellow>/ipickaxe reload</yellow>"
+
+  # Page numbers are one-based. %current_page%, %target_page%, and
+  # %total_pages% are available in both names and lore. A negative slot keeps
+  # the dynamic first/last slot of the bottom row.
+  pagination:
+    previous:
+      slot: -1
+      material: SPECTRAL_ARROW
+      name: "<yellow><b>« Previous Page (%target_page%/%total_pages%)</b></yellow>"
+      lore:
+        - "<gray>Currently viewing page %current_page%.</gray>"
+    next:
+      slot: -1
+      material: SPECTRAL_ARROW
+      name: "<yellow><b>Next Page (%target_page%/%total_pages%) »</b></yellow>"
+      lore:
+        - "<gray>Currently viewing page %current_page%.</gray>"
+
   # Information Guide
   info-book:
     slot: 4

@@ -169,9 +169,17 @@ public class PickaxeManager {
         List<Component> finalLore = new ArrayList<>();
 
         if (plugin.getDuplicateService() != null && plugin.getDuplicateService().isRestricted(pickaxe.getUuid())) {
-            finalLore.add(TextUtil.parse("<red><b>QUARANTINED PICKAXE</b></red>"));
-            finalLore.add(TextUtil.parse("<gray>Duplicate UUID: <white>" + pickaxe.getUuid() + "</white></gray>"));
-            finalLore.add(TextUtil.parse("<yellow>Contact an administrator to resolve this item.</yellow>"));
+            List<String> quarantineLore = config.isList("pickaxe-lore.quarantine-lore")
+                    ? config.getStringList("pickaxe-lore.quarantine-lore")
+                    : List.of(
+                    "<red><b>QUARANTINED PICKAXE</b></red>",
+                    "<gray>Duplicate UUID: <white>%uuid%</white></gray>",
+                    "<yellow>Contact an administrator to resolve this item.</yellow>");
+            for (String template : quarantineLore) {
+                finalLore.add(TextUtil.parse(template
+                        .replace("%uuid%", pickaxe.getUuid().toString())
+                        .replace("%profile%", com.infinitygear.data.GearData.LEGACY_PICKAXE_PROFILE)));
+            }
         }
 
         int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe);
