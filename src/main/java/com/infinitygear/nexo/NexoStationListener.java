@@ -7,7 +7,6 @@ import com.nexomc.nexo.api.events.custom_block.NexoBlockInteractEvent;
 import com.nexomc.nexo.api.events.furniture.NexoFurnitureInteractEvent;
 import com.nexomc.nexo.api.events.furniture.NexoFurnitureBreakEvent;
 import com.nexomc.nexo.api.events.NexoItemsLoadedEvent;
-import com.nexomc.protectionlib.ProtectionLib;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -27,13 +26,12 @@ public final class NexoStationListener implements Listener {
      * Run before Nexo's own HIGH/HIGHEST mechanic handlers. Those handlers may
      * cancel an otherwise valid custom interaction after running click/storage
      * behavior, which previously meant our same-priority handler was skipped
-     * for ordinary players because Nexo was registered first. ProtectionLib is
-     * checked explicitly so the earlier priority never bypasses region claims.
+     * for ordinary players because Nexo was registered first. Already-cancelled
+     * typed events remain ignored; InfinityGear never un-cancels the event.
      */
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onBlock(NexoBlockInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND
-                || !ProtectionLib.canInteract(event.getPlayer(), event.getBlock().getLocation())) return;
+        if (event.getHand() != EquipmentSlot.HAND) return;
         stations.identifyNexo(event.getPlayer(), event.getMechanic().getItemID(), event.getBlock().getLocation())
                 .ifPresent(type -> {
                     event.setCancelled(true);
@@ -45,8 +43,7 @@ public final class NexoStationListener implements Listener {
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onFurniture(NexoFurnitureInteractEvent event) {
         org.bukkit.Location origin = event.getBaseEntity().getLocation();
-        if (event.getHand() != EquipmentSlot.HAND
-                || !ProtectionLib.canInteract(event.getPlayer(), origin)) return;
+        if (event.getHand() != EquipmentSlot.HAND) return;
         if (stations.hasPendingFurnitureBinding(event.getPlayer())) {
             event.setCancelled(true);
             var bound = stations.completeFurnitureBinding(event.getPlayer(), event.getMechanic().getItemID(), origin);
