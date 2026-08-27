@@ -256,12 +256,16 @@ public class LimitBreakManager {
                 GearData.LEGACY_PICKAXE_PROFILE, socket.getKeyString(), currentLvl, nextLvl,
                 GearEnchantChangeEvent.Operation.LIMIT_BREAK);
         Bukkit.getPluginManager().callEvent(gearEvent);
-        if (gearEvent.isCancelled()) return false;
+        if (gearEvent.isCancelled()) {
+            plugin.getMessageManager().sendMessage(player, "messages.station.cancelled-by-plugin");
+            return false;
+        }
 
         // Continue firing the compatible legacy pickaxe event.
         LimitBreakApplyEvent event = new LimitBreakApplyEvent(player, pickaxe, socket, bookItem, universal, currentLvl, nextLvl);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
+            plugin.getMessageManager().sendMessage(player, "messages.station.cancelled-by-plugin");
             return false;
         }
 

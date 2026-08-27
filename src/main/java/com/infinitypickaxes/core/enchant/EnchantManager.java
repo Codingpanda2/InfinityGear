@@ -300,12 +300,16 @@ public class EnchantManager {
                 GearData.LEGACY_PICKAXE_PROFILE, socket.getKeyString(), currentLevelOnPickaxe, nextLevel,
                 GearEnchantChangeEvent.Operation.APPLY);
         Bukkit.getPluginManager().callEvent(gearEvent);
-        if (gearEvent.isCancelled()) return false;
+        if (gearEvent.isCancelled()) {
+            plugin.getMessageManager().sendMessage(player, "messages.station.cancelled-by-plugin");
+            return false;
+        }
 
         // Continue firing the legacy event for the migrated pickaxe profile.
         PickaxeEnchantUpgradeEvent event = new PickaxeEnchantUpgradeEvent(player, pickaxe, socket, currentLevelOnPickaxe, nextLevel);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
+            plugin.getMessageManager().sendMessage(player, "messages.station.cancelled-by-plugin");
             return false;
         }
 

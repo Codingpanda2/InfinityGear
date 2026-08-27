@@ -137,13 +137,13 @@ public final class StationGui extends CustomGui {
 
     private void confirm() {
         if (!session.revalidate(plugin.getStationManager(), player)) {
-            player.sendMessage("§cThe configured physical station is no longer authorized or in range.");
+            message("station.session-invalid");
             player.closeInventory(); return;
         }
         for (int slot : selectedPlayerSlots) {
             ItemStack live = player.getInventory().getItem(slot), expected = selectedSnapshots.get(slot);
             if (live == null || expected == null || live.getAmount() != expected.getAmount() || !live.isSimilar(expected)) {
-                player.sendMessage("§cA selected inventory slot changed. Re-select inputs and preview again.");
+                message("station.stale-input", "%slot%", String.valueOf(slot));
                 player.closeInventory(); return;
             }
         }
@@ -155,7 +155,7 @@ public final class StationGui extends CustomGui {
             case "fusion-all" -> confirmFusionAll();
             case "socket-expansion" -> confirmSocketExpansion();
             case "view" -> player.sendMessage("§bInstalled managed enchantments: §f" + selectedManagedEnchantments());
-            default -> player.sendMessage("§cUnknown station operation.");
+            default -> message("station.unknown-operation");
         }
     }
 
@@ -167,60 +167,75 @@ public final class StationGui extends CustomGui {
             else if (!plugin.getEnchantManager().getManagedBookEnchants(item).isEmpty()
                     || plugin.getLimitBreakManager().isLimitBreakBook(item)) bookSlot = slot;
         }
-        if (gearSlot < 0 || bookSlot < 0) { player.sendMessage("§cSelect one InfinityGear item and one managed enchanted book."); return; }
+        if (gearSlot < 0) { message("station.application.missing-gear"); return; }
+        if (bookSlot < 0) { message("station.application.missing-book"); return; }
         ItemStack gear = player.getInventory().getItem(gearSlot);
         ItemStack book = player.getInventory().getItem(bookSlot);
         if (plugin.getLimitBreakManager().isLimitBreakBook(book)) {
             if (!PickaxeData.isInfinityPickaxe(gear)) {
-                player.sendMessage("§cLegacy LimitBreak items currently apply only to the migrated pickaxe profile.");
+                message("station.limitbreak.pickaxe-profile-required");
                 return;
             }
             confirmLimitBreak(gearSlot, bookSlot, gear, book);
             return;
         }
         var managed = plugin.getEnchantManager().getManagedBookEnchants(book);
-        if (managed.size() != 1 || !plugin.getDuplicateService().isUsable(gear)) {
-            player.sendMessage("§cThe selected inputs are invalid or quarantined."); return;
-        }
+        if (managed.isEmpty()) { message("station.application.unmanaged-book"); return; }
+        if (managed.size() != 1) { message("station.application.multiple-enchantments"); return; }
+        if (!plugin.getDuplicateService().isUsable(gear)) { message("station.gear-restricted"); return; }
         if (!PickaxeData.isInfinityPickaxe(gear)) {
             var validation = plugin.getGearService().validateEnchantmentApplication(gear, book,
                     managed.getFirst().socket().getKeyString());
             if (!validation.success()) {
-                player.sendMessage("§cApplication rejected: " + validation.messageKey());
+                message(validation.messageKey());
                 return;
             }
             List<PaymentOption> options = plugin.getCostRegistry().options("application");
-            if (options.isEmpty()) { player.sendMessage("§cApplication is disabled because no payment option is usable."); return; }
+            if (options.isEmpty()) { message("station.payment.no-option", "%operation%", "application"); return; }
             PaymentOption selected = options.get(Math.floorMod(paymentIndex, options.size()));
             NexoProvider nexo = plugin.getServer().getPluginManager().isPluginEnabled("Nexo") ? new NexoProvider() : null;
+            BukkitCostAccount account = costAccount(nexo);
+            if (!paymentReady(selected, account)) return;
             ItemStack gearBefore = gear.clone(), bookBefore = book.clone();
-            try (CostEngine.Payment payment = new CostEngine().charge(selected, costAccount(nexo))) {
+            try (CostEngine.Payment payment = new CostEngine().charge(selected, account)) {
                 var applied = plugin.getGearService().applyEnchantment(gear, book,
                         managed.getFirst().socket().getKeyString());
-                if (!applied.success()) return;
+                if (!applied.success()) { message(applied.messageKey()); return; }
                 payment.commit(); selectedSnapshots.clear(); selectedPlayerSlots.clear(); player.closeInventory();
+            } catch (CostEngine.PaymentException changed) {
+                message("station.payment.changed");
             } catch (RuntimeException failure) {
                 player.getInventory().setItem(gearSlot, gearBefore);
                 player.getInventory().setItem(bookSlot, bookBefore);
-                player.sendMessage("§cThe operation failed safely: " + failure.getMessage());
+                message(operationFailureMessage(failure));
             }
             return;
         }
         var pickaxe = PickaxeData.fromItemStack(gear);
-        if (pickaxe == null) { player.sendMessage("§cThe gear identity is malformed."); return; }
+        if (pickaxe == null) { message("station.gear-malformed"); return; }
         var target = managed.getFirst();
         int currentLevel = pickaxe.getEnchantmentLevel(target.socket().getKeyString());
         int standardMaximum = target.socket().getMaxAllowedLevel(pickaxe.getLevel());
-        if (!target.socket().isEnabled() || !target.socket().isUnlocked(pickaxe.getLevel())
-                || target.level() <= currentLevel || target.level() > standardMaximum) {
-            player.sendMessage("§cThe target-level application policy rejected this book."); return;
+        if (!target.socket().isEnabled()) { message("enchant.application.disabled", "%enchant%", target.socket().getDisplayName()); return; }
+        if (!target.socket().isUnlocked(pickaxe.getLevel())) {
+            message("enchant.application.locked", "%enchant%", target.socket().getDisplayName(),
+                    "%required%", String.valueOf(target.socket().getUnlockPickaxeLevel())); return;
+        }
+        if (target.level() <= currentLevel) {
+            message("enchant.application.equal_or_lower_level", "%book_level%", String.valueOf(target.level()),
+                    "%current_level%", String.valueOf(currentLevel)); return;
+        }
+        if (target.level() > standardMaximum) {
+            message("enchant.application.above_standard_maximum", "%book_level%", String.valueOf(target.level()),
+                    "%maximum%", String.valueOf(standardMaximum)); return;
         }
         if (currentLevel == 0 && !plugin.getEnchantManager().canIntroduceEnchantment(player, pickaxe, target.socket())) return;
         List<PaymentOption> options = plugin.getCostRegistry().options("application");
-        if (options.isEmpty()) { player.sendMessage("§cApplication is disabled because no payment option is usable."); return; }
+        if (options.isEmpty()) { message("station.payment.no-option", "%operation%", "application"); return; }
         PaymentOption selected = options.get(Math.floorMod(paymentIndex, options.size()));
         NexoProvider nexo = plugin.getServer().getPluginManager().isPluginEnabled("Nexo") ? new NexoProvider() : null;
         BukkitCostAccount account = costAccount(nexo);
+        if (!paymentReady(selected, account)) return;
         try (CostEngine.Payment payment = new CostEngine().charge(selected, account)) {
             ItemStack gearBefore = gear.clone(), bookBefore = book.clone();
             try {
@@ -235,63 +250,81 @@ public final class StationGui extends CustomGui {
                 player.getInventory().setItem(bookSlot, bookBefore);
                 throw mutationFailure;
             }
+        } catch (CostEngine.PaymentException changed) {
+            message("station.payment.changed");
         } catch (RuntimeException failure) {
-            player.sendMessage("§cThe operation failed safely: " + failure.getMessage());
+            message(operationFailureMessage(failure));
         }
     }
 
     private void confirmLimitBreak(int gearSlot, int bookSlot, ItemStack gear, ItemStack book) {
         var pickaxe = PickaxeData.fromItemStack(gear);
-        if (pickaxe == null || !plugin.getDuplicateService().isUsable(gear)) {
-            player.sendMessage("§cInvalid or quarantined gear."); return;
-        }
+        if (pickaxe == null) { message("station.gear-malformed"); return; }
+        if (!plugin.getDuplicateService().isUsable(gear)) { message("station.gear-restricted"); return; }
         com.infinitypickaxes.core.enchant.EnchantSocket socket;
         if (plugin.getLimitBreakManager().isUniversalBook(book)) {
             var installed = managedOn(gear);
-            if (installed.isEmpty()) { player.sendMessage("§cNo installed managed enchantment can be selected."); return; }
+            if (installed.isEmpty()) { message("station.limitbreak.no-installed-enchantment"); return; }
             socket = installed.get(Math.floorMod(selectedEnchantIndex, installed.size())).socket();
         } else {
             socket = plugin.getEnchantManager().getSocketByKey(plugin.getLimitBreakManager().getTargetEnchantKey(book));
         }
-        if (socket == null) { player.sendMessage("§cThe LimitBreak target is unavailable."); return; }
+        if (socket == null) { message("station.limitbreak.target-unavailable"); return; }
         int current = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int standard = plugin.getLimitBreakManager().getStandardMaximum(pickaxe, socket);
         int absolute = plugin.getLimitBreakManager().getAbsoluteMaximum(pickaxe, socket);
-        if (!socket.isEnabled() || !socket.supportsLimitBreak()
-                || pickaxe.getLevel() < plugin.getLimitBreakManager().getUnlockLevel()
-                || !socket.isUnlocked(pickaxe.getLevel()) || current < standard || current >= absolute) {
-            player.sendMessage("§cLimitBreak requires an installed enchantment at its standard maximum and below its absolute maximum.");
-            return;
+        if (!socket.isEnabled()) { message("station.limitbreak.disabled", "%enchant%", socket.getDisplayName()); return; }
+        if (!socket.supportsLimitBreak()) { message("messages.limitbreak-not-supported", "%enchant%", socket.getDisplayName()); return; }
+        if (pickaxe.getLevel() < plugin.getLimitBreakManager().getUnlockLevel()) {
+            message("messages.limitbreak-locked-pickaxe-level", "%required%",
+                    String.valueOf(plugin.getLimitBreakManager().getUnlockLevel()), "%enchant%", socket.getDisplayName()); return;
+        }
+        if (!socket.isUnlocked(pickaxe.getLevel())) {
+            message("station.limitbreak.enchantment-locked", "%enchant%", socket.getDisplayName(),
+                    "%required%", String.valueOf(socket.getUnlockPickaxeLevel())); return;
+        }
+        if (current == 0) { message("messages.limitbreak-missing-enchantment", "%enchant%", socket.getDisplayName()); return; }
+        if (current < standard) {
+            message("messages.limitbreak-premature", "%enchant%", socket.getDisplayName(),
+                    "%max%", String.valueOf(standard), "%current%", String.valueOf(current)); return;
+        }
+        if (current >= absolute) {
+            message("messages.limitbreak-max-reached", "%enchant%", socket.getDisplayName(),
+                    "%max%", String.valueOf(absolute), "%extra%", String.valueOf(Math.max(0, absolute - standard))); return;
         }
         ItemStack gearBefore = gear.clone(), bookBefore = book.clone();
         List<PaymentOption> options = plugin.getCostRegistry().options("application");
-        if (options.isEmpty()) { player.sendMessage("§cLimitBreak is disabled: no payment option."); return; }
+        if (options.isEmpty()) { message("station.payment.no-option", "%operation%", "LimitBreak"); return; }
         PaymentOption option = options.get(Math.floorMod(paymentIndex, options.size()));
         NexoProvider nexo = plugin.getServer().getPluginManager().isPluginEnabled("Nexo") ? new NexoProvider() : null;
+        BukkitCostAccount account = costAccount(nexo);
+        if (!paymentReady(option, account)) return;
         try (CostEngine.Payment payment = new CostEngine().charge(option,
-                costAccount(nexo))) {
+                account)) {
             if (!plugin.getLimitBreakManager().applyLimitBreak(player, pickaxe, socket, book)) return;
             payment.commit(); selectedSnapshots.clear(); selectedPlayerSlots.clear(); player.closeInventory();
+        } catch (CostEngine.PaymentException changed) {
+            message("station.payment.changed");
         } catch (RuntimeException failure) {
             player.getInventory().setItem(gearSlot, gearBefore);
             player.getInventory().setItem(bookSlot, bookBefore);
-            player.sendMessage("§cLimitBreak failed safely: " + failure.getMessage());
+            message(operationFailureMessage(failure));
         }
     }
 
     private void confirmRemoval() {
         int sourceSlot = selectedSourceSlot();
-        if (sourceSlot < 0) { player.sendMessage("§cSelect one gear item or enchanted book."); return; }
+        if (sourceSlot < 0) { message("station.removal.missing-source"); return; }
         ItemStack source = player.getInventory().getItem(sourceSlot);
         if (GearData.isGear(source) && !plugin.getDuplicateService().isUsable(source)) {
-            player.sendMessage("§cThe selected gear is quarantined or revoked."); return;
+            message("station.gear-restricted"); return;
         }
         var managed = managedOn(source);
-        if (managed.isEmpty()) { player.sendMessage("§cThe source has no managed enchantment."); return; }
+        if (managed.isEmpty()) { message("station.source-no-managed-enchantment"); return; }
         var selected = managed.get(Math.floorMod(selectedEnchantIndex, managed.size()));
         if (plugin.getConfigManager().getEnchantsConfig().getBoolean(
                 "enchants." + selected.socket().getId() + ".non-removable", false)) {
-            player.sendMessage("§cThat enchantment is configured as non-removable."); return;
+            message("station.removal.non-removable", "%enchant%", selected.socket().getDisplayName()); return;
         }
         final ItemStack result;
         try {
@@ -300,11 +333,11 @@ public final class StationGui extends CustomGui {
             result = new EnchantmentItemTransforms().remove(sourceUnit,
                     plugin.getEnchantManager().getEnchantment(selected.socket().getKeyString()), true).sourceResult();
             synchronizeLegacyClone(result);
-        } catch (IllegalArgumentException invalid) { player.sendMessage("§c" + invalid.getMessage()); return; }
+        } catch (IllegalArgumentException invalid) { message(transformFailureMessage(invalid)); return; }
         GearEnchantChangeEvent event = gearChange(source, selected.socket().getKeyString(), selected.level(), 0,
                 GearEnchantChangeEvent.Operation.REMOVE);
         Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return;
+        if (event.isCancelled()) { message("station.cancelled-by-plugin"); return; }
         payAndMutateOptions(removalOptions(source, selected), () -> {
             ItemStack remainder = source.getAmount() == 1 ? result : source.clone();
             List<ItemStack> outputs = List.of();
@@ -325,13 +358,14 @@ public final class StationGui extends CustomGui {
             ItemStack item = player.getInventory().getItem(slot);
             if (item != null && item.getType() == Material.BOOK) blankSlot = slot;
         }
-        if (sourceSlot < 0 || blankSlot < 0) { player.sendMessage("§cSelect a source and a blank ordinary book."); return; }
+        if (sourceSlot < 0) { message("station.transfer.missing-source"); return; }
+        if (blankSlot < 0) { message("station.transfer.blank-book-required"); return; }
         ItemStack source = player.getInventory().getItem(sourceSlot), blank = player.getInventory().getItem(blankSlot);
         if (GearData.isGear(source) && !plugin.getDuplicateService().isUsable(source)) {
-            player.sendMessage("§cThe selected gear is quarantined or revoked."); return;
+            message("station.gear-restricted"); return;
         }
         var managed = managedOn(source);
-        if (managed.isEmpty()) { player.sendMessage("§cThe source has no managed enchantment."); return; }
+        if (managed.isEmpty()) { message("station.source-no-managed-enchantment"); return; }
         var selected = managed.get(Math.floorMod(selectedEnchantIndex, managed.size()));
         final EnchantmentItemTransforms.Transfer transfer;
         try {
@@ -341,11 +375,11 @@ public final class StationGui extends CustomGui {
                     plugin.getEnchantManager().getEnchantment(selected.socket().getKeyString()),
                     selected.socket().getMaxLevel(), blank);
             synchronizeLegacyClone(transfer.sourceResult());
-        } catch (IllegalArgumentException invalid) { player.sendMessage("§c" + invalid.getMessage()); return; }
+        } catch (IllegalArgumentException invalid) { message(transformFailureMessage(invalid)); return; }
         GearEnchantChangeEvent event = gearChange(source, selected.socket().getKeyString(), selected.level(), 0,
                 GearEnchantChangeEvent.Operation.TRANSFER);
         Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return;
+        if (event.isCancelled()) { message("station.cancelled-by-plugin"); return; }
         int finalBlankSlot = blankSlot;
         payAndMutate("transfer", () -> {
             java.util.Map<Integer, ItemStack> expected = java.util.Map.of(sourceSlot, source.clone(), finalBlankSlot, blank.clone());
@@ -370,18 +404,20 @@ public final class StationGui extends CustomGui {
             ItemStack item = player.getInventory().getItem(slot);
             return item != null && item.getType() == Material.ENCHANTED_BOOK;
         }).toList();
-        if (bookSlots.size() != 2) { player.sendMessage("§cSelect exactly two enchanted-book slots."); return; }
+        if (bookSlots.size() != 2) {
+            message("station.fusion.exactly-two-books", "%selected%", String.valueOf(bookSlots.size())); return;
+        }
         ItemStack first = player.getInventory().getItem(bookSlots.get(0));
         ItemStack second = player.getInventory().getItem(bookSlots.get(1));
         FusionBookService.Result fusion = new FusionBookService(plugin.getEnchantManager()).pair(first, second);
-        if (!fusion.allowed()) { player.sendMessage("§cFusion rejected: " + fusion.failure()); return; }
+        if (!fusion.allowed()) { message(fusionMessage(fusion.failure())); return; }
         payAndMutateOptions(scaledFusionOptions(fusion.plan()),
                 () -> consumeBooksAndOutput(bookSlots, List.of(1, 1), fusion.outputs()));
     }
 
     private void confirmFusionAll() {
         String selectedKey = selectedManagedEnchantments().stream().findFirst().orElse(null);
-        if (selectedKey == null) { player.sendMessage("§cSelect a book identifying the enchantment to fuse."); return; }
+        if (selectedKey == null) { message("station.fusion.missing-selection"); return; }
         List<ItemStack> expanded = new ArrayList<>();
         List<Integer> originSlots = new ArrayList<>();
         for (int slot = 0; slot < player.getInventory().getStorageContents().length; slot++) {
@@ -392,7 +428,7 @@ public final class StationGui extends CustomGui {
             for (int count = 0; count < item.getAmount(); count++) { expanded.add(item); originSlots.add(slot); }
         }
         FusionBookService.Result fusion = new FusionBookService(plugin.getEnchantManager()).bulk(expanded, selectedKey);
-        if (!fusion.allowed()) { player.sendMessage("§cBulk fusion rejected: " + fusion.failure()); return; }
+        if (!fusion.allowed()) { message(fusionMessage(fusion.failure())); return; }
         java.util.Map<Integer, Integer> consume = new java.util.HashMap<>();
         for (int inputIndex : fusion.plan().consumedInputIndices()) consume.merge(originSlots.get(inputIndex), 1, Integer::sum);
         payAndMutateOptions(scaledFusionOptions(fusion.plan()), () -> {
@@ -404,19 +440,22 @@ public final class StationGui extends CustomGui {
 
     private void confirmSocketExpansion() {
         int sourceSlot = selectedSourceSlot();
-        if (sourceSlot < 0) { player.sendMessage("§cSelect one InfinityGear item."); return; }
+        if (sourceSlot < 0) { message("station.forge.missing-gear"); return; }
         ItemStack item = player.getInventory().getItem(sourceSlot);
         var gear = plugin.getGearManager().inspect(item, true).orElse(null);
         var profile = gear == null ? null : plugin.getGearProfiles().find(gear.profileId()).orElse(null);
-        if (gear == null || profile == null || !plugin.getDuplicateService().isUsable(item)) {
-            player.sendMessage("§cInvalid, quarantined, or revoked gear profile."); return;
-        }
+        if (gear == null) { message("station.gear-malformed"); return; }
+        if (profile == null) { message("station.gear-unknown-profile", "%profile%", gear.profileId()); return; }
+        if (!plugin.getDuplicateService().isUsable(item)) { message("station.gear-restricted"); return; }
         var decision = SocketExpansionPolicy.evaluate(gear.socketCapacity(), profile.maximumExpandedSockets(), true);
-        if (!decision.allowed()) { player.sendMessage("§cSocket expansion rejected: " + decision.failure()); return; }
+        if (!decision.allowed()) {
+            message(socketMessage(decision.failure()), "%current%", String.valueOf(decision.current()),
+                    "%maximum%", String.valueOf(decision.maximum())); return;
+        }
         var event = new com.infinitygear.api.events.GearSocketExpansionEvent(
                 player, item, decision.current(), decision.resulting());
         Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return;
+        if (event.isCancelled()) { message("station.cancelled-by-plugin"); return; }
         payAndMutateOptions(socketExpansionOptions(decision.resulting()), () -> {
             var live = plugin.getGearManager().inspect(player.getInventory().getItem(sourceSlot), true).orElseThrow();
             if (!live.uuid().equals(gear.uuid())) throw new IllegalStateException("Gear UUID changed.");
@@ -450,15 +489,85 @@ public final class StationGui extends CustomGui {
     }
 
     private void payAndMutateOptions(List<PaymentOption> options, Runnable mutation) {
-        if (options.isEmpty()) { player.sendMessage("§cOperation disabled: no valid payment option."); return; }
+        if (options.isEmpty()) { message("station.payment.no-option", "%operation%", operationCostKey()); return; }
         PaymentOption selected = options.get(Math.floorMod(paymentIndex, options.size()));
         NexoProvider nexo = plugin.getServer().getPluginManager().isPluginEnabled("Nexo") ? new NexoProvider() : null;
-        try (CostEngine.Payment payment = new CostEngine().charge(selected,
-                costAccount(nexo))) {
+        BukkitCostAccount account = costAccount(nexo);
+        CostEngine engine = new CostEngine();
+        CostEngine.OptionQuote quote = engine.quote(List.of(selected), account).getFirst();
+        if (!quote.providerUsable()) {
+            message("station.payment.provider-unavailable", "%option%", selected.id()); return;
+        }
+        if (!quote.affordable()) {
+            message("station.payment.insufficient", "%option%", selected.id(),
+                    "%cost%", describe(selected).replaceAll("<[^>]+>", "")); return;
+        }
+        try (CostEngine.Payment payment = engine.charge(selected, account)) {
             mutation.run();
             payment.commit();
             selectedSnapshots.clear(); selectedPlayerSlots.clear(); player.closeInventory();
-        } catch (RuntimeException failure) { player.sendMessage("§cOperation failed safely: " + failure.getMessage()); }
+        } catch (CostEngine.PaymentException changed) {
+            message("station.payment.changed");
+        } catch (RuntimeException failure) {
+            message(operationFailureMessage(failure));
+        }
+    }
+
+    private boolean paymentReady(PaymentOption selected, BukkitCostAccount account) {
+        CostEngine.OptionQuote quote = new CostEngine().quote(List.of(selected), account).getFirst();
+        if (!quote.providerUsable()) {
+            message("station.payment.provider-unavailable", "%option%", selected.id());
+            return false;
+        }
+        if (!quote.affordable()) {
+            message("station.payment.insufficient", "%option%", selected.id(),
+                    "%cost%", describe(selected).replaceAll("<[^>]+>", ""));
+            return false;
+        }
+        return true;
+    }
+
+    private String fusionMessage(FusionBookService.Failure failure) {
+        return "station.fusion." + switch (failure) {
+            case INVALID_BOOK -> "invalid-book";
+            case MULTIPLE_ENCHANTMENTS -> "multiple-enchantments";
+            case DIFFERENT_ENCHANTMENTS -> "different-enchantments";
+            case DIFFERENT_LEVELS -> "different-levels";
+            case STANDARD_MAXIMUM -> "standard-maximum";
+            case NO_MATCHING_PAIR -> "no-matching-pair";
+            case NONE -> "unknown";
+        };
+    }
+
+    private String socketMessage(SocketExpansionPolicy.Failure failure) {
+        return "station.forge." + switch (failure) {
+            case CATALYST_MISSING -> "catalyst-missing";
+            case AT_MAXIMUM -> "at-maximum";
+            case GRANDFATHERED_OVER_MAXIMUM -> "grandfathered-over-maximum";
+            case NONE -> "unknown";
+        };
+    }
+
+    private String operationFailureMessage(RuntimeException failure) {
+        String detail = failure.getMessage() == null ? "" : failure.getMessage();
+        if (detail.contains("STALE_INPUT") || detail.contains("Gear UUID changed")) return "station.stale-confirmation";
+        if (detail.contains("OUTPUTS_DO_NOT_FIT")) return "station.inventory-full";
+        if (detail.contains("MUTATION_FAILED")) return "station.mutation-failed";
+        return "station.operation-failed";
+    }
+
+    private String transformFailureMessage(IllegalArgumentException failure) {
+        String detail = failure.getMessage() == null ? "" : failure.getMessage();
+        if (detail.contains("blank ordinary book")) return "station.transfer.blank-book-required";
+        if (detail.contains("LimitBroken")) return "station.transfer.overcap-not-supported";
+        if (detail.contains("not present")) return "station.selected-enchantment-missing";
+        if (detail.contains("non-removable")) return "station.removal.non-removable";
+        return "station.invalid-input";
+    }
+
+    private void message(String key, String... placeholders) {
+        plugin.getMessageManager().sendMessage(player,
+                key.startsWith("messages.") ? key : "messages." + key, placeholders);
     }
 
     private List<PaymentOption> scaledFusionOptions(com.infinitygear.enchant.FusionCalculator.Plan plan) {
@@ -761,7 +870,9 @@ public final class StationGui extends CustomGui {
                 + plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
         var validation = plugin.getGearService().validateEnchantmentApplication(gear, book,
                 enchant.socket().getKeyString());
-        String invalid = validation.success() ? "None" : validation.messageKey();
+        String invalid = validation.success() ? "<green>None</green>"
+                : plugin.getMessageManager().getMessage(player, "messages." + validation.messageKey());
+        if (invalid == null) invalid = "<red>" + validation.messageKey() + "</red>";
         return new ItemBuilder(Material.PAPER).name("<aqua><b>Application Preview</b></aqua>")
                 .lore(List.of(
                         "<gray>Gear UUID: <white>" + gearInstance.uuid() + "</white></gray>",
