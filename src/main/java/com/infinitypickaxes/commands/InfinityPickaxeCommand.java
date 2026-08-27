@@ -440,10 +440,14 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleStation(CommandSender sender, String label, String[] args) {
         if (!(sender instanceof Player player)) { sender.sendMessage("§cPlayers only."); return true; }
-        if (!hasPermissionOrAdmin(sender, "infinitygear.admin.station")) { plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true; }
         if (args.length < 2) { sender.sendMessage("§cUsage: /" + label + " station <runic-table|fusion-altar|gear-forge>"); return true; }
         try {
             StationType type = StationType.valueOf(args[1].replace('-', '_').toUpperCase(java.util.Locale.ROOT));
+            if (!hasPermissionOrAdmin(sender, "infinitygear.admin.station")
+                    && !plugin.getStationManager().hasBypass(type, player)) {
+                plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
+                return true;
+            }
             new StationGui(plugin, player, type).open();
         } catch (IllegalArgumentException invalid) { sender.sendMessage("§cUnknown station."); }
         return true;

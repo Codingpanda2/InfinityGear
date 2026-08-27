@@ -8,7 +8,8 @@ config-version: 1
 #
 # A missing provider, invalid material, blank Nexo ID, or unavailable Nexo
 # integration disables that station instead of granting portable access.
-# Operators do not bypass a station unless they have its explicit permission.
+# Bypass permissions authorize `/igear station <type>`; they never make an
+# arbitrary right-clicked block count as a station.
 stations:
   runic-table:
     enabled: true

@@ -43,6 +43,23 @@ class StationManagerTest {
         assertFalse(manager.definition(StationType.RUNIC_TABLE).enabled());
     }
 
+    @Test void bypassPermissionNeverMakesAnArbitraryBlockAStation() {
+        StationManager manager = manager(config("VANILLA", "ENCHANTING_TABLE", null));
+        World world = mock(World.class);
+        Player operator = mock(Player.class);
+        when(operator.hasPermission("infinitygear.station.runic-table.bypass")).thenReturn(true);
+        when(operator.getWorld()).thenReturn(world);
+        when(operator.getLocation()).thenReturn(new Location(world, 0, 64, 0));
+        Block ordinary = mock(Block.class);
+        when(ordinary.getWorld()).thenReturn(world);
+        when(ordinary.getLocation()).thenReturn(new Location(world, 1, 64, 0));
+        when(ordinary.getType()).thenReturn(Material.STONE);
+
+        assertTrue(manager.hasBypass(StationType.RUNIC_TABLE, operator));
+        assertFalse(manager.authorized(StationType.RUNIC_TABLE, operator, ordinary));
+        assertTrue(manager.identify(operator, ordinary).isEmpty());
+    }
+
     private StationManager manager(YamlConfiguration yaml) {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         ConfigManager configs = mock(ConfigManager.class);

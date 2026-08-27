@@ -62,7 +62,6 @@ public final class StationManager {
     public boolean authorized(StationType type, Player player, Block block) {
         Definition definition = definitions.get(type);
         if (definition == null || !definition.enabled() || player == null) return false;
-        if (!definition.bypassPermission().isBlank() && player.hasPermission(definition.bypassPermission())) return true;
         if (block == null || block.getWorld() != player.getWorld()
                 || block.getLocation().distanceSquared(player.getLocation()) > definition.distance() * definition.distance()) return false;
         StationProvider provider = providers.get(definition.provider());
@@ -82,13 +81,20 @@ public final class StationManager {
         for (StationType type : StationType.values()) {
             Definition definition = definitions.get(type);
             if (definition == null || !definition.enabled() || !"NEXO".equals(definition.provider())) continue;
-            if (definition.bypassPermission() != null && player.hasPermission(definition.bypassPermission())) return Optional.of(type);
             if (itemId.equalsIgnoreCase(definition.providerId())
                     && location.distanceSquared(player.getLocation()) <= definition.distance() * definition.distance()) {
                 return Optional.of(type);
             }
         }
         return Optional.empty();
+    }
+
+    /** Permission bypass is intentionally command-only; it never turns arbitrary clicked blocks into stations. */
+    public boolean hasBypass(StationType type, Player player) {
+        Definition definition = definitions.get(type);
+        return definition != null && definition.enabled() && player != null
+                && definition.bypassPermission() != null && !definition.bypassPermission().isBlank()
+                && player.hasPermission(definition.bypassPermission());
     }
 
     public Definition definition(StationType type) { return definitions.get(type); }
