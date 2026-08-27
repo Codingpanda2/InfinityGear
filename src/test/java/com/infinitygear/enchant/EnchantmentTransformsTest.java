@@ -38,4 +38,12 @@ class EnchantmentTransformsTest {
         assertEquals(EnchantmentTransforms.Failure.OVERCAP_TRANSFER,
                 EnchantmentTransforms.transfer(Map.of("eco:a", 6), "eco:a", 5, true).failure());
     }
+
+    @Test void transferCannotBypassNonRemovablePolicy() {
+        var result = EnchantmentTransforms.transfer(Map.of("minecraft:binding_curse", 1),
+                "minecraft:binding_curse", 1, true, false);
+        assertEquals(EnchantmentTransforms.Failure.NON_REMOVABLE, result.failure());
+        assertEquals(Map.of("minecraft:binding_curse", 1), result.sourceEnchantments());
+        assertTrue(result.outputBookEnchantments().isEmpty());
+    }
 }

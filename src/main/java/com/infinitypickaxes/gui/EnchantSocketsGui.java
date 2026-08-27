@@ -2,6 +2,7 @@ package com.infinitypickaxes.gui;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
+import com.infinitygear.enchant.ResolvedEnchantmentPolicy;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.ItemBuilder;
 import com.infinitypickaxes.utils.TextUtil;
@@ -190,13 +191,13 @@ public class EnchantSocketsGui extends CustomGui {
 
     private ItemStack buildSocketItem(EnchantSocket socket) {
         int pickaxeLvl = pickaxe.getLevel();
-        boolean unlocked = socket.isUnlocked(pickaxeLvl);
+        ResolvedEnchantmentPolicy policy = plugin.getEnchantManager().resolvedPolicy(pickaxe, socket);
+        boolean unlocked = policy.unlockedAt(pickaxeLvl);
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
-        int maxForPickaxe = socket.getMaxAllowedLevel(pickaxeLvl);
-        int globalMax = socket.getMaxLevel();
-        int maxExtra = (socket.supportsLimitBreak() && plugin.getLimitBreakManager() != null)
-                ? plugin.getLimitBreakManager().getMaxExtraLevels(pickaxeLvl) : 0;
-        int absoluteMax = globalMax + maxExtra;
+        int maxForPickaxe = policy.standardMaximum();
+        int globalMax = policy.standardMaximum();
+        int absoluteMax = policy.absoluteMaximum();
+        int maxExtra = Math.max(0, absoluteMax - globalMax);
 
         ItemBuilder builder = new ItemBuilder(socket.getIcon());
         if (socket.getCustomModelData() != null) {
@@ -206,31 +207,31 @@ public class EnchantSocketsGui extends CustomGui {
         if (!unlocked) {
             String name = menuConfig.getString("enchant-format.locked-name", "<dark_gray>🔒</dark_gray> %enchant_display_name% <red>(Locked)</red>");
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-locked");
-            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, policy, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (socket.supportsLimitBreak() && maxExtra > 0 && currentLvl >= absoluteMax) {
             String name = socketNameWithBadge(currentLvl, globalMax, absoluteMax,
                     "enchant-format.limitbreak-badges.maximum",
                     " <gradient:#FF00FF:#00FFFF><b>[LB MAX]</b></gradient>");
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
-            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, policy, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl > globalMax) {
             String name = socketNameWithBadge(currentLvl, globalMax, absoluteMax,
                     "enchant-format.limitbreak-badges.active",
                     " <gradient:#FF00FF:#FFAA00><b>[LB +%extra_level%]</b></gradient>");
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
-            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, policy, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else if (currentLvl >= maxForPickaxe && maxForPickaxe > 0) {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-maxed");
-            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, policy, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         } else {
             String name = menuConfig.getString("enchant-format.unlocked-name", "%enchant_display_name% <gray>[<yellow>Lv. %current_level%<dark_gray>/<gold>%max_level%<gray>]")
                     .replace("%current_level%", String.valueOf(currentLvl))
                     .replace("%max_level%", String.valueOf(globalMax));
             List<String> rawLore = menuConfig.getStringList("enchant-format.lore-unlocked");
-            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, currentLvl, maxForPickaxe, globalMax, absoluteMax));
+            builder.name(formatSocketName(name, socket)).loreComponents(formatLoreList(rawLore, socket, policy, currentLvl, maxForPickaxe, globalMax, absoluteMax));
         }
 
         return builder.build();
@@ -282,7 +283,9 @@ public class EnchantSocketsGui extends CustomGui {
                 .replace("%total_pages%", String.valueOf(totalPages));
     }
 
-    private List<Component> formatLoreList(List<String> rawLore, EnchantSocket socket, int currentLvl, int maxForPickaxe, int globalMax, int absoluteMax) {
+    private List<Component> formatLoreList(List<String> rawLore, EnchantSocket socket,
+                                           ResolvedEnchantmentPolicy policy, int currentLvl,
+                                           int maxForPickaxe, int globalMax, int absoluteMax) {
         List<Component> formatted = new ArrayList<>();
         int requiredBookLevel = (currentLvl == 0) ? 1 : currentLvl;
 
@@ -306,7 +309,7 @@ public class EnchantSocketsGui extends CustomGui {
                         .replace("%current_max_for_pickaxe%", String.valueOf(maxForPickaxe))
                         .replace("%required_book_level%", TextUtil.toRoman(requiredBookLevel))
                         .replace("%required_book_level_num%", String.valueOf(requiredBookLevel))
-                        .replace("%unlock_level%", String.valueOf(socket.getUnlockPickaxeLevel()))
+                        .replace("%unlock_level%", String.valueOf(policy.unlockLevel()))
                         .replace("%pickaxe_level%", String.valueOf(pickaxe.getLevel()));
                 formatted.add(formatSocketName(resolved, socket));
             }
@@ -436,7 +439,7 @@ public class EnchantSocketsGui extends CustomGui {
 
     private boolean isVisibleForPickaxe(EnchantSocket socket) {
         if (pickaxe.getEnchantmentLevel(socket.getKeyString()) > 0) return true;
-        if (!socket.isEnabled()) return false;
+        if (!plugin.getEnchantManager().resolvedPolicy(pickaxe, socket).enabled()) return false;
         var enchantment = plugin.getEnchantManager().getEnchantment(socket.getKeyString());
         if (enchantment == null) return false;
         return plugin.getEnchantManager().getEcoHook().findEcoEnchant(enchantment) != null

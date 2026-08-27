@@ -7,6 +7,7 @@ import com.infinitygear.gear.GearInstance;
 import com.infinitygear.gear.GearManager;
 import com.infinitygear.gear.GearProfile;
 import com.infinitygear.gear.GearProfileRegistry;
+import com.infinitygear.enchant.ResolvedEnchantmentPolicy;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
@@ -99,29 +100,23 @@ public final class InfinityGearServiceImpl implements InfinityGearService {
         if (enchantment == null) return invalid(FailureReason.INVALID_BOOK, "api.unknown-enchantment");
         GearProfile profile = profiles.find(gear.profileId()).orElse(null);
         if (profile == null) return invalid(FailureReason.UNKNOWN_PROFILE, "api.unknown-profile");
-        GearProfile.EnchantmentOverride override = profile.enchantmentOverrides()
-                .get(managed.socket().getKeyString().toLowerCase(java.util.Locale.ROOT));
-        boolean enabled = managed.socket().isEnabled() && (override == null || override.enabled() == null || override.enabled());
-        int standardMaximum = override != null && override.standardMaximum() != null
-                ? Math.min(managed.socket().getMaxLevel(), Math.max(1, override.standardMaximum()))
-                : managed.socket().getMaxAllowedLevel(gear.level());
-        int absoluteMaximum = override != null && override.absoluteMaximum() != null
-                ? Math.max(standardMaximum, override.absoluteMaximum())
-                : standardMaximum + plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
+        ResolvedEnchantmentPolicy policy = resolve(profile, gear.level(), managed.socket(), 1.0);
         int current = gearItem.getEnchantmentLevel(enchantment);
         int used = usedSockets(gearItem);
         boolean conflict = gearItem.getEnchantments().keySet().stream().anyMatch(existing -> {
             if (existing.equals(enchantment)) return false;
             var existingSocket = plugin.getEnchantManager().getSocketByKey(existing.getKey().toString());
-            boolean configured = managed.socket().additionallyConflictsWith(existing.getKey().toString())
-                    || existingSocket != null && existingSocket.additionallyConflictsWith(managed.socket());
+            ResolvedEnchantmentPolicy existingPolicy = existingSocket == null ? null
+                    : resolve(profile, gear.level(), existingSocket, 1.0);
+            boolean configured = policy.additionallyConflictsWith(existing.getKey().toString())
+                    || existingPolicy != null && existingPolicy.additionallyConflictsWith(policy.enchantmentKey());
             return configured || existing.conflictsWith(enchantment) || enchantment.conflictsWith(existing)
                     || plugin.getEnchantManager().getEcoHook().conflictsWith(existing, enchantment);
         });
         var decision = com.infinitygear.enchant.EnchantmentApplicationPolicy.evaluate(
                 new com.infinitygear.enchant.EnchantmentApplicationPolicy.Request(1, true,
-                        enabled, managed.socket().isUnlocked(gear.level()), current, managed.level(), used, gear.socketCapacity(),
-                        standardMaximum, absoluteMaximum,
+                        policy.enabled(), policy.unlockedAt(gear.level()), current, managed.level(), used,
+                        gear.socketCapacity(), policy.socketCost(), policy.standardMaximum(), policy.absoluteMaximum(),
                         conflict, current > 0 || (enchantment != null && (plugin.getEnchantManager().getEcoHook()
                         .findEcoEnchant(enchantment) != null
                         ? plugin.getEnchantManager().getEcoHook().canApply(gearItem, enchantment)
@@ -147,8 +142,16 @@ public final class InfinityGearServiceImpl implements InfinityGearService {
             var pickaxe = PickaxeData.fromItemStack(gear);
             return pickaxe == null ? 0 : plugin.getEnchantManager().countUsedSockets(pickaxe);
         }
-        return (int) gear.getEnchantments().keySet().stream()
-                .filter(enchant -> plugin.getEnchantManager().getSocketByKey(enchant.getKey().toString()) != null).count();
+        GearInstance instance = manager.inspect(gear, true).orElse(null);
+        GearProfile profile = instance == null ? null : profiles.find(instance.profileId()).orElse(null);
+        if (instance == null || profile == null) return 0;
+        int used = 0;
+        for (var enchantment : gear.getEnchantments().keySet()) {
+            EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(enchantment.getKey().toString());
+            if (socket != null) used = (int) Math.min(Integer.MAX_VALUE,
+                    (long) used + resolve(profile, instance.level(), socket, 1.0).socketCost());
+        }
+        return used;
     }
 
     public int socketLimit(ItemStack item) {
@@ -168,16 +171,38 @@ public final class InfinityGearServiceImpl implements InfinityGearService {
         Optional<GearProfile> profile = profiles.find(profileId).filter(GearProfile::enabled);
         if (profile.isEmpty()) return java.util.List.of();
         ItemStack probe = new ItemStack(profile.get().defaultMaterial());
-        return plugin.getEnchantManager().getAllSockets().stream().filter(EnchantSocket::isEnabled)
+        return plugin.getEnchantManager().getAllSockets().stream()
                 .filter(socket -> {
-                    var override = profile.get().enchantmentOverrides().get(socket.getKeyString().toLowerCase(java.util.Locale.ROOT));
-                    if (override != null && Boolean.FALSE.equals(override.enabled())) return false;
+                    ResolvedEnchantmentPolicy policy = resolve(profile.get(), 0, socket, 1.0);
+                    if (!policy.enabled()) return false;
                     var enchantment = plugin.getEnchantManager().getEnchantment(socket.getKeyString());
                     if (enchantment == null) return false;
                     return plugin.getEnchantManager().getEcoHook().findEcoEnchant(enchantment) != null
                             ? plugin.getEnchantManager().getEcoHook().canApply(probe, enchantment)
                             : enchantment.canEnchantItem(probe);
                 }).toList();
+    }
+
+    @Override
+    public Optional<ResolvedEnchantmentPolicy> resolveEnchantmentPolicy(
+            String profileId, String enchantmentKey, int gearLevel) {
+        GearProfile profile = profiles.find(profileId).filter(GearProfile::enabled).orElse(null);
+        EnchantSocket socket = plugin.getEnchantManager().getSocketByKey(enchantmentKey);
+        if (socket == null) socket = plugin.getEnchantManager().getSocket(enchantmentKey);
+        return profile == null || socket == null ? Optional.empty()
+                : Optional.of(resolve(profile, Math.max(0, gearLevel), socket, 1.0));
+    }
+
+    private ResolvedEnchantmentPolicy resolve(GearProfile profile, int gearLevel,
+                                               EnchantSocket socket, double globalCostWeight) {
+        boolean globallyRemovable = !plugin.getConfigManager().getEnchantsConfig().getBoolean(
+                "enchants." + socket.getId() + ".non-removable", false);
+        int limitBreakExtra = GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id())
+                && plugin.getLimitBreakManager() != null
+                ? plugin.getLimitBreakManager().getMaxExtraLevels(gearLevel)
+                : plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
+        return ResolvedEnchantmentPolicy.resolve(profile, socket, gearLevel, limitBreakExtra,
+                globallyRemovable, globalCostWeight);
     }
 
     private static void restore(ItemStack target, ItemStack snapshot) {

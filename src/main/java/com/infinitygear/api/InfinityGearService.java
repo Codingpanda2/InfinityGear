@@ -2,6 +2,7 @@ package com.infinitygear.api;
 
 import com.infinitygear.data.TrackedKind;
 import com.infinitygear.gear.GearProfile;
+import com.infinitygear.enchant.ResolvedEnchantmentPolicy;
 import com.infinitypickaxes.core.enchant.EnchantSocket;
 import org.bukkit.inventory.ItemStack;
 
@@ -21,4 +22,10 @@ public interface InfinityGearService {
     boolean quarantined(ItemStack item);
     OperationResult<ItemStack> createTrackedArtifact(TrackedKind kind, String type);
     Collection<EnchantSocket> eligibleEnchantments(String profileId);
+
+    /** Effective global + profile policy at a gear level; default preserves third-party implementor compatibility. */
+    default Optional<ResolvedEnchantmentPolicy> resolveEnchantmentPolicy(
+            String profileId, String enchantmentKey, int gearLevel) {
+        return Optional.empty();
+    }
 }

@@ -30,8 +30,48 @@ public record GearProfile(
         double costMultiplier,
         boolean enabled
 ) {
-    public record EnchantmentOverride(Boolean enabled, Integer standardMaximum,
-                                      Integer absoluteMaximum, Double costWeight) {}
+    public record EnchantmentOverride(
+            Boolean enabled,
+            Integer unlockLevel,
+            Integer standardMaximum,
+            Integer absoluteMaximum,
+            Integer socketCost,
+            Set<String> additionalConflicts,
+            Boolean removable,
+            Double costWeight
+    ) {
+        /** Binary/source compatibility constructor for the initial four-field override model. */
+        public EnchantmentOverride(Boolean enabled, Integer standardMaximum,
+                                   Integer absoluteMaximum, Double costWeight) {
+            this(enabled, null, standardMaximum, absoluteMaximum, null, null, null, costWeight);
+        }
+
+        public EnchantmentOverride {
+            if (unlockLevel != null && unlockLevel < 0) {
+                throw new IllegalArgumentException("override unlock-level must be non-negative");
+            }
+            if (standardMaximum != null && standardMaximum < 1) {
+                throw new IllegalArgumentException("override standard-maximum must be positive");
+            }
+            if (absoluteMaximum != null && absoluteMaximum < 1) {
+                throw new IllegalArgumentException("override absolute-maximum must be positive");
+            }
+            if (standardMaximum != null && absoluteMaximum != null
+                    && absoluteMaximum < standardMaximum) {
+                throw new IllegalArgumentException("override absolute-maximum cannot be below standard-maximum");
+            }
+            if (socketCost != null && socketCost < 0) {
+                throw new IllegalArgumentException("override socket-cost must be non-negative");
+            }
+            if (costWeight != null && (!Double.isFinite(costWeight) || costWeight < 0)) {
+                throw new IllegalArgumentException("override cost-weight must be finite and non-negative");
+            }
+            additionalConflicts = additionalConflicts == null ? null : additionalConflicts.stream()
+                    .filter(value -> value != null && !value.isBlank())
+                    .map(value -> value.toLowerCase(Locale.ROOT))
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        }
+    }
 
     public GearProfile {
         id = normalizeId(id);

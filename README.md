@@ -26,6 +26,10 @@ Rollback: stop the server, save `plugins/InfinityGear` and its database/WAL file
 
 `profiles.yml` uses stable namespaced IDs and supports accepted vanilla materials, external IDs, default creation item, enabled/auto-convert policy, display/lore, unbreakable behavior, compatible targets, enchantment overrides, base/expanded sockets, socket milestones, XP sources, and a cost multiplier.
 
+`enchantment-overrides` is sparse: omitted fields inherit `enchants.yml`. It supports `enabled`, `unlock-level`, `standard-maximum`, `absolute-maximum`, `socket-cost`, additive `additional-conflicts`, `removable`, and removal `cost-weight`. Explicit `enabled` and `removable` values replace their global defaults for that profile. A profile cannot loosen the global/native standard maximum, and its absolute maximum remains bounded by the LimitBreak allowance available at the gear's current progression level. Installed disabled, overcap, or oversocketed enchantments are retained and continue contributing their resolved socket cost.
+
+Book fusion deliberately remains profile-neutral because no destination gear/profile is selected at the Fusion Altar; it therefore uses the global standard book maximum. The selected destination profile is enforced when the fused book is later applied.
+
 - `EXPERIENCE`: intentional configured XP sources. The pickaxe profile keeps block-break progression.
 - `ITEM_UPGRADES`: levels only through explicit upgrade operations; the armor starter uses this.
 - `STATIC`: no passive progression; starter axe/sword profiles use this.
@@ -82,7 +86,7 @@ Detection is observational. It cannot prove detection of copies that are never s
 
 ## API compatibility
 
-`InfinityGearService` is registered through Bukkit’s service manager. It provides immutable inspection snapshots, profile resolution, gear/artifact creation, explicit mutation results and reason/message codes, enchantment application, socket inspection, duplicate/quarantine status, and eligible policy queries. Mutation methods require the primary server thread.
+`InfinityGearService` is registered through Bukkit’s service manager. It provides immutable inspection snapshots, profile resolution, gear/artifact creation, explicit mutation results and reason/message codes, enchantment application, socket inspection, duplicate/quarantine status, eligible enchantments, and immutable resolved global-plus-profile enchantment policy queries. Mutation methods require the primary server thread.
 
 `com.infinitypickaxes.api.InfinityPickaxesAPI` and legacy model/manager accessors remain deprecated adapters. They represent only `infinitygear:pickaxe`; non-pickaxe profiles return empty/null instead of masquerading as pickaxes. Generalized `GearEnchantChangeEvent` fires alongside compatible legacy pickaxe events for migrated pickaxe operations, and cancellation remains authoritative.
 

@@ -41,11 +41,16 @@ public final class EnchantmentItemTransforms {
     }
 
     public Transfer transfer(ItemStack source, Enchantment selected, int standardMaximum, ItemStack blankBook) {
+        return transfer(source, selected, standardMaximum, blankBook, true);
+    }
+
+    public Transfer transfer(ItemStack source, Enchantment selected, int standardMaximum,
+                             ItemStack blankBook, boolean removable) {
         if (blankBook == null || blankBook.getType() != Material.BOOK || blankBook.getAmount() < 1
                 || blankBook.hasItemMeta() && (!blankBook.getItemMeta().getEnchants().isEmpty())) {
             throw new IllegalArgumentException("A blank ordinary book is required.");
         }
-        Removal removal = remove(source, selected, true);
+        Removal removal = remove(source, selected, removable);
         if (removal.removedLevel() > standardMaximum) {
             throw new IllegalArgumentException("LimitBroken enchantments cannot be transferred.");
         }

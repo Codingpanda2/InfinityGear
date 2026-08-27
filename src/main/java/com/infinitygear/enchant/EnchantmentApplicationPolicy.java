@@ -28,6 +28,7 @@ public final class EnchantmentApplicationPolicy {
             int bookLevel,
             int usedSockets,
             int socketLimit,
+            int socketCost,
             int standardMaximum,
             int absoluteMaximum,
             boolean conflict,
@@ -52,7 +53,9 @@ public final class EnchantmentApplicationPolicy {
         int oldLevel = Math.max(0, request.currentLevel());
         int bookLevel = Math.max(0, request.bookLevel());
         int used = Math.max(0, request.usedSockets());
-        int resultingSockets = used + (oldLevel == 0 ? 1 : 0);
+        long resultingSocketCount = (long) used
+                + (oldLevel == 0 ? Math.max(0, request.socketCost()) : 0);
+        int resultingSockets = (int) Math.min(Integer.MAX_VALUE, resultingSocketCount);
         int standardMaximum = Math.max(1, request.standardMaximum());
         int absoluteMaximum = Math.max(standardMaximum, request.absoluteMaximum());
 
@@ -65,7 +68,7 @@ public final class EnchantmentApplicationPolicy {
         else if (bookLevel <= oldLevel) failure = Failure.EQUAL_OR_LOWER_LEVEL;
         else if (bookLevel > standardMaximum) failure = Failure.ABOVE_STANDARD_MAXIMUM;
         // Existing oversocketed equipment is grandfathered: only a newly introduced enchantment needs capacity.
-        else if (oldLevel == 0 && used >= Math.max(0, request.socketLimit())) failure = Failure.SOCKETS_FULL;
+        else if (oldLevel == 0 && resultingSocketCount > Math.max(0, request.socketLimit())) failure = Failure.SOCKETS_FULL;
         else if (oldLevel == 0 && request.conflict()) failure = Failure.CONFLICT;
         else if (oldLevel == 0 && !request.compatibleTarget()) failure = Failure.INCOMPATIBLE_TARGET;
 

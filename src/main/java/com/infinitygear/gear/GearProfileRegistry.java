@@ -51,10 +51,24 @@ public final class GearProfileRegistry {
                 if (overrideSection != null) for (String enchantment : overrideSection.getKeys(false)) {
                     ConfigurationSection override = overrideSection.getConfigurationSection(enchantment);
                     if (override == null) continue;
+                    Set<String> supported = Set.of("enabled", "unlock-level", "standard-maximum",
+                            "absolute-maximum", "socket-cost", "additional-conflicts", "removable", "cost-weight");
+                    for (String key : override.getKeys(false)) if (!supported.contains(key)) {
+                        logger.warning("Unknown enchantment override field '" + key + "' for '"
+                                + enchantment + "' in profile '" + id + "'; it was ignored.");
+                    }
+                    if (override.contains("additional-conflicts") && !override.isList("additional-conflicts")) {
+                        throw new IllegalArgumentException("override additional-conflicts must be a list");
+                    }
                     enchantmentOverrides.put(enchantment.toLowerCase(Locale.ROOT), new GearProfile.EnchantmentOverride(
                             override.contains("enabled") ? override.getBoolean("enabled") : null,
+                            override.contains("unlock-level") ? override.getInt("unlock-level") : null,
                             override.contains("standard-maximum") ? override.getInt("standard-maximum") : null,
                             override.contains("absolute-maximum") ? override.getInt("absolute-maximum") : null,
+                            override.contains("socket-cost") ? override.getInt("socket-cost") : null,
+                            override.contains("additional-conflicts")
+                                    ? Set.copyOf(override.getStringList("additional-conflicts")) : null,
+                            override.contains("removable") ? override.getBoolean("removable") : null,
                             override.contains("cost-weight") ? override.getDouble("cost-weight") : null));
                 }
                 GearProfile profile = new GearProfile(id, materials, externalItems, defaultMaterial,

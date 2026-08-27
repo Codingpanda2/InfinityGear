@@ -9,6 +9,7 @@ import com.infinitygear.nexo.NexoProvider;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitygear.enchant.EnchantmentItemTransforms;
 import com.infinitygear.enchant.FusionBookService;
+import com.infinitygear.enchant.ResolvedEnchantmentPolicy;
 import com.infinitygear.gear.SocketExpansionPolicy;
 import com.infinitygear.data.GearData;
 import com.infinitygear.api.events.GearEnchantChangeEvent;
@@ -223,11 +224,12 @@ public final class StationGui extends CustomGui {
         if (pickaxe == null) { message("station.gear-malformed"); return; }
         var target = managed.getFirst();
         int currentLevel = pickaxe.getEnchantmentLevel(target.socket().getKeyString());
-        int standardMaximum = target.socket().getMaxAllowedLevel(pickaxe.getLevel());
-        if (!target.socket().isEnabled()) { message("enchant.application.disabled", "%enchant%", target.socket().getDisplayName()); return; }
-        if (!target.socket().isUnlocked(pickaxe.getLevel())) {
+        ResolvedEnchantmentPolicy targetPolicy = plugin.getEnchantManager().resolvedPolicy(pickaxe, target.socket());
+        int standardMaximum = targetPolicy.standardMaximum();
+        if (!targetPolicy.enabled()) { message("enchant.application.disabled", "%enchant%", target.socket().getDisplayName()); return; }
+        if (!targetPolicy.unlockedAt(pickaxe.getLevel())) {
             message("enchant.application.locked", "%enchant%", target.socket().getDisplayName(),
-                    "%required%", String.valueOf(target.socket().getUnlockPickaxeLevel())); return;
+                    "%required%", String.valueOf(targetPolicy.unlockLevel())); return;
         }
         if (target.level() <= currentLevel) {
             message("enchant.application.equal_or_lower_level", "%book_level%", String.valueOf(target.level()),
@@ -281,15 +283,16 @@ public final class StationGui extends CustomGui {
         int current = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int standard = plugin.getLimitBreakManager().getStandardMaximum(pickaxe, socket);
         int absolute = plugin.getLimitBreakManager().getAbsoluteMaximum(pickaxe, socket);
-        if (!socket.isEnabled()) { message("station.limitbreak.disabled", "%enchant%", socket.getDisplayName()); return; }
+        var limitBreakPolicy = plugin.getEnchantManager().resolvedPolicy(pickaxe, socket);
+        if (!limitBreakPolicy.enabled()) { message("station.limitbreak.disabled", "%enchant%", socket.getDisplayName()); return; }
         if (!socket.supportsLimitBreak()) { message("messages.limitbreak-not-supported", "%enchant%", socket.getDisplayName()); return; }
         if (pickaxe.getLevel() < plugin.getLimitBreakManager().getUnlockLevel()) {
             message("messages.limitbreak-locked-pickaxe-level", "%required%",
                     String.valueOf(plugin.getLimitBreakManager().getUnlockLevel()), "%enchant%", socket.getDisplayName()); return;
         }
-        if (!socket.isUnlocked(pickaxe.getLevel())) {
+        if (!limitBreakPolicy.unlockedAt(pickaxe.getLevel())) {
             message("station.limitbreak.enchantment-locked", "%enchant%", socket.getDisplayName(),
-                    "%required%", String.valueOf(socket.getUnlockPickaxeLevel())); return;
+                    "%required%", String.valueOf(limitBreakPolicy.unlockLevel())); return;
         }
         if (current == 0) { message("messages.limitbreak-missing-enchantment", "%enchant%", socket.getDisplayName()); return; }
         if (current < standard) {
@@ -330,8 +333,8 @@ public final class StationGui extends CustomGui {
         var managed = managedOn(source);
         if (managed.isEmpty()) { message("station.source-no-managed-enchantment"); return; }
         var selected = managed.get(Math.floorMod(selectedEnchantIndex, managed.size()));
-        if (plugin.getConfigManager().getEnchantsConfig().getBoolean(
-                "enchants." + selected.socket().getId() + ".non-removable", false)) {
+        ResolvedEnchantmentPolicy selectedPolicy = resolvedPolicy(source, selected.socket(), 1.0);
+        if (!selectedPolicy.removable()) {
             message("station.removal.non-removable", "%enchant%", selected.socket().getDisplayName()); return;
         }
         final ItemStack result;
@@ -339,7 +342,8 @@ public final class StationGui extends CustomGui {
             ItemStack sourceUnit = source.clone();
             sourceUnit.setAmount(1);
             result = new EnchantmentItemTransforms().remove(sourceUnit,
-                    plugin.getEnchantManager().getEnchantment(selected.socket().getKeyString()), true).sourceResult();
+                    plugin.getEnchantManager().getEnchantment(selected.socket().getKeyString()),
+                    selectedPolicy.removable()).sourceResult();
             synchronizeLegacyClone(result);
         } catch (IllegalArgumentException invalid) { message(transformFailureMessage(invalid)); return; }
         GearEnchantChangeEvent event = gearChange(source, selected.socket().getKeyString(), selected.level(), 0,
@@ -375,13 +379,17 @@ public final class StationGui extends CustomGui {
         var managed = managedOn(source);
         if (managed.isEmpty()) { message("station.source-no-managed-enchantment"); return; }
         var selected = managed.get(Math.floorMod(selectedEnchantIndex, managed.size()));
+        ResolvedEnchantmentPolicy selectedPolicy = resolvedPolicy(source, selected.socket(), 1.0);
+        if (!selectedPolicy.removable()) {
+            message("station.transfer.non-removable", "%enchant%", selected.socket().getDisplayName()); return;
+        }
         final EnchantmentItemTransforms.Transfer transfer;
         try {
             ItemStack sourceUnit = source.clone();
             sourceUnit.setAmount(1);
             transfer = new EnchantmentItemTransforms().transfer(sourceUnit,
                     plugin.getEnchantManager().getEnchantment(selected.socket().getKeyString()),
-                    selected.socket().getMaxLevel(), blank);
+                    selectedPolicy.standardMaximum(), blank, selectedPolicy.removable());
             synchronizeLegacyClone(transfer.sourceResult());
         } catch (IllegalArgumentException invalid) { message(transformFailureMessage(invalid)); return; }
         GearEnchantChangeEvent event = gearChange(source, selected.socket().getKeyString(), selected.level(), 0,
@@ -640,17 +648,14 @@ public final class StationGui extends CustomGui {
         var profile = plugin.getGearManager().inspect(source, true)
                 .flatMap(gear -> plugin.getGearProfiles().find(gear.profileId())).orElse(null);
         double profileMultiplier = profile == null ? 1.0 : profile.costMultiplier();
-        if (profile != null) {
-            var profileOverride = profile.enchantmentOverrides().get(
-                    selected.socket().getKeyString().toLowerCase(java.util.Locale.ROOT));
-            if (profileOverride != null && profileOverride.costWeight() != null) {
-                overrides.put(selected.socket().getKeyString().toLowerCase(java.util.Locale.ROOT),
-                        profileOverride.costWeight());
-            }
-        }
+        String selectedKey = selected.socket().getKeyString().toLowerCase(java.util.Locale.ROOT);
+        double globalWeight = overrides.getOrDefault(selectedKey,
+                config.getDouble(root + "default-enchantment-weight", 1));
+        ResolvedEnchantmentPolicy selectedPolicy = resolvedPolicy(source, selected.socket(), globalWeight);
+        overrides.put(selectedKey, selectedPolicy.costWeight());
         double moneyCost = com.infinitygear.cost.RemovalCostFormula.calculate(
                 config.getDouble(root + "base", 0), selected.socket().getKeyString(), selected.level(),
-                selected.socket().getMaxLevel(), config.getDouble(root + "default-enchantment-weight", 1),
+                selectedPolicy.standardMaximum(), config.getDouble(root + "default-enchantment-weight", 1),
                 overrides, new com.infinitygear.cost.WeightTable(levelValues,
                         config.getDouble(root + "level-weight-fallback", 1)), profileMultiplier,
                 config.getDouble(root + "overcap-multiplier-per-level", 0));
@@ -680,6 +685,23 @@ public final class StationGui extends CustomGui {
             if (level > 0) result.add(new com.infinitypickaxes.core.enchant.EnchantManager.ManagedBookEnchant(socket, level));
         }
         return result;
+    }
+
+    private ResolvedEnchantmentPolicy resolvedPolicy(
+            ItemStack source,
+            com.infinitypickaxes.core.enchant.EnchantSocket socket,
+            double globalCostWeight
+    ) {
+        var gear = plugin.getGearManager().inspect(source, true).orElse(null);
+        var profile = gear == null ? null : plugin.getGearProfiles().find(gear.profileId()).orElse(null);
+        int level = gear == null ? 0 : gear.level();
+        int limitBreakExtra = gear != null && GearData.LEGACY_PICKAXE_PROFILE.equals(gear.profileId())
+                ? plugin.getLimitBreakManager().getMaxExtraLevels(level)
+                : plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
+        boolean globallyRemovable = !plugin.getConfigManager().getEnchantsConfig().getBoolean(
+                "enchants." + socket.getId() + ".non-removable", false);
+        return ResolvedEnchantmentPolicy.resolve(profile, socket, level, limitBreakExtra,
+                globallyRemovable, globalCostWeight);
     }
 
     private void synchronizeLegacyClone(ItemStack item) {
@@ -852,15 +874,14 @@ public final class StationGui extends CustomGui {
         lore.add(text("previews.view.separator", ""));
         if (installed.isEmpty()) lore.add(text("previews.view.no-enchantments", "No installed managed enchantments."));
         for (var entry : installed) {
-            boolean removable = !plugin.getConfigManager().getEnchantsConfig().getBoolean(
-                    "enchants." + entry.socket().getId() + ".non-removable", false);
+            ResolvedEnchantmentPolicy policy = resolvedPolicy(source, entry.socket(), 1.0);
             lore.add(text("previews.view.enchantment-line", "%enchantment% %level%",
                     "%enchantment%", entry.socket().getKeyString(), "%level%", String.valueOf(entry.level()),
-                    "%standard_maximum%", String.valueOf(entry.socket().getMaxLevel()),
-                    "%enabled_state%", entry.socket().isEnabled()
+                    "%standard_maximum%", String.valueOf(policy.standardMaximum()),
+                    "%enabled_state%", policy.enabled()
                             ? text("previews.view.enabled", "enabled")
                             : text("previews.view.grandfathered-disabled", "grandfathered disabled"),
-                    "%removable_state%", removable
+                    "%removable_state%", policy.removable()
                             ? text("previews.view.removable", "removable")
                             : text("previews.view.protected", "protected")));
         }
@@ -909,16 +930,9 @@ public final class StationGui extends CustomGui {
         int current = bukkitEnchant == null ? 0 : gear.getEnchantmentLevel(bukkitEnchant);
         int used = plugin.getGearService().usedSockets(gear);
         int capacity = gearInstance.socketCapacity();
-        var profile = plugin.getGearProfiles().find(gearInstance.profileId()).orElse(null);
-        var override = profile == null ? null : profile.enchantmentOverrides().get(
-                enchant.socket().getKeyString().toLowerCase(java.util.Locale.ROOT));
-        int standard = override != null && override.standardMaximum() != null
-                ? Math.min(enchant.socket().getMaxLevel(), Math.max(1, override.standardMaximum()))
-                : enchant.socket().getMaxAllowedLevel(gearInstance.level());
-        int absolute = override != null && override.absoluteMaximum() != null
-                ? Math.max(standard, override.absoluteMaximum())
-                : enchant.socket().getMaxLevel()
-                + plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
+        ResolvedEnchantmentPolicy policy = resolvedPolicy(gear, enchant.socket(), 1.0);
+        int standard = policy.standardMaximum();
+        int absolute = policy.absoluteMaximum();
         var validation = plugin.getGearService().validateEnchantmentApplication(gear, book,
                 enchant.socket().getKeyString());
         String invalid = validation.success() ? text("previews.application.valid", "<green>None</green>")
@@ -933,7 +947,8 @@ public final class StationGui extends CustomGui {
                         "%current_level%", String.valueOf(current),
                         "%resulting_level%", String.valueOf(enchant.level()),
                         "%current_sockets%", String.valueOf(used),
-                        "%resulting_sockets%", String.valueOf(used + (current == 0 ? 1 : 0)),
+                        "%resulting_sockets%", String.valueOf(Math.min(Integer.MAX_VALUE,
+                                (long) used + (current == 0 ? policy.socketCost() : 0))),
                         "%socket_capacity%", String.valueOf(capacity),
                         "%standard_maximum%", String.valueOf(standard),
                         "%absolute_maximum%", String.valueOf(absolute),

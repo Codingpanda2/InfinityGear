@@ -8,7 +8,12 @@
 # Each profile has a sparse enchantment-overrides map. Leave it as {} when the
 # profile has no exceptions. To add one later, use the canonical namespaced
 # enchantment key and specify only values that should differ from enchants.yml;
-# omitted values inherit the global policy. The intended shape is:
+# omitted values inherit the global policy. Explicit enabled/removable values
+# replace their global defaults for this profile. additional-conflicts are
+# additive. standard-maximum cannot loosen the global/native standard cap, and
+# absolute-maximum remains bounded by the LimitBreak allowance at the gear's
+# current progression level.
+# The shape is:
 #
 #   enchantment-overrides:
 #     "minecraft:veinminer":

@@ -44,6 +44,7 @@ messages:
       non-removable: "<red><aqua>%enchant%</aqua> is protected by the non-removable policy.</red>"
     transfer:
       missing-source: "<red>Select one InfinityGear item or enchanted book as the transfer source.</red>"
+      non-removable: "<red><aqua>%enchant%</aqua> is protected by the profile's non-removable policy and cannot be transferred.</red>"
       blank-book-required: "<red>Select a completely blank ordinary book. Enchanted books and books with enchantment metadata are not valid.</red>"
       overcap-not-supported: "<red>LimitBroken or over-standard enchantment levels cannot be transferred in this version.</red>"
     fusion:

@@ -7,6 +7,8 @@ import com.infinitypickaxes.utils.SoundUtil;
 import com.infinitygear.enchant.EnchantmentApplicationPolicy;
 import com.infinitygear.api.events.GearEnchantChangeEvent;
 import com.infinitygear.data.GearData;
+import com.infinitygear.enchant.ResolvedEnchantmentPolicy;
+import com.infinitygear.gear.GearProfile;
 import com.willfp.ecoenchants.enchant.EcoEnchant;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -127,6 +129,7 @@ public class EnchantManager {
         registerVanillaSocket(policy, "silk_touch", "minecraft:silk_touch", "Silk Touch",
                 List.of("<gray>Allows compatible blocks to drop themselves.</gray>"), false);
         validateAdditionalConflicts();
+        validateProfileOverrides();
     }
 
     public EnchantSocket getSocket(String id) {
@@ -161,7 +164,13 @@ public class EnchantManager {
     /** Counts every managed socket enchantment, including Fortune and Silk Touch. */
     public int countUsedSockets(InfinityPickaxe pickaxe) {
         if (pickaxe == null) return 0;
-        return countRecognizedSockets(pickaxe.getEnchantments().keySet(), socketsByKey);
+        int used = 0;
+        for (String enchantmentKey : pickaxe.getEnchantments().keySet()) {
+            EnchantSocket socket = getSocketByKey(enchantmentKey);
+            if (socket != null) used = (int) Math.min(Integer.MAX_VALUE,
+                    (long) used + resolvedPolicy(pickaxe, socket).socketCost());
+        }
+        return used;
     }
 
     static int countRecognizedSockets(Collection<String> enchantmentKeys,
@@ -187,11 +196,13 @@ public class EnchantManager {
      * enchantments are grandfathered and can still be upgraded while over cap.
      */
     public boolean canIntroduceEnchantment(Player player, InfinityPickaxe pickaxe, EnchantSocket socket) {
-        if (player == null || pickaxe == null || socket == null || !socket.isEnabled()) return false;
+        if (player == null || pickaxe == null || socket == null) return false;
+        ResolvedEnchantmentPolicy candidatePolicy = resolvedPolicy(pickaxe, socket);
+        if (!candidatePolicy.enabled()) return false;
 
         int used = countUsedSockets(pickaxe);
         int limit = getSocketLimit(pickaxe);
-        if (used >= limit) {
+        if ((long) used + candidatePolicy.socketCost() > limit) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-sockets-full",
                     "%used%", String.valueOf(used),
                     "%max%", String.valueOf(limit));
@@ -202,9 +213,11 @@ public class EnchantManager {
         for (String existingKey : pickaxe.getEnchantments().keySet()) {
             Enchantment existing = getEnchantment(existingKey);
             EnchantSocket existingSocket = getSocketByKey(existingKey);
-            boolean adminConflict = socket.additionallyConflictsWith(existingKey)
-                    || (existingSocket != null
-                    && existingSocket.additionallyConflictsWith(socket.getKeyString()));
+            ResolvedEnchantmentPolicy existingPolicy = existingSocket == null ? null
+                    : resolvedPolicy(pickaxe, existingSocket);
+            boolean adminConflict = candidatePolicy.additionallyConflictsWith(existingKey)
+                    || existingPolicy != null
+                    && existingPolicy.additionallyConflictsWith(candidatePolicy.enchantmentKey());
             boolean nativeConflict = candidate != null && existing != null
                     && (candidate.conflictsWith(existing) || existing.conflictsWith(candidate));
             if (adminConflict || nativeConflict || ecoHook.conflictsWith(candidate, existing)) {
@@ -241,7 +254,8 @@ public class EnchantManager {
             plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return false;
         }
-        if (!socket.isEnabled()) return false;
+        ResolvedEnchantmentPolicy policy = resolvedPolicy(pickaxe, socket);
+        if (!policy.enabled()) return false;
 
         // A normal application book has one unambiguous managed identity. This
         // rejects mixed books even when the selected enchantment is present.
@@ -259,23 +273,22 @@ public class EnchantManager {
             return false;
         }
 
-        if (!socket.isUnlocked(pickaxe.getLevel())) {
+        if (!policy.unlockedAt(pickaxe.getLevel())) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-locked-pickaxe-level",
-                    "%required%", String.valueOf(socket.getUnlockPickaxeLevel()));
+                    "%required%", String.valueOf(policy.unlockLevel()));
             return false;
         }
 
         int currentLevelOnPickaxe = pickaxe.getEnchantmentLevel(socket.getKeyString());
-        int maxAllowedForPickaxe = socket.getMaxAllowedLevel(pickaxe.getLevel());
+        int maxAllowedForPickaxe = policy.standardMaximum();
 
         int bookLevel = bookEnchant.level();
         EnchantmentApplicationPolicy.Decision decision = EnchantmentApplicationPolicy.evaluate(
                 new EnchantmentApplicationPolicy.Request(
-                        managedBookEnchants.size(), true, socket.isEnabled(),
-                        socket.isUnlocked(pickaxe.getLevel()), currentLevelOnPickaxe, bookLevel,
+                        managedBookEnchants.size(), true, policy.enabled(),
+                        policy.unlockedAt(pickaxe.getLevel()), currentLevelOnPickaxe, bookLevel,
                         countUsedSockets(pickaxe), getSocketLimit(pickaxe),
-                        maxAllowedForPickaxe,
-                        socket.getMaxLevel() + progressionPolicy.getMaximumLimitBreakExtraLevels(),
+                        policy.socketCost(), maxAllowedForPickaxe, policy.absoluteMaximum(),
                         false, true));
 
         if (decision.failure() == EnchantmentApplicationPolicy.Failure.EQUAL_OR_LOWER_LEVEL) {
@@ -331,6 +344,19 @@ public class EnchantManager {
                 "%level%", String.valueOf(nextLevel));
 
         return true;
+    }
+
+    public ResolvedEnchantmentPolicy resolvedPolicy(InfinityPickaxe pickaxe, EnchantSocket socket) {
+        GearProfile profile = plugin.getGearProfiles() == null ? null
+                : plugin.getGearProfiles().find(GearData.LEGACY_PICKAXE_PROFILE).orElse(null);
+        int level = pickaxe == null ? 0 : pickaxe.getLevel();
+        boolean globallyRemovable = !plugin.getConfigManager().getEnchantsConfig().getBoolean(
+                "enchants." + socket.getId() + ".non-removable", false);
+        int limitBreakExtra = plugin.getLimitBreakManager() == null
+                ? progressionPolicy.getMaximumLimitBreakExtraLevels()
+                : plugin.getLimitBreakManager().getMaxExtraLevels(level);
+        return ResolvedEnchantmentPolicy.resolve(profile, socket, level, limitBreakExtra,
+                globallyRemovable, 1.0);
     }
 
     public Integer getBookLevel(ItemStack bookItem, EnchantSocket socket) {
@@ -536,6 +562,28 @@ public class EnchantManager {
                 if (!knownSocket && !knownLiveEnchant) {
                     plugin.getLogger().warning("Unknown additional-conflict '" + configuredConflict
                             + "' for managed enchantment '" + socket.getId() + "'; policy was preserved.");
+                }
+            }
+        }
+    }
+
+    private void validateProfileOverrides() {
+        if (plugin.getGearProfiles() == null) return;
+        for (GearProfile profile : plugin.getGearProfiles().all()) {
+            for (var entry : profile.enchantmentOverrides().entrySet()) {
+                EnchantSocket socket = getSocketByKey(entry.getKey());
+                if (socket == null) {
+                    plugin.getLogger().warning("Unknown enchantment override '" + entry.getKey()
+                            + "' in gear profile '" + profile.id() + "'; it was preserved but is inactive.");
+                    continue;
+                }
+                if (entry.getValue().additionalConflicts() == null) continue;
+                for (String conflict : entry.getValue().additionalConflicts()) {
+                    boolean known = getSocket(conflict) != null || getSocketByKey(conflict) != null
+                            || conflict.contains(":") && getEnchantment(conflict) != null;
+                    if (!known) plugin.getLogger().warning("Unknown profile additional-conflict '"
+                            + conflict + "' for '" + entry.getKey() + "' in profile '"
+                            + profile.id() + "'; it was preserved.");
                 }
             }
         }

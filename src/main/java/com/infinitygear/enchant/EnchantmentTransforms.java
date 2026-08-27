@@ -30,10 +30,16 @@ public final class EnchantmentTransforms {
 
     public static Result transfer(Map<String, Integer> source, String selected, int standardMaximum,
                                   boolean blankOrdinaryBookPresent) {
+        return transfer(source, selected, standardMaximum, blankOrdinaryBookPresent, true);
+    }
+
+    public static Result transfer(Map<String, Integer> source, String selected, int standardMaximum,
+                                  boolean blankOrdinaryBookPresent, boolean removable) {
         String key = normalize(selected);
         LinkedHashMap<String, Integer> copy = normalizedCopy(source);
         Integer level = copy.get(key);
         if (level == null) return failure(Failure.ENCHANTMENT_MISSING, copy);
+        if (!removable) return failure(Failure.NON_REMOVABLE, copy);
         if (!blankOrdinaryBookPresent) return failure(Failure.BLANK_BOOK_REQUIRED, copy);
         if (level > standardMaximum) return failure(Failure.OVERCAP_TRANSFER, copy);
         copy.remove(key);

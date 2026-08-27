@@ -8,7 +8,7 @@ class EnchantmentApplicationPolicyTest {
 
     private EnchantmentApplicationPolicy.Request request(int current, int book, int used, int limit) {
         return new EnchantmentApplicationPolicy.Request(1, true, true, true,
-                current, book, used, limit, 5, 8, false, true);
+                current, book, used, limit, 1, 5, 8, false, true);
     }
 
     @Test void bookInstallsItsTargetLevel() {
@@ -42,8 +42,20 @@ class EnchantmentApplicationPolicyTest {
 
     @Test void multipleManagedEnchantsAreRejected() {
         var request = new EnchantmentApplicationPolicy.Request(2, true, true, true,
-                0, 1, 0, 3, 5, 8, false, true);
+                0, 1, 0, 3, 1, 5, 8, false, true);
         assertEquals(EnchantmentApplicationPolicy.Failure.MULTIPLE_MANAGED_ENCHANTMENTS,
                 EnchantmentApplicationPolicy.evaluate(request).failure());
+    }
+
+    @Test void profileSocketCostIsChargedOnlyWhenIntroducingTheEnchant() {
+        var introduction = new EnchantmentApplicationPolicy.Request(1, true, true, true,
+                0, 1, 2, 3, 2, 5, 8, false, true);
+        assertEquals(EnchantmentApplicationPolicy.Failure.SOCKETS_FULL,
+                EnchantmentApplicationPolicy.evaluate(introduction).failure());
+
+        var upgrade = new EnchantmentApplicationPolicy.Request(1, true, true, true,
+                1, 2, 7, 3, 2, 5, 8, false, true);
+        assertTrue(EnchantmentApplicationPolicy.evaluate(upgrade).allowed());
+        assertEquals(7, EnchantmentApplicationPolicy.evaluate(upgrade).resultingSocketUsage());
     }
 }
