@@ -34,6 +34,14 @@ public final class NexoStationListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFurniture(NexoFurnitureInteractEvent event) {
         org.bukkit.Location origin = event.getBaseEntity().getLocation();
+        if (stations.hasPendingFurnitureBinding(event.getPlayer())) {
+            event.setCancelled(true);
+            var bound = stations.completeFurnitureBinding(event.getPlayer(), event.getMechanic().getItemID(), origin);
+            event.getPlayer().sendMessage(bound
+                    .map(type -> "§aBound this Nexo furniture as §f" + type.configKey() + "§a.")
+                    .orElse("§cThat furniture ID does not match the armed station type."));
+            return;
+        }
         stations.identifyNexo(event.getPlayer(), event.getMechanic().getItemID(), origin)
                 .ifPresent(type -> {
                     event.setCancelled(true);

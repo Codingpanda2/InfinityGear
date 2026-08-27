@@ -97,6 +97,29 @@ class PickaxeInteractListenerTest {
     }
 
     @Test
+    void anvilResultTakeIsCancelledEvenIfAnotherPluginRestoresThePreview() {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        EnchantManager enchantManager = mock(EnchantManager.class);
+        when(plugin.getEnchantManager()).thenReturn(enchantManager);
+        ItemStack gear = mock(ItemStack.class), result = mock(ItemStack.class);
+        AnvilInventory inventory = mock(AnvilInventory.class);
+        when(inventory.getFirstItem()).thenReturn(gear);
+        when(enchantManager.hasAnyEnchantIncrease(gear, result)).thenReturn(true);
+        InventoryClickEvent event = mock(InventoryClickEvent.class);
+        when(event.getInventory()).thenReturn(inventory);
+        when(event.getRawSlot()).thenReturn(2);
+        when(event.getCurrentItem()).thenReturn(result);
+
+        try (MockedStatic<GearData> gearData = mockStatic(GearData.class)) {
+            gearData.when(() -> GearData.isGear(gear)).thenReturn(true);
+            new PickaxeInteractListener(plugin).onAnvilResultTake(event);
+        }
+
+        verify(event).setCancelled(true);
+        verify(inventory).setResult(null);
+    }
+
+    @Test
     void enchantingTableUseForManagedPickaxeIsCancelled() {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         ItemStack pickaxe = mock(ItemStack.class);

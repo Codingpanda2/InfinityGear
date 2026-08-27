@@ -18,6 +18,9 @@ public final class StationManager {
     private final Map<StationType, Definition> definitions = new EnumMap<>(StationType.class);
     private final Map<String, StationProvider> providers = new java.util.HashMap<>();
     private final StationInstanceStore instances;
+    private final Map<java.util.UUID, PendingFurnitureBinding> pendingFurnitureBindings = new java.util.HashMap<>();
+    private static final long FURNITURE_BIND_TIMEOUT_MILLIS = 30_000L;
+    private record PendingFurnitureBinding(StationType type, long expiresAt) {}
 
     public record Definition(boolean enabled, String provider, String providerId,
                              Material vanillaMaterial, double distance, String bypassPermission,
@@ -130,6 +133,39 @@ public final class StationManager {
         if (target == null || !definition.providerId().equalsIgnoreCase(target.itemId())) return false;
         instances.bind(target.origin(), type);
         return true;
+    }
+
+    /** Arms an interaction-driven Nexo furniture bind, avoiding unreliable ray-traced hitbox targeting. */
+    public boolean beginFurnitureBinding(StationType type, Player actor) {
+        Definition definition = definitions.get(type);
+        if (definition == null || !definition.enabled() || !"NEXO".equals(definition.provider())
+                || !canManageBindings(actor)) return false;
+        pendingFurnitureBindings.put(actor.getUniqueId(),
+                new PendingFurnitureBinding(type, System.currentTimeMillis() + FURNITURE_BIND_TIMEOUT_MILLIS));
+        return true;
+    }
+
+    public boolean hasPendingFurnitureBinding(Player actor) {
+        PendingFurnitureBinding pending = actor == null ? null : pendingFurnitureBindings.get(actor.getUniqueId());
+        if (pending != null && pending.expiresAt() < System.currentTimeMillis()) {
+            pendingFurnitureBindings.remove(actor.getUniqueId());
+            return false;
+        }
+        return pending != null;
+    }
+
+    /** Completes only when the interaction's typed Nexo ID matches the armed station definition. */
+    public Optional<StationType> completeFurnitureBinding(Player actor, String itemId, Location baseOrigin) {
+        if (!hasPendingFurnitureBinding(actor) || itemId == null || baseOrigin == null) return Optional.empty();
+        PendingFurnitureBinding pending = pendingFurnitureBindings.get(actor.getUniqueId());
+        Definition definition = definitions.get(pending.type());
+        if (definition == null || !definition.enabled() || !"NEXO".equals(definition.provider())
+                || !definition.providerId().equalsIgnoreCase(itemId) || !canManageBindings(actor)) {
+            return Optional.empty();
+        }
+        instances.bind(baseOrigin, pending.type());
+        pendingFurnitureBindings.remove(actor.getUniqueId());
+        return Optional.of(pending.type());
     }
 
     public Optional<StationType> targetedFurnitureBinding(Player player) {

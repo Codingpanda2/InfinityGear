@@ -374,6 +374,26 @@ public class EnchantManager {
         return hasAnyManagedLevelIncrease(originalLevels, resultLevels, socketsByKey.keySet());
     }
 
+    /** Blocks anvils from raising any enchantment on managed gear, including newly discovered/unmanaged keys. */
+    public boolean hasAnyEnchantIncrease(ItemStack original, ItemStack result) {
+        if (original == null || result == null) return false;
+        Map<String, Integer> originalLevels = new HashMap<>(), resultLevels = new HashMap<>();
+        for (var entry : result.getEnchantments().entrySet()) {
+            String key = entry.getKey().getKey().toString();
+            originalLevels.put(key, original.getEnchantmentLevel(entry.getKey()));
+            resultLevels.put(key, entry.getValue());
+        }
+        return hasAnyEnchantmentLevelIncrease(originalLevels, resultLevels);
+    }
+
+    static boolean hasAnyEnchantmentLevelIncrease(Map<String, Integer> originalLevels,
+                                                   Map<String, Integer> resultLevels) {
+        if (resultLevels == null) return false;
+        Map<String, Integer> original = originalLevels == null ? Map.of() : originalLevels;
+        return resultLevels.entrySet().stream().anyMatch(entry -> entry.getKey() != null
+                && entry.getValue() != null && entry.getValue() > original.getOrDefault(entry.getKey(), 0));
+    }
+
     static boolean hasAnyManagedLevelIncrease(Map<String, Integer> originalLevels,
                                               Map<String, Integer> resultLevels,
                                               Collection<String> managedKeys) {

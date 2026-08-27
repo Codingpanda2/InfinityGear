@@ -54,6 +54,12 @@ class EnchantManagerSecurityTest {
     }
 
     @Test
+    void anvilDetectsIncreaseForEnchantmentsOutsideTheManagedSocketCatalog() {
+        assertTrue(EnchantManager.hasAnyEnchantmentLevelIncrease(
+                Map.of("minecraft:efficiency", 20), Map.of("minecraft:efficiency", 21)));
+    }
+
+    @Test
     void vanillaSocketUsesItsConfiguredDisplayColor() {
         YamlConfiguration policy = new YamlConfiguration();
         policy.set("enchants.fortune.display-color", "<gold>");

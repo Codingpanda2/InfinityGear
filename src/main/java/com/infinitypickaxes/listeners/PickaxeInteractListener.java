@@ -15,6 +15,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -167,8 +168,22 @@ public class PickaxeInteractListener implements Listener {
         ItemStack pickaxe = event.getInventory().getFirstItem();
         ItemStack result = event.getResult();
         if (GearData.isGear(pickaxe)
-                && plugin.getEnchantManager().hasManagedEnchantIncrease(pickaxe, result)) {
+                && (plugin.getEnchantManager().hasManagedEnchantIncrease(pickaxe, result)
+                || plugin.getEnchantManager().hasAnyEnchantIncrease(pickaxe, result))) {
             event.setResult(null);
+        }
+    }
+
+    /** Final take-time guard in case another plugin rebuilds the preview after PrepareAnvilEvent. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onAnvilResultTake(InventoryClickEvent event) {
+        if (!(event.getInventory() instanceof AnvilInventory anvil) || event.getRawSlot() != 2) return;
+        ItemStack gear = anvil.getFirstItem();
+        ItemStack result = event.getCurrentItem();
+        if (GearData.isGear(gear) && (plugin.getEnchantManager().hasManagedEnchantIncrease(gear, result)
+                || plugin.getEnchantManager().hasAnyEnchantIncrease(gear, result))) {
+            event.setCancelled(true);
+            anvil.setResult(null);
         }
     }
 

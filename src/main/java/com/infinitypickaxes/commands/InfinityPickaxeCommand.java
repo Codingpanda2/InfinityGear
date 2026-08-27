@@ -453,7 +453,11 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 boolean bound = target != null && plugin.getStationManager().bind(type, player, target);
                 if (!bound) bound = plugin.getStationManager().bindTargetedFurniture(type, player);
                 if (!bound) {
-                    sender.sendMessage("§cTarget a matching station block or Nexo furniture base.");
+                    if (plugin.getStationManager().beginFurnitureBinding(type, player)) {
+                        sender.sendMessage("§eRight-click the matching Nexo furniture within 30 seconds to bind it.");
+                        return true;
+                    }
+                    sender.sendMessage("§cTarget a block matching that station's configured provider/material.");
                     return true;
                 }
                 sender.sendMessage("§aBound this exact station instance as §f" + type.configKey() + "§a.");

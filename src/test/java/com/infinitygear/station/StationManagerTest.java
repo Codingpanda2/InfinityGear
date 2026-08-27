@@ -66,7 +66,28 @@ class StationManagerTest {
         assertTrue(manager.identify(operator, ordinary).isEmpty());
     }
 
+    @Test void interactionDrivenFurnitureBindingUsesTypedIdAndBaseOrigin() {
+        StationManager manager = manager(config("NEXO", null, "pack:runic_table"), true);
+        Player administrator = mock(Player.class);
+        when(administrator.hasPermission("infinitygear.admin.station")).thenReturn(true);
+        when(administrator.getUniqueId()).thenReturn(UUID.randomUUID());
+        World world = mock(World.class);
+        when(world.getUID()).thenReturn(UUID.randomUUID());
+        Location baseOrigin = new Location(world, 4.5, 65, 9.5);
+
+        assertTrue(manager.beginFurnitureBinding(StationType.RUNIC_TABLE, administrator));
+        assertTrue(manager.hasPendingFurnitureBinding(administrator));
+        assertTrue(manager.completeFurnitureBinding(administrator, "wrong:id", baseOrigin).isEmpty());
+        assertEquals(StationType.RUNIC_TABLE,
+                manager.completeFurnitureBinding(administrator, "pack:runic_table", baseOrigin).orElseThrow());
+        assertFalse(manager.hasPendingFurnitureBinding(administrator));
+    }
+
     private StationManager manager(YamlConfiguration yaml) {
+        return manager(yaml, false);
+    }
+
+    private StationManager manager(YamlConfiguration yaml, boolean nexoEnabled) {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         ConfigManager configs = mock(ConfigManager.class);
         Server server = mock(Server.class);
@@ -75,7 +96,7 @@ class StationManagerTest {
         when(configs.getStationsConfig()).thenReturn(yaml);
         when(plugin.getServer()).thenReturn(server);
         when(server.getPluginManager()).thenReturn(pluginManager);
-        when(pluginManager.isPluginEnabled("Nexo")).thenReturn(false);
+        when(pluginManager.isPluginEnabled("Nexo")).thenReturn(nexoEnabled);
         when(plugin.getLogger()).thenReturn(Logger.getLogger("StationManagerTest"));
         return new StationManager(plugin);
     }

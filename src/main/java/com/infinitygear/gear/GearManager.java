@@ -35,6 +35,12 @@ public final class GearManager {
     public ItemStack create(String profileId, int startingLevel) {
         GearProfile profile = profiles.find(profileId).filter(GearProfile::enabled)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown or disabled gear profile: " + profileId));
+        int level = Math.min(profile.maximumLevel(), Math.max(0, startingLevel));
+        // The migrated pickaxe profile must retain the hardened legacy factory:
+        // it owns configured default Efficiency, name/lore, flags, and mirror PDC.
+        if (GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id())) {
+            return plugin.getPickaxeManager().createPickaxe(level);
+        }
         ItemStack item;
         if (!profile.defaultExternalProvider().isBlank()) {
             if (!"nexo".equals(profile.defaultExternalProvider())
@@ -51,7 +57,7 @@ public final class GearManager {
             item = new ItemStack(profile.defaultMaterial());
         }
         GearInstance gear = new GearInstance(item, UUID.randomUUID(), profile.id(),
-                Math.min(profile.maximumLevel(), Math.max(0, startingLevel)), 0, 0,
+                level, 0, 0,
                 profile.socketCapacityAtLevel(startingLevel));
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
