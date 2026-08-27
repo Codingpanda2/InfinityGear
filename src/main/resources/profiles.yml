@@ -4,6 +4,26 @@
 #   external-items: {nexo: [my_pack:my_item]}
 #   default-item: {provider: nexo, id: my_pack:my_item}
 # InfinityGear stamps its own UUID; a raw Nexo item is never protected gear.
+#
+# Each profile has a sparse enchantment-overrides map. Leave it as {} when the
+# profile has no exceptions. To add one later, use the canonical namespaced
+# enchantment key and specify only values that should differ from enchants.yml;
+# omitted values inherit the global policy. The intended shape is:
+#
+#   enchantment-overrides:
+#     "minecraft:veinminer":
+#       enabled: true
+#       unlock-level: 75
+#       standard-maximum: 1
+#       absolute-maximum: 3
+#       socket-cost: 1
+#       additional-conflicts:
+#         - "minecraft:dynamite"
+#       removable: true
+#       cost-weight: 2.0
+#
+# Quote namespaced keys to keep the YAML unambiguous. Do not duplicate global
+# enchantment entries unless a profile genuinely needs different policy.
 config-version: 1
 profiles:
   infinitygear:pickaxe:
@@ -36,6 +56,7 @@ profiles:
     base-sockets: 3
     maximum-expanded-sockets: 8
     compatible-targets: [TOOL, AXE]
+    enchantment-overrides: {}
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
@@ -48,6 +69,7 @@ profiles:
     base-sockets: 3
     maximum-expanded-sockets: 8
     compatible-targets: [WEAPON, SWORD]
+    enchantment-overrides: {}
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
@@ -60,6 +82,7 @@ profiles:
     base-sockets: 3
     maximum-expanded-sockets: 8
     compatible-targets: [TOOL, SHOVEL]
+    enchantment-overrides: {}
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
@@ -72,6 +95,7 @@ profiles:
     base-sockets: 3
     maximum-expanded-sockets: 8
     compatible-targets: [TOOL, HOE]
+    enchantment-overrides: {}
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
@@ -84,6 +108,7 @@ profiles:
     base-sockets: 3
     maximum-expanded-sockets: 8
     compatible-targets: [WEAPON, BOW, CROSSBOW]
+    enchantment-overrides: {}
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
@@ -96,6 +121,7 @@ profiles:
     base-sockets: 3
     maximum-expanded-sockets: 8
     compatible-targets: [ARMOR]
+    enchantment-overrides: {}
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
