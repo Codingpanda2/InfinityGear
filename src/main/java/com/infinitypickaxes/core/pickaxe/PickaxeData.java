@@ -86,10 +86,10 @@ public final class PickaxeData {
             try {
                 uuid = UUID.fromString(uuidStr);
             } catch (Exception e) {
-                uuid = UUID.randomUUID();
+                return null; // Never silently replace a malformed deployed identity.
             }
         } else {
-            uuid = UUID.randomUUID();
+            return null;
         }
 
         int level = pdc.getOrDefault(KEY_LEVEL, PersistentDataType.INTEGER, 0);

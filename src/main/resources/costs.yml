@@ -1,0 +1,42 @@
+# Components in one option are AND requirements. Options are OR alternatives.
+# An empty components list is the only way to configure a free operation.
+config-version: 1
+operations:
+  application:
+    options:
+      xp:
+        components:
+          - {type: XP_LEVELS, amount: 2}
+  fusion:
+    result-level-weights: {2: 2, 3: 4, 4: 8, 5: 16}
+    fallback-weight: 24
+    options:
+      xp:
+        components:
+          - {type: XP_POINTS, amount: 10}
+  removal:
+    base: 15000
+    default-enchantment-weight: 1.0
+    enchantment-weights: {}
+    level-weights: {1: 1.0, 3: 1.5, 5: 2.0}
+    level-weight-fallback: 1.0
+    overcap-multiplier-per-level: 0.5
+    options:
+      eraser-and-money:
+        components:
+          - {type: TRACKED_ARTIFACT, item: runic_eraser, amount: 1}
+          - {type: MONEY, provider: vault, amount: 15000}
+  transfer:
+    options:
+      conduit:
+        components:
+          - {type: TRACKED_ARTIFACT, item: runic_conduit, amount: 1}
+  socket-expansion:
+    # Floor lookup by resulting capacity. With an item component these weights
+    # must be whole numbers; 0 intentionally removes the scaled cost.
+    result-capacity-weights: {4: 1, 7: 2, 10: 3}
+    fallback-weight: 1
+    options:
+      rivet:
+        components:
+          - {type: TRACKED_ARTIFACT, item: runic_rivet, amount: 1}

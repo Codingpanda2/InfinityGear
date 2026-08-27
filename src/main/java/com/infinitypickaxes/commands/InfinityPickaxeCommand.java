@@ -6,6 +6,10 @@ import com.infinitypickaxes.core.duplicate.DuplicateRecord;
 import com.infinitypickaxes.core.duplicate.DuplicateScanResult;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.gui.MainPickaxeGui;
+import com.infinitygear.api.GearSnapshot;
+import com.infinitygear.data.TrackedKind;
+import com.infinitygear.gui.StationGui;
+import com.infinitygear.station.StationType;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -33,9 +37,20 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        boolean gearCommand = command.getName().equalsIgnoreCase("infinitygear");
         if (args.length == 0) {
+            if (gearCommand) {
+                if (!(sender instanceof Player player)) { sendHelp(sender); return true; }
+                if (!hasUse(player)) { plugin.getMessageManager().sendMessage(player, "messages.no-permission"); return true; }
+                GearSnapshot snapshot = plugin.getGearService().inspect(player.getInventory().getItemInMainHand()).orElse(null);
+                if (snapshot == null) { player.sendMessage("§cHold an InfinityGear item to inspect it."); return true; }
+                player.sendMessage("§bInfinityGear §8» §f" + snapshot.profileId() + " §7Lv." + snapshot.level());
+                player.sendMessage("§7UUID: §f" + snapshot.uuid() + " §8| §7Sockets: §f"
+                        + snapshot.usedSockets() + "/" + snapshot.socketCapacity());
+                return true;
+            }
             if (sender instanceof Player player) {
-                if (!player.hasPermission("infinitypickaxes.use")) {
+                if (!hasUse(player)) {
                     plugin.getMessageManager().sendMessage(player, "messages.no-permission");
                     return true;
                 }
@@ -54,9 +69,24 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase();
 
+        if (gearCommand && sub.equals("give")) return handleGearGive(sender, label, args);
+        if (gearCommand && (sub.equals("artifact") || sub.equals("giveartifact"))) {
+            return handleArtifactGive(sender, label, args);
+        }
+        if (gearCommand && sub.equals("station")) return handleStation(sender, label, args);
+        if (gearCommand && sub.equals("migration")) {
+            if (!hasPermissionOrAdmin(sender, "infinitygear.admin.migration")) { plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true; }
+            java.nio.file.Path marker = plugin.getDataFolder().toPath()
+                    .resolve(com.infinitygear.config.LegacyDataFolderMigrator.MARKER);
+            sender.sendMessage(java.nio.file.Files.exists(marker)
+                    ? "§aLegacy data-folder migration marker is present: §f" + marker
+                    : "§eNo legacy data-folder migration marker is present.");
+            return true;
+        }
+
         switch (sub) {
             case "reload" -> {
-                if (!sender.hasPermission("infinitypickaxes.admin")) {
+                if (!(gearCommand ? hasPermissionOrAdmin(sender, "infinitygear.admin.reload") : hasAdmin(sender))) {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
                     return true;
                 }
@@ -64,7 +94,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             }
 
             case "give" -> {
-                if (!sender.hasPermission("infinitypickaxes.admin")) {
+                if (!hasAdmin(sender)) {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
                     return true;
                 }
@@ -94,7 +124,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             }
 
             case "book", "limitbreak" -> {
-                if (!sender.hasPermission("infinitypickaxes.admin")) {
+                if (!hasAdmin(sender)) {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
                     return true;
                 }
@@ -161,7 +191,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     plugin.getMessageManager().sendMessage(sender, "messages.player-only");
                     return true;
                 }
-                if (!player.hasPermission("infinitypickaxes.use")) {
+                if (!hasUse(player)) {
                     plugin.getMessageManager().sendMessage(player, "messages.no-permission");
                     return true;
                 }
@@ -176,7 +206,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             case "duplicate", "duplicates" -> handleDuplicate(sender, label, args);
 
             case "setlevel" -> {
-                if (!sender.hasPermission("infinitypickaxes.admin")) {
+                if (!(gearCommand ? hasPermissionOrAdmin(sender, "infinitygear.admin.setlevel") : hasAdmin(sender))) {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
                     return true;
                 }
@@ -187,6 +217,19 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 Player target = Bukkit.getPlayer(args[1]);
                 if (target == null) {
                     plugin.getMessageManager().sendMessage(sender, "messages.player-not-found");
+                    return true;
+                }
+                if (gearCommand) {
+                    try {
+                        int targetLevel = Integer.parseInt(args[2]);
+                        var gear = plugin.getGearManager().inspect(target.getInventory().getItemInMainHand(), true).orElse(null);
+                        var profile = gear == null ? null : plugin.getGearProfiles().find(gear.profileId()).orElse(null);
+                        if (gear == null || profile == null) { sender.sendMessage("§cPlayer is not holding InfinityGear."); return true; }
+                        gear.level(Math.min(profile.maximumLevel(), Math.max(0, targetLevel)));
+                        com.infinitygear.data.GearData.save(gear, plugin.getDuplicateService().isRestricted(gear.uuid()),
+                                com.infinitygear.data.GearData.LEGACY_PICKAXE_PROFILE.equals(gear.profileId()));
+                        sender.sendMessage("§aGear level set to §f" + gear.level() + "§a.");
+                    } catch (NumberFormatException invalid) { sender.sendMessage("§cInvalid level."); }
                     return true;
                 }
                 InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(target);
@@ -206,7 +249,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             }
 
             case "addxp" -> {
-                if (!sender.hasPermission("infinitypickaxes.admin")) {
+                if (!(gearCommand ? hasPermissionOrAdmin(sender, "infinitygear.admin.addxp") : hasAdmin(sender))) {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
                     return true;
                 }
@@ -217,6 +260,22 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 Player target = Bukkit.getPlayer(args[1]);
                 if (target == null) {
                     plugin.getMessageManager().sendMessage(sender, "messages.player-not-found");
+                    return true;
+                }
+                if (gearCommand) {
+                    try {
+                        double amount = Double.parseDouble(args[2]);
+                        var gear = plugin.getGearManager().inspect(target.getInventory().getItemInMainHand(), true).orElse(null);
+                        var profile = gear == null ? null : plugin.getGearProfiles().find(gear.profileId()).orElse(null);
+                        if (gear == null || profile == null) { sender.sendMessage("§cPlayer is not holding InfinityGear."); return true; }
+                        if (profile.progressionMode() != com.infinitygear.gear.GearProgressionMode.EXPERIENCE) {
+                            sender.sendMessage("§cThat profile does not use EXPERIENCE progression."); return true;
+                        }
+                        gear.xp(gear.xp() + Math.max(0, amount));
+                        com.infinitygear.data.GearData.save(gear, plugin.getDuplicateService().isRestricted(gear.uuid()),
+                                com.infinitygear.data.GearData.LEGACY_PICKAXE_PROFILE.equals(gear.profileId()));
+                        sender.sendMessage("§aAdded §f" + amount + "§a gear XP.");
+                    } catch (NumberFormatException invalid) { sender.sendMessage("§cInvalid XP amount."); }
                     return true;
                 }
                 InfinityPickaxe pickaxe = plugin.getPickaxeManager().getHeldPickaxe(target);
@@ -243,9 +302,9 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
-        sender.sendMessage("§b§lInfinityPickaxes §7- Available Commands:");
+        sender.sendMessage("§b§lInfinityGear §7- Available Commands:");
         sender.sendMessage("§e/ipickaxe §7- Opens the menu for your held pickaxe.");
-        if (sender.hasPermission("infinitypickaxes.admin")) {
+        if (hasAdmin(sender)) {
             sender.sendMessage("§e/ipickaxe give <player> [level] §7- Gives an Infinity Pickaxe.");
             sender.sendMessage("§e/ipickaxe book <enchant|universal> [amount] [player] §7- Gives LimitBreak books.");
             sender.sendMessage("§e/ipickaxe setlevel <player> <level> §7- Sets pickaxe level.");
@@ -267,7 +326,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 case "list" -> {
                     require(sender, "infinitypickaxes.admin.duplicates.view");
                     List<DuplicateRecord> records = plugin.getDuplicateService().listRestricted();
-                    sender.sendMessage("§6Restricted pickaxe UUIDs: §f" + records.size());
+                    sender.sendMessage("§6Restricted tracked-item UUIDs: §f" + records.size());
                     records.stream().limit(20).forEach(record -> sender.sendMessage(
                             "§8- §f" + record.uuid() + " §7[§c" + record.status() + "§7] §8" + record.reason()));
                 }
@@ -295,20 +354,20 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     } else {
                         result = plugin.getDuplicateService().scanOnline(sender.getName());
                     }
-                    sender.sendMessage("§aScanned §f" + result.itemsScanned() + "§a pickaxes; detected §f"
+                    sender.sendMessage("§aScanned §f" + result.itemsScanned() + "§a tracked items; detected §f"
                             + result.duplicatesDetected().size() + "§a compromised UUID(s).");
                 }
                 case "quarantine" -> {
                     require(sender, "infinitypickaxes.admin.duplicates.quarantine");
                     UUID uuid = requireUuid(args, 2);
                     plugin.getDuplicateService().quarantine(uuid, "Manual administrator quarantine", sender.getName());
-                    sender.sendMessage("§eQuarantined pickaxe UUID §f" + uuid);
+                    sender.sendMessage("§eQuarantined tracked UUID §f" + uuid);
                 }
                 case "revoke" -> {
                     require(sender, "infinitypickaxes.admin.duplicates.resolve");
                     UUID uuid = requireUuid(args, 2);
                     plugin.getDuplicateService().revoke(uuid, "Manual administrator revocation", sender.getName());
-                    sender.sendMessage("§cPermanently revoked pickaxe UUID §f" + uuid);
+                    sender.sendMessage("§cPermanently revoked tracked UUID §f" + uuid);
                 }
                 case "resolve", "rekey-held" -> {
                     require(sender, "infinitypickaxes.admin.duplicates.resolve");
@@ -331,7 +390,63 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
     }
 
     private void require(CommandSender sender, String permission) {
-        if (!sender.hasPermission(permission)) throw new SecurityException(permission);
+        String generalized = permission.replace("infinitypickaxes", "infinitygear");
+        if (!sender.hasPermission(permission) && !sender.hasPermission(generalized)
+                && !hasAdmin(sender)) throw new SecurityException(permission);
+    }
+
+    private boolean hasUse(CommandSender sender) {
+        return sender.hasPermission("infinitygear.use") || sender.hasPermission("infinitypickaxes.use");
+    }
+
+    private boolean hasAdmin(CommandSender sender) {
+        return sender.hasPermission("infinitygear.admin") || sender.hasPermission("infinitypickaxes.admin");
+    }
+
+    private boolean hasPermissionOrAdmin(CommandSender sender, String permission) {
+        return sender.hasPermission(permission) || hasAdmin(sender);
+    }
+
+    private boolean handleGearGive(CommandSender sender, String label, String[] args) {
+        if (!hasPermissionOrAdmin(sender, "infinitygear.admin.give")) { plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true; }
+        if (args.length < 3) { sender.sendMessage("§cUsage: /" + label + " give <profile> <player> [level]"); return true; }
+        Player target = Bukkit.getPlayer(args[2]);
+        if (target == null) { plugin.getMessageManager().sendMessage(sender, "messages.player-not-found"); return true; }
+        int level = 0;
+        if (args.length > 3) try { level = Integer.parseInt(args[3]); } catch (NumberFormatException ignored) { }
+        try {
+            ItemStack item = plugin.getGearManager().create(args[1], level);
+            var leftovers = target.getInventory().addItem(item);
+            if (!leftovers.isEmpty()) { sender.sendMessage("§cTarget inventory is full; no gear was issued."); return true; }
+            sender.sendMessage("§aIssued §f" + args[1] + "§a to §f" + target.getName() + "§a.");
+        } catch (IllegalArgumentException failure) { sender.sendMessage("§c" + failure.getMessage()); }
+        return true;
+    }
+
+    private boolean handleArtifactGive(CommandSender sender, String label, String[] args) {
+        if (!hasPermissionOrAdmin(sender, "infinitygear.admin.artifact")) { plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true; }
+        if (args.length < 3) { sender.sendMessage("§cUsage: /" + label + " artifact <runic_eraser|runic_conduit|runic_rivet> <player>"); return true; }
+        Player target = Bukkit.getPlayer(args[2]);
+        if (target == null) { plugin.getMessageManager().sendMessage(sender, "messages.player-not-found"); return true; }
+        try {
+            TrackedKind kind = TrackedKind.valueOf(args[1].toUpperCase(java.util.Locale.ROOT));
+            var result = plugin.getGearService().createTrackedArtifact(kind, args[1].toLowerCase());
+            if (!result.success()) { sender.sendMessage("§cCould not create artifact: " + result.reason()); return true; }
+            if (!target.getInventory().addItem(result.value()).isEmpty()) { sender.sendMessage("§cTarget inventory is full."); return true; }
+            sender.sendMessage("§aIssued tracked artifact §f" + kind + "§a to §f" + target.getName() + "§a.");
+        } catch (IllegalArgumentException invalid) { sender.sendMessage("§cUnknown artifact kind."); }
+        return true;
+    }
+
+    private boolean handleStation(CommandSender sender, String label, String[] args) {
+        if (!(sender instanceof Player player)) { sender.sendMessage("§cPlayers only."); return true; }
+        if (!hasPermissionOrAdmin(sender, "infinitygear.admin.station")) { plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true; }
+        if (args.length < 2) { sender.sendMessage("§cUsage: /" + label + " station <runic-table|fusion-altar|gear-forge>"); return true; }
+        try {
+            StationType type = StationType.valueOf(args[1].replace('-', '_').toUpperCase(java.util.Locale.ROOT));
+            new StationGui(plugin, player, type).open();
+        } catch (IllegalArgumentException invalid) { sender.sendMessage("§cUnknown station."); }
+        return true;
     }
 
     private UUID requireUuid(String[] args, int index) {
@@ -345,13 +460,31 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        boolean gearCommand = command.getName().equalsIgnoreCase("infinitygear");
         if (args.length == 1) {
-            List<String> list = new ArrayList<>(Arrays.asList("menu", "gui"));
-            if (sender.hasPermission("infinitypickaxes.admin")) {
-                list.addAll(Arrays.asList("give", "book", "reload", "setlevel", "addxp"));
+            List<String> list = new ArrayList<>(gearCommand ? List.of() : Arrays.asList("menu", "gui"));
+            if (hasAdmin(sender)) {
+                list.addAll(gearCommand
+                        ? Arrays.asList("give", "artifact", "station", "reload", "setlevel", "addxp", "migration")
+                        : Arrays.asList("give", "book", "reload", "setlevel", "addxp"));
                 list.add("duplicate");
             }
             return list.stream().filter(s -> s.startsWith(args[0].toLowerCase())).collect(Collectors.toList());
+        }
+        if (gearCommand && args.length == 2 && args[0].equalsIgnoreCase("give")) {
+            return plugin.getGearProfiles().all().stream().map(com.infinitygear.gear.GearProfile::id)
+                    .filter(id -> id.startsWith(args[1].toLowerCase())).toList();
+        }
+        if (gearCommand && args.length == 2 && args[0].equalsIgnoreCase("artifact")) {
+            return List.of("runic_eraser", "runic_conduit", "runic_rivet");
+        }
+        if (gearCommand && args.length == 2 && args[0].equalsIgnoreCase("station")) {
+            return List.of("runic-table", "fusion-altar", "gear-forge");
+        }
+        if (gearCommand && args.length == 3
+                && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("artifact"))) {
+            return Bukkit.getOnlinePlayers().stream().map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(args[2].toLowerCase())).toList();
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("duplicate")) {
             return Arrays.asList("list", "inspect", "scan", "quarantine", "revoke", "resolve", "rekey-held");

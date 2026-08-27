@@ -1,0 +1,33 @@
+config-version: 1
+# Physical mutation stations. The portable /igear command remains read-only.
+#
+# Providers:
+#   VANILLA - match the configured Bukkit material below.
+#   NEXO    - match the official Nexo item ID from a placed custom block or
+#             furniture interaction. Requires a compatible Nexo installation.
+#
+# A missing provider, invalid material, blank Nexo ID, or unavailable Nexo
+# integration disables that station instead of granting portable access.
+# Operators do not bypass a station unless they have its explicit permission.
+stations:
+  runic-table:
+    enabled: true
+    provider: VANILLA
+    material: ENCHANTING_TABLE
+    # nexo-id: my_pack:runic_table
+    interaction-distance: 6.0
+    bypass-permission: infinitygear.station.runic-table.bypass
+  fusion-altar:
+    enabled: true
+    provider: VANILLA
+    material: CRYING_OBSIDIAN
+    # nexo-id: my_pack:fusion_altar
+    interaction-distance: 6.0
+    bypass-permission: infinitygear.station.fusion-altar.bypass
+  gear-forge:
+    enabled: true
+    provider: VANILLA
+    material: SMITHING_TABLE
+    # nexo-id: my_pack:gear_forge
+    interaction-distance: 6.0
+    bypass-permission: infinitygear.station.gear-forge.bypass

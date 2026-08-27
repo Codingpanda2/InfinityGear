@@ -3,7 +3,7 @@ plugins {
     id("com.gradleup.shadow") version "9.3.1"
 }
 
-group = "com.infinitypickaxes"
+group = "com.infinitygear"
 version = "2.0.0-SNAPSHOT"
 
 val mockitoAgent = configurations.create("mockitoAgent")
@@ -12,6 +12,8 @@ repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://repo.auxilor.io/repository/maven-public/")
+    maven("https://repo.nexomc.com/releases")
+    maven("https://jitpack.io")
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/")
 }
 
@@ -22,6 +24,8 @@ dependencies {
     compileOnly("com.willfp:libreforge:2026.33")
     compileOnly("com.willfp:libreforge-loader:2026.33")
     compileOnly("me.clip:placeholderapi:2.12.3")
+    compileOnly("com.nexomc:nexo:1.27.0")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
 
     implementation("org.xerial:sqlite-jdbc:3.50.3.0")
 
@@ -62,6 +66,7 @@ tasks.test {
 }
 
 tasks.shadowJar {
+    archiveBaseName = "InfinityGear"
     archiveClassifier = ""
     mergeServiceFiles()
 

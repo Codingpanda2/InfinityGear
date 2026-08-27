@@ -1,0 +1,32 @@
+config-version: 1
+artifacts:
+  runic_eraser:
+    enabled: true
+    required: true
+    consumed: true
+    provider: VANILLA
+    material: AMETHYST_SHARD
+    display-name: "<light_purple><b>Runic Eraser</b></light_purple>"
+    lore: ["<gray>Destroys one selected managed enchantment.</gray>"]
+    custom-model-data: 11001
+    unique-tracked-identity: true
+  runic_conduit:
+    enabled: true
+    required: true
+    consumed: true
+    provider: VANILLA
+    material: ECHO_SHARD
+    display-name: "<aqua><b>Runic Conduit</b></aqua>"
+    lore: ["<gray>Transfers one enchantment to a blank book.</gray>"]
+    custom-model-data: 11002
+    unique-tracked-identity: true
+  runic_rivet:
+    enabled: true
+    required: true
+    consumed: true
+    provider: VANILLA
+    material: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+    display-name: "<gold><b>Runic Rivet</b></gold>"
+    lore: ["<gray>Permanently expands one gear socket.</gray>"]
+    custom-model-data: 11003
+    unique-tracked-identity: true

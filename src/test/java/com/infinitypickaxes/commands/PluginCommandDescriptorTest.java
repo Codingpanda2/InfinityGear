@@ -20,11 +20,15 @@ class PluginCommandDescriptorTest {
         YamlConfiguration pluginYaml = YamlConfiguration.loadConfiguration(
                 new InputStreamReader(resource, StandardCharsets.UTF_8));
 
+        assertEquals("InfinityGear", pluginYaml.getString("name"));
+        assertEquals("com.infinitygear.InfinityGearPlugin", pluginYaml.getString("main"));
         var aliases = pluginYaml.getStringList("commands.infinitypickaxes.aliases");
         assertTrue(aliases.contains("ipickaxe"));
         assertFalse(aliases.contains("pickaxe"));
         assertEquals("infinitypickaxes.use",
                 pluginYaml.getString("commands.infinitypickaxes.permission"));
         assertTrue(pluginYaml.getBoolean("permissions.infinitypickaxes.use.default"));
+        assertTrue(pluginYaml.getStringList("commands.infinitygear.aliases").contains("igear"));
+        assertTrue(pluginYaml.getStringList("provides").contains("InfinityPickaxes"));
     }
 }

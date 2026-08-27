@@ -6,6 +6,9 @@ import com.infinitypickaxes.api.events.PickaxeRekeyedEvent;
 import com.infinitypickaxes.api.events.PickaxeQuarantinedEvent;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
+import com.infinitygear.data.GearData;
+import com.infinitygear.data.TrackedItemData;
+import com.infinitygear.data.TrackedKind;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import io.papermc.paper.block.TileStateInventoryHolder;
@@ -27,7 +30,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public final class PickaxeDuplicateService implements AutoCloseable {
+/** @deprecated Use GearDuplicateService; retained as a source/binary compatibility facade. */
+@Deprecated
+public class PickaxeDuplicateService implements AutoCloseable {
 
     private final InfinityPickaxes plugin;
     private final DuplicateStore store;
@@ -51,8 +56,17 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     }
 
     public boolean isUsable(ItemStack item) {
-        UUID uuid = PickaxeData.getPickaxeUuid(item);
-        if (PickaxeData.isQuarantined(item)) {
+        TrackedItemData.Identity identity = trackedIdentity(item);
+        if (identity != null && item.getAmount() != 1) {
+            try {
+                quarantine(identity.uuid(), "Tracked singleton item was stacked", "system:stack-validation");
+            } catch (SQLException exception) {
+                plugin.getLogger().log(Level.SEVERE, "Could not quarantine stacked tracked item", exception);
+            }
+            return false;
+        }
+        UUID uuid = identity == null ? null : identity.uuid();
+        if (isItemQuarantined(item)) {
             if (uuid != null && restricted.add(uuid)) {
                 try {
                     store.quarantine(uuid, "Recovered quarantine from item metadata",
@@ -123,8 +137,10 @@ public final class PickaxeDuplicateService implements AutoCloseable {
 
     public UUID rekeyHeld(Player administrator) throws SQLException {
         ItemStack held = administrator.getInventory().getItemInMainHand();
-        UUID oldUuid = PickaxeData.getPickaxeUuid(held);
-        if (oldUuid == null) throw new IllegalArgumentException("Hold an Infinity Pickaxe first.");
+        if (plugin.getGearManager() != null) plugin.getGearManager().inspect(held, true);
+        TrackedItemData.Identity identity = trackedIdentity(held);
+        UUID oldUuid = identity == null ? null : identity.uuid();
+        if (oldUuid == null) throw new IllegalArgumentException("Hold one tracked InfinityGear item first.");
         validateRekeyAmount(held.getAmount());
 
         UUID replacement = UUID.randomUUID();
@@ -132,6 +148,13 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         restricted.add(oldUuid);
         PickaxeData.setPickaxeUuid(held, replacement);
         PickaxeData.setQuarantined(held, false);
+        if (held.hasItemMeta()) {
+            var meta = held.getItemMeta();
+            var pdc = meta.getPersistentDataContainer();
+            pdc.set(GearData.KEY_UUID, org.bukkit.persistence.PersistentDataType.STRING, replacement.toString());
+            pdc.remove(GearData.KEY_QUARANTINED);
+            held.setItemMeta(meta);
+        }
         markVisibleCopies(oldUuid);
         InfinityPickaxe pickaxe = PickaxeData.fromItemStack(held);
         if (pickaxe != null) plugin.getPickaxeManager().syncPickaxe(pickaxe);
@@ -171,7 +194,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
 
     private boolean containsInfinityPickaxe(ItemStack item, int depth) {
         if (isEmpty(item)) return false;
-        if (PickaxeData.isInfinityPickaxe(item)) return true;
+        if (trackedIdentity(item) != null || PickaxeData.isInfinityPickaxe(item)) return true;
 
         if (!(item.getItemMeta() instanceof BlockStateMeta blockMeta)
                 || !(blockMeta.getBlockState() instanceof TileStateInventoryHolder container)) {
@@ -206,7 +229,8 @@ public final class PickaxeDuplicateService implements AutoCloseable {
     private void collectItem(ItemStack item, String location, int depth,
                              DuplicateObservations<ItemStack> sightings) {
         if (isEmpty(item)) return;
-        UUID uuid = PickaxeData.getPickaxeUuid(item);
+        TrackedItemData.Identity identity = trackedIdentity(item);
+        UUID uuid = identity == null ? null : identity.uuid();
         if (uuid != null) {
             int physicalCopies = Math.max(1, item.getAmount());
             sightings.observe(uuid, item, location, physicalCopies);
@@ -237,7 +261,11 @@ public final class PickaxeDuplicateService implements AutoCloseable {
             List<String> locations = entry.getValue().stream()
                     .map(DuplicateObservations.Observation::location).toList();
             try {
-                store.quarantine(uuid, "Multiple physical pickaxes observed in one scan", actor, locations);
+                TrackedItemData.Identity identity = trackedIdentity(entry.getValue().getFirst().value());
+                String kind = identity == null ? TrackedKind.GEAR.name() : identity.kind().name();
+                String type = identity == null ? GearData.LEGACY_PICKAXE_PROFILE : identity.type();
+                store.quarantine(uuid, kind, type,
+                        "Multiple physical tracked items observed in one scan", actor, locations);
                 restricted.add(uuid);
                 entry.getValue().forEach(sighting -> markRestricted(sighting.value()));
                 detected.add(uuid);
@@ -245,7 +273,7 @@ public final class PickaxeDuplicateService implements AutoCloseable {
                     Bukkit.getPluginManager().callEvent(new PickaxeDuplicateDetectedEvent(uuid, locations));
                     Bukkit.getPluginManager().callEvent(new PickaxeQuarantinedEvent(
                             uuid, DuplicateStatus.QUARANTINED,
-                            "Multiple physical pickaxes observed in one scan", actor));
+                            "Multiple physical tracked items observed in one scan", actor));
                 }
             } catch (SQLException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Could not quarantine duplicate pickaxe " + uuid, exception);
@@ -265,7 +293,8 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         }
         for (org.bukkit.World world : Bukkit.getWorlds()) {
             for (Item entity : world.getEntitiesByClass(Item.class)) {
-                if (uuid.equals(PickaxeData.getPickaxeUuid(entity.getItemStack()))) {
+                TrackedItemData.Identity identity = trackedIdentity(entity.getItemStack());
+                if (identity != null && uuid.equals(identity.uuid())) {
                     markRestricted(entity.getItemStack());
                 }
             }
@@ -274,12 +303,19 @@ public final class PickaxeDuplicateService implements AutoCloseable {
 
     private void markInventoryCopies(Inventory inventory, UUID uuid) {
         for (ItemStack item : inventory.getContents()) {
-            if (uuid.equals(PickaxeData.getPickaxeUuid(item))) markRestricted(item);
+            TrackedItemData.Identity identity = trackedIdentity(item);
+            if (identity != null && uuid.equals(identity.uuid())) markRestricted(item);
         }
     }
 
     private void markRestricted(ItemStack item) {
         PickaxeData.setQuarantined(item, true);
+        if (item != null && item.hasItemMeta()) {
+            var meta = item.getItemMeta();
+            meta.getPersistentDataContainer().set(GearData.KEY_QUARANTINED,
+                    org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+            item.setItemMeta(meta);
+        }
         InfinityPickaxe pickaxe = PickaxeData.fromItemStack(item);
         if (pickaxe != null && plugin.getPickaxeManager() != null) {
             plugin.getPickaxeManager().syncPickaxe(pickaxe);
@@ -290,6 +326,19 @@ public final class PickaxeDuplicateService implements AutoCloseable {
         if (item == null || item.getAmount() <= 0) return true;
         Material type = item.getType();
         return type == Material.AIR || type == Material.CAVE_AIR || type == Material.VOID_AIR;
+    }
+
+    private static TrackedItemData.Identity trackedIdentity(ItemStack item) {
+        TrackedItemData.Identity identity = TrackedItemData.readRaw(item);
+        if (identity != null) return identity;
+        UUID legacy = PickaxeData.getPickaxeUuid(item);
+        return legacy == null ? null : new TrackedItemData.Identity(legacy, TrackedKind.GEAR,
+                GearData.LEGACY_PICKAXE_PROFILE, 0, PickaxeData.isQuarantined(item));
+    }
+
+    private static boolean isItemQuarantined(ItemStack item) {
+        TrackedItemData.Identity identity = trackedIdentity(item);
+        return identity != null && identity.quarantined();
     }
 
     @Override

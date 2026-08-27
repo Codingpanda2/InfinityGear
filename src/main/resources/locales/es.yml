@@ -2,7 +2,7 @@
 #                  INFINITY PICKAXES - SPANISH LOCALIZATION (es)
 # ==============================================================================
 
-prefix: "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> "
+prefix: "<gradient:#00E5FF:#0077FE><b>InfinityGear</b></gradient> <dark_gray>»</dark_gray> "
 
 # Real-time Action Bar sent on every block mined
 mining-actionbar:
@@ -11,6 +11,9 @@ mining-actionbar:
   message: "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Nv.%level%<dark_gray>)"
 
 messages:
+  enchant-invalid-single-book: "<red>Un libro de aplicación debe contener exactamente un encantamiento gestionado.</red>"
+  limitbreak-missing-enchantment: "<red>%enchant% debe estar instalado antes de usar LimitBreak.</red>"
+  limitbreak-premature: "<red>%enchant% debe alcanzar primero su máximo estándar de %max%.</red>"
   pickaxe-quarantined: "<red>Este pico está en cuarentena porque su UUID fue duplicado. Contacta a un administrador.</red>"
   enchant-conflict: "<red>%enchant% no se puede aplicar debido a un conflicto nativo o configurado, requisito o destino inválido.</red>"
   no-permission: "<red>No tienes permisos suficientes para ejecutar este comando.</red>"
@@ -45,9 +48,9 @@ messages:
   enchant-max-reached: "<red>Este encantamiento ya se encuentra en su nivel máximo para tu nivel de pico (<yellow>Máx: %max%</yellow>).</red>"
   enchant-sockets-full: "<red>Este pico no tiene espacios libres para encantamientos gestionados (<yellow>%used%/%max%</yellow>). Los encantamientos existentes siguen funcionando y pueden mejorarse.</red>"
   enchant-locked-pickaxe-level: "<red>Tu pico requiere ser <yellow>Nivel %required%</yellow> para desbloquear este socket.</red>"
-  enchant-invalid-book: "<red>Debes colocar un libro de <aqua>%enchant%</aqua> <yellow>Nivel %required_book_level%</yellow> para mejorar este socket.</red>"
+  enchant-invalid-book: "<red>Usa un libro de <aqua>%enchant%</aqua> superior al nivel actual y no mayor a <yellow>%required_book_level%</yellow>.</red>"
   enchant-no-book-in-hand: "<red>No tienes el libro requerido en tu cursor para aplicar la mejora.</red>"
-  enchant-use-socket-menu: "<red>Los libros de encantamientos gestionados deben aplicarse mediante los espacios de encantamiento en <yellow>/ipickaxe</yellow>.</red>"
+  enchant-use-socket-menu: "<red>Los libros gestionados deben aplicarse en la Mesa Rúnica configurada.</red>"
 
   # LimitBreak & Libros Especiales
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ ¡LIMITBREAK APLICADO! ✦</b></gradient> <green>¡Has mejorado <aqua>%enchant%</aqua> a <yellow>Nivel %level%</yellow>!%limitbreak_indicator%</green>"

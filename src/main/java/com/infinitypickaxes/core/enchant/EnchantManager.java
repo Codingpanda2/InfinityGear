@@ -4,6 +4,9 @@ import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.api.events.PickaxeEnchantUpgradeEvent;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.SoundUtil;
+import com.infinitygear.enchant.EnchantmentApplicationPolicy;
+import com.infinitygear.api.events.GearEnchantChangeEvent;
+import com.infinitygear.data.GearData;
 import com.willfp.ecoenchants.enchant.EcoEnchant;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -68,7 +71,7 @@ public class EnchantManager {
 
     public void discoverAndRegisterEcoEnchants() {
         FileConfiguration policy = plugin.getConfigManager().getEnchantsConfig();
-        Collection<EcoEnchant> liveEnchants = ecoHook.getPickaxeEnchants();
+        Collection<EcoEnchant> liveEnchants = ecoHook.getGearEnchants();
         synchronizePolicy(policy, liveEnchants);
         int added = 0;
 
@@ -117,7 +120,7 @@ public class EnchantManager {
         }
 
         if (added > 0) {
-            plugin.getLogger().info("Loaded " + added + " pickaxe enchantments from EcoEnchants.");
+            plugin.getLogger().info("Loaded " + added + " gear enchantments from EcoEnchants.");
         }
         registerVanillaSocket(policy, "fortune", "minecraft:fortune", "Fortune",
                 List.of("<gray>Increases the drops from certain blocks.</gray>"), true);
@@ -146,6 +149,13 @@ public class EnchantManager {
 
     public int getSocketLimit(int pickaxeLevel) {
         return progressionPolicy == null ? 0 : progressionPolicy.getSocketLimit(pickaxeLevel);
+    }
+
+    public int getSocketLimit(InfinityPickaxe pickaxe) {
+        if (pickaxe == null) return 0;
+        int progression = getSocketLimit(pickaxe.getLevel());
+        var read = GearData.read(pickaxe.getItemStack(), progression, false);
+        return read.valid() ? Math.max(progression, read.gear().socketCapacity()) : progression;
     }
 
     /** Counts every managed socket enchantment, including Fortune and Silk Touch. */
@@ -180,7 +190,7 @@ public class EnchantManager {
         if (player == null || pickaxe == null || socket == null || !socket.isEnabled()) return false;
 
         int used = countUsedSockets(pickaxe);
-        int limit = getSocketLimit(pickaxe.getLevel());
+        int limit = getSocketLimit(pickaxe);
         if (used >= limit) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-sockets-full",
                     "%used%", String.valueOf(used),
@@ -233,7 +243,22 @@ public class EnchantManager {
         }
         if (!socket.isEnabled()) return false;
 
-        // 1. Check if pickaxe level satisfies socket unlock
+        // A normal application book has one unambiguous managed identity. This
+        // rejects mixed books even when the selected enchantment is present.
+        List<ManagedBookEnchant> managedBookEnchants = getManagedBookEnchants(bookItem);
+        if (managedBookEnchants.size() != 1) {
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-invalid-single-book");
+            return false;
+        }
+        ManagedBookEnchant bookEnchant = managedBookEnchants.getFirst();
+        if (!bookEnchant.socket().getKeyString().equalsIgnoreCase(socket.getKeyString())) {
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-invalid-book",
+                    "%enchant%", socket.getDisplayName(),
+                    "%required_book_level%", String.valueOf(Math.max(1,
+                            pickaxe.getEnchantmentLevel(socket.getKeyString()) + 1)));
+            return false;
+        }
+
         if (!socket.isUnlocked(pickaxe.getLevel())) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-locked-pickaxe-level",
                     "%required%", String.valueOf(socket.getUnlockPickaxeLevel()));
@@ -243,53 +268,41 @@ public class EnchantManager {
         int currentLevelOnPickaxe = pickaxe.getEnchantmentLevel(socket.getKeyString());
         int maxAllowedForPickaxe = socket.getMaxAllowedLevel(pickaxe.getLevel());
 
-        if (currentLevelOnPickaxe == 0 && !canIntroduceEnchantment(player, pickaxe, socket)) {
-            return false;
-        }
+        int bookLevel = bookEnchant.level();
+        EnchantmentApplicationPolicy.Decision decision = EnchantmentApplicationPolicy.evaluate(
+                new EnchantmentApplicationPolicy.Request(
+                        managedBookEnchants.size(), true, socket.isEnabled(),
+                        socket.isUnlocked(pickaxe.getLevel()), currentLevelOnPickaxe, bookLevel,
+                        countUsedSockets(pickaxe), getSocketLimit(pickaxe),
+                        maxAllowedForPickaxe,
+                        socket.getMaxLevel() + progressionPolicy.getMaximumLimitBreakExtraLevels(),
+                        false, true));
 
-        // 2. Check if already reached maximum limit for current pickaxe level
-        if (currentLevelOnPickaxe >= maxAllowedForPickaxe) {
+        if (decision.failure() == EnchantmentApplicationPolicy.Failure.EQUAL_OR_LOWER_LEVEL) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-max-reached",
-                    "%max%", String.valueOf(maxAllowedForPickaxe));
+                    "%max%", String.valueOf(currentLevelOnPickaxe));
             return false;
         }
-
-        // 3. Determine required book level
-        // Rule: If pickaxe has Level N (N >= 1), required book is Level N.
-        //       If pickaxe has Level 0, required book is Level 1.
-        int requiredBookLevel = (currentLevelOnPickaxe == 0) ? 1 : currentLevelOnPickaxe;
-
-        // 4. Extract enchants from provided book item
-        Map<String, Integer> bookEnchants = ecoHook.extractEnchantsFromBook(bookItem);
-        Integer bookLevel = getVanillaOrStoredBookLevel(bookItem, socket);
-        if (bookLevel == null) {
-            bookLevel = bookEnchants.get(socket.getKeyString().toLowerCase());
-        }
-
-        // Fallback check by socket ID if namespace wasn't matched
-        if (bookLevel == null) {
-            bookLevel = bookEnchants.get("minecraft:" + socket.getId());
-        }
-        if (bookLevel == null && socket.getKeyString().contains(":")) {
-            String sub = socket.getKeyString().substring(socket.getKeyString().indexOf(":") + 1);
-            for (Map.Entry<String, Integer> entry : bookEnchants.entrySet()) {
-                if (entry.getKey().endsWith(":" + sub) || entry.getKey().equalsIgnoreCase(sub)) {
-                    bookLevel = entry.getValue();
-                    break;
-                }
-            }
-        }
-
-        if (bookLevel == null || bookLevel != requiredBookLevel) {
+        if (decision.failure() == EnchantmentApplicationPolicy.Failure.ABOVE_STANDARD_MAXIMUM) {
             plugin.getMessageManager().sendMessage(player, "messages.enchant-invalid-book",
                     "%enchant%", socket.getDisplayName(),
-                    "%required_book_level%", String.valueOf(requiredBookLevel));
+                    "%required_book_level%", String.valueOf(maxAllowedForPickaxe));
             return false;
         }
+        // Native targets/conflicts and configured additional conflicts only
+        // constrain introduction. Existing grandfathered enchantments remain active.
+        if (currentLevelOnPickaxe == 0 && !canIntroduceEnchantment(player, pickaxe, socket)) return false;
+        if (!decision.allowed() && currentLevelOnPickaxe != 0) return false;
 
-        int nextLevel = (currentLevelOnPickaxe == 0) ? 1 : (currentLevelOnPickaxe + 1);
+        int nextLevel = bookLevel;
 
-        // 5. Call API event
+        GearEnchantChangeEvent gearEvent = new GearEnchantChangeEvent(player, pickaxe.getItemStack(),
+                GearData.LEGACY_PICKAXE_PROFILE, socket.getKeyString(), currentLevelOnPickaxe, nextLevel,
+                GearEnchantChangeEvent.Operation.APPLY);
+        Bukkit.getPluginManager().callEvent(gearEvent);
+        if (gearEvent.isCancelled()) return false;
+
+        // Continue firing the legacy event for the migrated pickaxe profile.
         PickaxeEnchantUpgradeEvent event = new PickaxeEnchantUpgradeEvent(player, pickaxe, socket, currentLevelOnPickaxe, nextLevel);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
@@ -327,9 +340,24 @@ public class EnchantManager {
     public boolean containsManagedEnchantBook(ItemStack item) {
         if (item == null || item.getType() != Material.ENCHANTED_BOOK) return false;
         for (EnchantSocket socket : socketsById.values()) {
-            if (socket.isEnabled() && getBookLevel(item, socket) != null) return true;
+            // Disabled policies still belong to InfinityGear's managed set and
+            // must not become an anvil/direct-application bypass.
+            if (getBookLevel(item, socket) != null) return true;
         }
         return false;
+    }
+
+    public record ManagedBookEnchant(EnchantSocket socket, int level) {}
+
+    /** Returns each canonical managed enchantment present on an ordinary book exactly once. */
+    public List<ManagedBookEnchant> getManagedBookEnchants(ItemStack item) {
+        if (item == null || item.getType() != Material.ENCHANTED_BOOK) return List.of();
+        List<ManagedBookEnchant> result = new ArrayList<>();
+        for (EnchantSocket socket : socketsById.values()) {
+            Integer level = getBookLevel(item, socket);
+            if (level != null && level > 0) result.add(new ManagedBookEnchant(socket, level));
+        }
+        return List.copyOf(result);
     }
 
     /** Returns true when an anvil result introduces or raises a managed enchantment. */

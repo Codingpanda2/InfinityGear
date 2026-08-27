@@ -1,1 +1,1 @@
-rootProject.name = "InfinityPickaxes"
+rootProject.name = "InfinityGear"

@@ -30,6 +30,15 @@ public class ConfigManager {
     private File blocksFile;
     private FileConfiguration blocksConfig;
 
+    private File profilesFile;
+    private FileConfiguration profilesConfig;
+    private File costsFile;
+    private FileConfiguration costsConfig;
+    private File itemsFile;
+    private FileConfiguration itemsConfig;
+    private File stationsFile;
+    private FileConfiguration stationsConfig;
+
     private File mainMenuFile;
     private FileConfiguration mainMenuConfig;
 
@@ -65,6 +74,19 @@ public class ConfigManager {
         this.blocksFile = loadAndSyncFile("blocks.yml");
         this.blocksConfig = YamlConfiguration.loadConfiguration(blocksFile);
         updateMissingKeys(blocksFile, "blocks.yml", (YamlConfiguration) this.blocksConfig);
+
+        this.profilesFile = loadAndSyncFile("profiles.yml");
+        this.profilesConfig = YamlConfiguration.loadConfiguration(profilesFile);
+        updateMissingKeys(profilesFile, "profiles.yml", (YamlConfiguration) profilesConfig);
+        this.costsFile = loadAndSyncFile("costs.yml");
+        this.costsConfig = YamlConfiguration.loadConfiguration(costsFile);
+        updateMissingKeys(costsFile, "costs.yml", (YamlConfiguration) costsConfig);
+        this.itemsFile = loadAndSyncFile("items.yml");
+        this.itemsConfig = YamlConfiguration.loadConfiguration(itemsFile);
+        updateMissingKeys(itemsFile, "items.yml", (YamlConfiguration) itemsConfig);
+        this.stationsFile = loadAndSyncFile("stations.yml");
+        this.stationsConfig = YamlConfiguration.loadConfiguration(stationsFile);
+        updateMissingKeys(stationsFile, "stations.yml", (YamlConfiguration) stationsConfig);
 
         // 3. Locales
         loadLocales();
@@ -238,6 +260,20 @@ public class ConfigManager {
             menu.set("items.info-book.lore", infoLore);
             changed = true;
         }
+        int sameLevelLine = infoLore.indexOf(
+                "<white>1.</white> <gray>Obtain an enchanted book of the <yellow>same level</yellow>");
+        if (sameLevelLine >= 0 && sameLevelLine + 1 < infoLore.size()
+                && infoLore.get(sameLevelLine + 1).equals("   <gray>your pickaxe currently has.")) {
+            infoLore.set(sameLevelLine,
+                    "<white>1.</white> <gray>Obtain one managed book at a <yellow>higher level</yellow>");
+            infoLore.set(sameLevelLine + 1, "   <gray>than the level currently installed.");
+            int resultLine = infoLore.indexOf(
+                    "<white>4.</white> <gray>The book will be consumed and pickaxe upgraded!");
+            if (resultLine >= 0) infoLore.set(resultLine,
+                    "<white>4.</white> <gray>The book's exact level is installed when valid.");
+            menu.set("items.info-book.lore", infoLore);
+            changed = true;
+        }
 
         if (changed) {
             try {
@@ -277,6 +313,11 @@ public class ConfigManager {
     public FileConfiguration getBlocksConfig() {
         return blocksConfig;
     }
+
+    public FileConfiguration getProfilesConfig() { return profilesConfig; }
+    public FileConfiguration getCostsConfig() { return costsConfig; }
+    public FileConfiguration getItemsConfig() { return itemsConfig; }
+    public FileConfiguration getStationsConfig() { return stationsConfig; }
 
     public FileConfiguration getMessagesConfig() {
         return getLocaleConfig(defaultLanguage);

@@ -81,7 +81,7 @@ public class EnchantSocketsGui extends CustomGui {
             Material infoMat = Material.matchMaterial(menuConfig.getString("items.info-book.material", "KNOWLEDGE_BOOK"));
             String infoName = menuConfig.getString("items.info-book.name", "<#00FF88><b>How to Upgrade Sockets?</b></#00FF88>");
             int usedSockets = plugin.getEnchantManager().countUsedSockets(pickaxe);
-            int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel());
+            int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe);
             int limitBreakUnlock = plugin.getLimitBreakManager().getUnlockLevel();
             int limitBreakExtra = plugin.getLimitBreakManager().getMaxExtraLevels(pickaxe.getLevel());
             List<String> infoLore = menuConfig.getStringList("items.info-book.lore").stream()
@@ -112,7 +112,7 @@ public class EnchantSocketsGui extends CustomGui {
         // 4. Collect all enabled sockets
         List<EnchantSocket> allSockets = new ArrayList<>();
         for (EnchantSocket s : plugin.getEnchantManager().getAllSockets()) {
-            if (s.isEnabled()) {
+            if (isVisibleForPickaxe(s)) {
                 allSockets.add(s);
             }
         }
@@ -272,6 +272,7 @@ public class EnchantSocketsGui extends CustomGui {
     @Override
     public void handleClick(InventoryClickEvent event) {
         int rawSlot = event.getRawSlot();
+        boolean portableMutationBypass = player.hasPermission("infinitygear.station.runic-table.bypass");
 
         // 1. Player clicked in their OWN player inventory (Bottom Inventory)
         if (rawSlot >= inventory.getSize() || event.getClickedInventory() == event.getView().getBottomInventory()) {
@@ -279,6 +280,10 @@ public class EnchantSocketsGui extends CustomGui {
                 event.setCancelled(true);
                 ItemStack clickedItem = event.getCurrentItem();
                 if (clickedItem != null && !clickedItem.getType().isAir()) {
+                    if (!portableMutationBypass) {
+                        plugin.getMessageManager().sendMessage(player, "messages.enchant-use-socket-menu");
+                        return;
+                    }
 
                     // Check if clicked item is a LimitBreak Specific Book
                     if (plugin.getLimitBreakManager() != null && plugin.getLimitBreakManager().isLimitBreakBook(clickedItem)) {
@@ -341,7 +346,7 @@ public class EnchantSocketsGui extends CustomGui {
         List<Integer> usableSlots = getUsableInnerSlots();
         List<EnchantSocket> allSockets = new ArrayList<>();
         for (EnchantSocket s : plugin.getEnchantManager().getAllSockets()) {
-            if (s.isEnabled()) allSockets.add(s);
+            if (isVisibleForPickaxe(s)) allSockets.add(s);
         }
         int totalPages = Math.max(1, (int) Math.ceil((double) allSockets.size() / Math.max(1, usableSlots.size())));
         if (rawSlot == nextSlot && currentPage < totalPages - 1) {
@@ -356,6 +361,10 @@ public class EnchantSocketsGui extends CustomGui {
         if (socket != null) {
             ItemStack cursorItem = event.getCursor();
             if (cursorItem != null && !cursorItem.getType().isAir()) {
+                if (!portableMutationBypass) {
+                    plugin.getMessageManager().sendMessage(player, "messages.enchant-use-socket-menu");
+                    return;
+                }
 
                 // A. Check LimitBreak / Universal Book upgrade first
                 if (plugin.getLimitBreakManager() != null && plugin.getLimitBreakManager().isLimitBreakBook(cursorItem)) {
@@ -378,6 +387,16 @@ public class EnchantSocketsGui extends CustomGui {
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
             }
         }
+    }
+
+    private boolean isVisibleForPickaxe(EnchantSocket socket) {
+        if (pickaxe.getEnchantmentLevel(socket.getKeyString()) > 0) return true;
+        if (!socket.isEnabled()) return false;
+        var enchantment = plugin.getEnchantManager().getEnchantment(socket.getKeyString());
+        if (enchantment == null) return false;
+        return plugin.getEnchantManager().getEcoHook().findEcoEnchant(enchantment) != null
+                ? plugin.getEnchantManager().getEcoHook().canApply(pickaxe.getItemStack(), enchantment)
+                : enchantment.canEnchantItem(pickaxe.getItemStack());
     }
 
     static boolean isSafeBottomAction(InventoryAction action) {

@@ -2,7 +2,7 @@
 #                  INFINITY PICKAXES - ENGLISH LOCALIZATION (en)
 # ==============================================================================
 
-prefix: "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> "
+prefix: "<gradient:#00E5FF:#0077FE><b>InfinityGear</b></gradient> <dark_gray>»</dark_gray> "
 
 # Real-time Action Bar sent on every block mined
 mining-actionbar:
@@ -11,6 +11,9 @@ mining-actionbar:
   message: "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Lv.%level%<dark_gray>)"
 
 messages:
+  enchant-invalid-single-book: "<red>An application book must contain exactly one managed enchantment.</red>"
+  limitbreak-missing-enchantment: "<red>%enchant% must already be installed before LimitBreak can be used.</red>"
+  limitbreak-premature: "<red>%enchant% must first reach its standard maximum of %max%.</red>"
   pickaxe-quarantined: "<red>This pickaxe is quarantined because its UUID was duplicated. Contact an administrator.</red>"
   enchant-conflict: "<red>%enchant% cannot be applied because of a native or configured conflict, requirement, or invalid target.</red>"
   no-permission: "<red>You don't have permission to execute this command.</red>"
@@ -45,9 +48,9 @@ messages:
   enchant-max-reached: "<red>This enchantment is already at the maximum allowed level for your pickaxe (<yellow>Max: %max%</yellow>).</red>"
   enchant-sockets-full: "<red>This pickaxe has no free managed enchantment sockets (<yellow>%used%/%max%</yellow>). Existing enchantments remain usable and upgradeable.</red>"
   enchant-locked-pickaxe-level: "<red>Your pickaxe must be <yellow>Level %required%</yellow> to unlock this socket.</red>"
-  enchant-invalid-book: "<red>You must place a <aqua>%enchant%</aqua> <yellow>Level %required_book_level%</yellow> book to upgrade this socket.</red>"
+  enchant-invalid-book: "<red>Use one <aqua>%enchant%</aqua> book above the current level and no higher than <yellow>%required_book_level%</yellow>.</red>"
   enchant-no-book-in-hand: "<red>You do not have the required enchanted book in your hand/cursor.</red>"
-  enchant-use-socket-menu: "<red>Managed enchantment books must be applied through the enchantment sockets in <yellow>/ipickaxe</yellow>.</red>"
+  enchant-use-socket-menu: "<red>Managed enchantment books must be applied at the configured Runic Table.</red>"
 
   # LimitBreak & Special Books
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ LIMITBREAK APPLIED! ✦</b></gradient> <green>Upgraded <aqua>%enchant%</aqua> to <yellow>Level %level%</yellow>!%limitbreak_indicator%</green>"

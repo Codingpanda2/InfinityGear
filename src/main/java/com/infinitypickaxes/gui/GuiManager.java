@@ -31,19 +31,16 @@ public class GuiManager implements Listener {
             if (holder instanceof CustomGui gui) {
                 boolean incomingCancellation = event.isCancelled();
                 event.setCancelled(true);
-                if (!plugin.getDuplicateService().isUsable(gui.getPickaxe().getItemStack())) {
+                // An earlier protection owns the action. Do not even delegate;
+                // a confirm button could otherwise mutate despite cancellation.
+                if (incomingCancellation) return;
+                if (gui.getPickaxe() != null
+                        && !plugin.getDuplicateService().isUsable(gui.getPickaxe().getItemStack())) {
                     gui.getPlayer().closeInventory();
                     plugin.getMessageManager().sendMessage(gui.getPlayer(), "messages.pickaxe-quarantined");
                     return;
                 }
-                try {
-                    gui.handleClick(event);
-                } finally {
-                    // A GUI may allow a narrowly-scoped bottom-inventory action,
-                    // but it must never resurrect an event cancelled earlier by
-                    // LimitBreak, another plugin, or another protection handler.
-                    if (incomingCancellation) event.setCancelled(true);
-                }
+                gui.handleClick(event);
             }
         } catch (RuntimeException exception) {
             failClosed(event.getWhoClicked().getName(), inv, exception);

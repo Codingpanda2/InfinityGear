@@ -1,9 +1,9 @@
 # ==============================================================================
-#                  INFINITY PICKAXES - MAIN CONFIGURATION
+#                  INFINITY GEAR - MAIN CONFIGURATION
 # ==============================================================================
 
 # Configuration Version - do not change manually
-config-version: "1.0.0"
+config-version: "2.0.0"
 
 # Plugin language (locales/en.yml or locales/es.yml)
 # Default: "en" (English). Set to "es" for Spanish.

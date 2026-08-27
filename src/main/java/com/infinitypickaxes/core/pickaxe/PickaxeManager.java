@@ -60,6 +60,7 @@ public class PickaxeManager {
         if (item == null || !isPickaxeMaterial(item.getType())) return null;
         if (PickaxeData.isInfinityPickaxe(item)) {
             if (plugin.getDuplicateService() != null && !plugin.getDuplicateService().isUsable(item)) return null;
+            if (plugin.getGearManager() != null) plugin.getGearManager().inspect(item, true);
             return PickaxeData.fromItemStack(item);
         }
 
@@ -84,6 +85,7 @@ public class PickaxeManager {
 
         if (PickaxeData.isInfinityPickaxe(item)) {
             if (plugin.getDuplicateService() != null && !plugin.getDuplicateService().isUsable(item)) return null;
+            if (plugin.getGearManager() != null) plugin.getGearManager().inspect(item, true);
             return PickaxeData.fromItemStack(item);
         }
 
@@ -105,6 +107,15 @@ public class PickaxeManager {
 
         // 1. Save data into PDC
         PickaxeData.saveToItemStack(pickaxe, item);
+        int progressionSockets = plugin.getEnchantManager() == null ? 0
+                : plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel());
+        var existingGear = com.infinitygear.data.GearData.read(item, progressionSockets, false);
+        int socketCapacity = existingGear.valid()
+                ? Math.max(progressionSockets, existingGear.gear().socketCapacity()) : progressionSockets;
+        var gear = new com.infinitygear.gear.GearInstance(item, pickaxe.getUuid(),
+                com.infinitygear.data.GearData.LEGACY_PICKAXE_PROFILE, pickaxe.getLevel(), pickaxe.getXp(),
+                pickaxe.getBlocksMined(), socketCapacity);
+        com.infinitygear.data.GearData.save(gear, PickaxeData.isQuarantined(item), true);
 
         // 2. Refresh Lore, Display Name, Unbreakable & Enchants
         updateLore(pickaxe);
@@ -163,7 +174,7 @@ public class PickaxeManager {
             finalLore.add(TextUtil.parse("<yellow>Contact an administrator to resolve this item.</yellow>"));
         }
 
-        int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel());
+        int maxSockets = plugin.getEnchantManager().getSocketLimit(pickaxe);
         for (String template : loreTemplates) {
             if (template.contains("%enchants_list%")) {
                 continue; // Legacy token: EcoEnchants owns and renders this section.

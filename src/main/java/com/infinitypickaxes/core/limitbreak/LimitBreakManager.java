@@ -6,6 +6,8 @@ import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.ItemBuilder;
 import com.infinitypickaxes.utils.SoundUtil;
+import com.infinitygear.api.events.GearEnchantChangeEvent;
+import com.infinitygear.data.GearData;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -220,12 +222,23 @@ public class LimitBreakManager {
         }
 
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
-        if (currentLvl == 0 && !plugin.getEnchantManager().canIntroduceEnchantment(player, pickaxe, socket)) {
+        if (currentLvl == 0) {
+            plugin.getMessageManager().sendMessage(player, "messages.limitbreak-missing-enchantment",
+                    "%enchant%", socket.getDisplayName());
             return false;
         }
-        int baseMax = socket.getMaxLevel();
+        int baseMax = getStandardMaximum(pickaxe, socket);
         int maxExtra = getMaxExtraLevels(pickaxe.getLevel());
-        int absoluteMax = baseMax + maxExtra;
+        int absoluteMax = getAbsoluteMaximum(pickaxe, socket);
+
+        // LimitBreak is an overcap operation, never a substitute for ordinary
+        // target-level books. It becomes valid only at the standard maximum.
+        if (currentLvl < baseMax) {
+            plugin.getMessageManager().sendMessage(player, "messages.limitbreak-premature",
+                    "%enchant%", socket.getDisplayName(),
+                    "%max%", String.valueOf(baseMax));
+            return false;
+        }
 
         // 4. Check the pickaxe-level LimitBreak ceiling.
         if (currentLvl >= absoluteMax) {
@@ -239,7 +252,13 @@ public class LimitBreakManager {
 
         int nextLvl = currentLvl + 1;
 
-        // 5. Call Bukkit API Event
+        GearEnchantChangeEvent gearEvent = new GearEnchantChangeEvent(player, pickaxe.getItemStack(),
+                GearData.LEGACY_PICKAXE_PROFILE, socket.getKeyString(), currentLvl, nextLvl,
+                GearEnchantChangeEvent.Operation.LIMIT_BREAK);
+        Bukkit.getPluginManager().callEvent(gearEvent);
+        if (gearEvent.isCancelled()) return false;
+
+        // Continue firing the compatible legacy pickaxe event.
         LimitBreakApplyEvent event = new LimitBreakApplyEvent(player, pickaxe, socket, bookItem, universal, currentLvl, nextLvl);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
@@ -286,5 +305,30 @@ public class LimitBreakManager {
                 "%limitbreak_indicator%", extraIndicator);
 
         return true;
+    }
+
+    /** Resolves the profile's ordinary cap while retaining the socket cap as the default. */
+    public int getStandardMaximum(InfinityPickaxe pickaxe, EnchantSocket socket) {
+        if (socket == null) return 0;
+        var override = plugin.getGearProfiles() == null ? null
+                : plugin.getGearProfiles().find(GearData.LEGACY_PICKAXE_PROFILE)
+                .map(profile -> profile.enchantmentOverrides().get(socket.getKeyString().toLowerCase(java.util.Locale.ROOT)))
+                .orElse(null);
+        return override != null && override.standardMaximum() != null
+                ? Math.min(socket.getMaxLevel(), Math.max(1, override.standardMaximum()))
+                : socket.getMaxLevel();
+    }
+
+    /** Resolves the per-profile absolute LimitBreak cap, falling back to progression allowance. */
+    public int getAbsoluteMaximum(InfinityPickaxe pickaxe, EnchantSocket socket) {
+        int standard = getStandardMaximum(pickaxe, socket);
+        if (socket == null) return standard;
+        var override = plugin.getGearProfiles() == null ? null
+                : plugin.getGearProfiles().find(GearData.LEGACY_PICKAXE_PROFILE)
+                .map(profile -> profile.enchantmentOverrides().get(socket.getKeyString().toLowerCase(java.util.Locale.ROOT)))
+                .orElse(null);
+        return override != null && override.absoluteMaximum() != null
+                ? Math.max(standard, override.absoluteMaximum())
+                : standard + getMaxExtraLevels(pickaxe == null ? 0 : pickaxe.getLevel());
     }
 }
