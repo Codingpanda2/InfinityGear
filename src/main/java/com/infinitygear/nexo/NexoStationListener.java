@@ -5,6 +5,7 @@ import com.infinitygear.station.StationManager;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.nexomc.nexo.api.events.custom_block.NexoBlockInteractEvent;
 import com.nexomc.nexo.api.events.furniture.NexoFurnitureInteractEvent;
+import com.nexomc.nexo.api.events.furniture.NexoFurnitureBreakEvent;
 import com.nexomc.nexo.api.events.NexoItemsLoadedEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -32,12 +33,18 @@ public final class NexoStationListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFurniture(NexoFurnitureInteractEvent event) {
-        stations.identifyNexo(event.getPlayer(), event.getMechanic().getItemID(), event.getInteractionPoint())
+        org.bukkit.Location origin = event.getBaseEntity().getLocation();
+        stations.identifyNexo(event.getPlayer(), event.getMechanic().getItemID(), origin)
                 .ifPresent(type -> {
                     event.setCancelled(true);
                     new StationGui(plugin, event.getPlayer(), new com.infinitygear.station.StationSession(
-                            type, event.getInteractionPoint(), event.getMechanic().getItemID(), false)).open();
+                            type, origin, event.getMechanic().getItemID(), false)).open();
                 });
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onFurnitureBreak(NexoFurnitureBreakEvent event) {
+        stations.unbind(event.getBaseEntity().getLocation());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

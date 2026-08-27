@@ -450,11 +450,13 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                 if (args.length < 3) { sender.sendMessage("§cUsage: /" + label + " station bind <type>"); return true; }
                 StationType type = StationType.valueOf(args[2].replace('-', '_').toUpperCase(java.util.Locale.ROOT));
                 org.bukkit.block.Block target = player.getTargetBlockExact(8);
-                if (target == null || !plugin.getStationManager().bind(type, player, target)) {
-                    sender.sendMessage("§cTarget a block matching that station's configured provider/material.");
+                boolean bound = target != null && plugin.getStationManager().bind(type, player, target);
+                if (!bound) bound = plugin.getStationManager().bindTargetedFurniture(type, player);
+                if (!bound) {
+                    sender.sendMessage("§cTarget a matching station block or Nexo furniture base.");
                     return true;
                 }
-                sender.sendMessage("§aBound this exact block as §f" + type.configKey() + "§a.");
+                sender.sendMessage("§aBound this exact station instance as §f" + type.configKey() + "§a.");
                 return true;
             }
             if (action.equals("unbind") || action.equals("status")) {
@@ -462,15 +464,20 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                     plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true;
                 }
                 org.bukkit.block.Block target = player.getTargetBlockExact(8);
-                if (target == null) { sender.sendMessage("§cTarget a station block within eight blocks."); return true; }
                 if (action.equals("status")) {
-                    sender.sendMessage(plugin.getStationManager().boundType(target)
+                    java.util.Optional<StationType> binding = target == null ? java.util.Optional.empty()
+                            : plugin.getStationManager().boundType(target);
+                    if (binding.isEmpty()) binding = plugin.getStationManager().targetedFurnitureBinding(player);
+                    sender.sendMessage(binding
                             .map(type -> "§aBound InfinityGear station: §f" + type.configKey())
-                            .orElse("§eThat block is not a registered InfinityGear station."));
+                            .orElse("§eThat target is not a registered InfinityGear station."));
                 } else {
-                    sender.sendMessage(plugin.getStationManager().unbind(target)
+                    java.util.Optional<StationType> removed = target == null ? java.util.Optional.empty()
+                            : plugin.getStationManager().unbind(target);
+                    if (removed.isEmpty()) removed = plugin.getStationManager().unbindTargetedFurniture(player);
+                    sender.sendMessage(removed
                             .map(type -> "§aUnbound InfinityGear station §f" + type.configKey() + "§a.")
-                            .orElse("§eThat block was not registered."));
+                            .orElse("§eThat target was not registered."));
                 }
                 return true;
             }

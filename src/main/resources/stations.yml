@@ -13,6 +13,8 @@ config-version: 1
 # `require-registered-instance: true` means an administrator must target the
 # placed block and run `/igear station bind <type>`. Bindings persist in
 # station-instances.yml. Ordinary blocks of the same material do nothing.
+# Nexo furniture is bound and authorized by its stable base-entity location,
+# never by the variable clicked hitbox/interaction point.
 stations:
   runic-table:
     enabled: true

@@ -6,7 +6,9 @@ import org.bukkit.entity.Player;
 public record StationSession(StationType type, Location location, String nexoId, boolean administratorBypass) {
     public boolean revalidate(StationManager manager, Player player) {
         if (administratorBypass) return player.hasPermission("infinitygear.admin.station")
-                || player.hasPermission("infinitygear.admin");
+                || player.hasPermission("infinitygear.admin")
+                || player.hasPermission("infinitypickaxes.admin")
+                || manager.hasBypass(type, player);
         if (location == null || location.getWorld() == null) return false;
         if (nexoId != null && !nexoId.isBlank()) {
             return manager.identifyNexo(player, nexoId, location).filter(type::equals).isPresent();

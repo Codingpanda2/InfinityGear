@@ -27,14 +27,26 @@ public final class StationInstanceStore {
     }
 
     public Optional<StationType> find(Block block) {
-        return block == null ? Optional.empty() : Optional.ofNullable(instances.get(Key.from(block.getLocation())));
+        return block == null ? Optional.empty() : find(block.getLocation());
+    }
+
+    public Optional<StationType> find(Location location) {
+        return location == null || location.getWorld() == null ? Optional.empty()
+                : Optional.ofNullable(instances.get(Key.from(location)));
     }
 
     public void bind(Block block, StationType type) {
         if (block == null || type == null || block.getWorld() == null) {
             throw new IllegalArgumentException("A loaded block and station type are required.");
         }
-        Key key = Key.from(block.getLocation());
+        bind(block.getLocation(), type);
+    }
+
+    public void bind(Location location, StationType type) {
+        if (location == null || location.getWorld() == null || type == null) {
+            throw new IllegalArgumentException("A loaded location and station type are required.");
+        }
+        Key key = Key.from(location);
         StationType previous = instances.put(key, type);
         try { save(); }
         catch (RuntimeException failure) {
@@ -44,8 +56,12 @@ public final class StationInstanceStore {
     }
 
     public Optional<StationType> unbind(Block block) {
-        if (block == null || block.getWorld() == null) return Optional.empty();
-        Key key = Key.from(block.getLocation());
+        return block == null ? Optional.empty() : unbind(block.getLocation());
+    }
+
+    public Optional<StationType> unbind(Location location) {
+        if (location == null || location.getWorld() == null) return Optional.empty();
+        Key key = Key.from(location);
         StationType removed = instances.remove(key);
         if (removed != null) try { save(); }
         catch (RuntimeException failure) { instances.put(key, removed); throw failure; }

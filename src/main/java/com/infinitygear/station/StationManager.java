@@ -2,6 +2,7 @@ package com.infinitygear.station;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import org.bukkit.Material;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -88,8 +89,7 @@ public final class StationManager {
             Definition definition = definitions.get(type);
             if (definition == null || !definition.enabled() || !"NEXO".equals(definition.provider())) continue;
             if (definition.requireRegisteredInstance()) {
-                Block block = location.getBlock();
-                if (!instances.find(block).filter(type::equals).isPresent()) continue;
+                if (!instances.find(location).filter(type::equals).isPresent()) continue;
             }
             if (itemId.equalsIgnoreCase(definition.providerId())
                     && location.distanceSquared(player.getLocation()) <= definition.distance() * definition.distance()) {
@@ -110,9 +110,7 @@ public final class StationManager {
     public boolean bind(StationType type, Player actor, Block block) {
         Definition definition = definitions.get(type);
         if (definition == null || !definition.enabled() || actor == null || block == null) return false;
-        if (!actor.hasPermission("infinitygear.admin.station")
-                && !actor.hasPermission("infinitygear.admin")
-                && !actor.hasPermission("infinitypickaxes.admin")) return false;
+        if (!canManageBindings(actor)) return false;
         if (!matchesDefinition(definition, block)) return false;
         instances.bind(block, type);
         return true;
@@ -121,6 +119,39 @@ public final class StationManager {
     public Optional<StationType> unbind(Block block) { return instances.unbind(block); }
 
     public Optional<StationType> boundType(Block block) { return instances.find(block); }
+
+    public boolean bindTargetedFurniture(StationType type, Player actor) {
+        Definition definition = definitions.get(type);
+        if (definition == null || !definition.enabled() || !"NEXO".equals(definition.provider())
+                || !canManageBindings(actor)) return false;
+        StationProvider provider = providers.get("NEXO");
+        if (!(provider instanceof com.infinitygear.nexo.NexoProvider nexo)) return false;
+        var target = nexo.findTargetFurniture(actor);
+        if (target == null || !definition.providerId().equalsIgnoreCase(target.itemId())) return false;
+        instances.bind(target.origin(), type);
+        return true;
+    }
+
+    public Optional<StationType> targetedFurnitureBinding(Player player) {
+        StationProvider provider = providers.get("NEXO");
+        if (!(provider instanceof com.infinitygear.nexo.NexoProvider nexo)) return Optional.empty();
+        var target = nexo.findTargetFurniture(player);
+        return target == null ? Optional.empty() : instances.find(target.origin());
+    }
+
+    public Optional<StationType> unbindTargetedFurniture(Player player) {
+        StationProvider provider = providers.get("NEXO");
+        if (!(provider instanceof com.infinitygear.nexo.NexoProvider nexo)) return Optional.empty();
+        var target = nexo.findTargetFurniture(player);
+        return target == null ? Optional.empty() : instances.unbind(target.origin());
+    }
+
+    public Optional<StationType> unbind(Location location) { return instances.unbind(location); }
+
+    private boolean canManageBindings(Player actor) {
+        return actor != null && (actor.hasPermission("infinitygear.admin.station")
+                || actor.hasPermission("infinitygear.admin") || actor.hasPermission("infinitypickaxes.admin"));
+    }
 
     private boolean matchesDefinition(Definition definition, Block block) {
         StationProvider provider = providers.get(definition.provider());

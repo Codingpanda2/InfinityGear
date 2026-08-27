@@ -35,6 +35,21 @@ class StationInstanceStoreTest {
         assertTrue(new StationInstanceStore(file, Logger.getLogger("stations-test")).find(station).isEmpty());
     }
 
+    @Test void furnitureOriginLocationUsesTheSamePersistentOwnershipKey() {
+        UUID worldId = UUID.randomUUID();
+        World world = mock(World.class);
+        when(world.getUID()).thenReturn(worldId);
+        Location baseEntityOrigin = new Location(world, 20.5, 70.0, -2.5);
+        var file = temporary.resolve("furniture-stations.yml").toFile();
+        StationInstanceStore store = new StationInstanceStore(file, Logger.getLogger("stations-test"));
+
+        store.bind(baseEntityOrigin, StationType.FUSION_ALTAR);
+
+        assertEquals(StationType.FUSION_ALTAR,
+                new StationInstanceStore(file, Logger.getLogger("stations-test"))
+                        .find(baseEntityOrigin).orElseThrow());
+    }
+
     private Block block(World world, int x, int y, int z) {
         Block block = mock(Block.class);
         when(block.getWorld()).thenReturn(world);
