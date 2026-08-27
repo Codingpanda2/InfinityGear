@@ -7,6 +7,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.inventory.EquipmentSlot;
 
 public final class StationListener implements Listener {
@@ -27,5 +30,20 @@ public final class StationListener implements Listener {
             new StationGui(plugin, event.getPlayer(), new StationSession(
                     type, event.getClickedBlock().getLocation(), null, false)).open();
         });
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBreak(BlockBreakEvent event) {
+        stations.unbind(event.getBlock());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockExplosion(BlockExplodeEvent event) {
+        event.blockList().forEach(stations::unbind);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityExplosion(EntityExplodeEvent event) {
+        event.blockList().forEach(stations::unbind);
     }
 }

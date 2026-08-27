@@ -34,7 +34,7 @@ Only the migrated pickaxe behavior is eligible for automatic vanilla conversion,
 
 ## Stations and enchantments
 
-`stations.yml` configures a Runic Table, Fusion Altar, and Gear Forge using `VANILLA` material or `NEXO` IDs, interaction range, and an administrator/testing bypass. The Nexo adapter uses the documented typed `NexoItems`, `NexoBlocks`, `NexoFurniture`, and interaction-event APIs—no reflection or console commands.
+`stations.yml` configures a Runic Table, Fusion Altar, and Gear Forge using `VANILLA` material or `NEXO` IDs, interaction range, and an administrator/testing bypass. With the secure default `require-registered-instance: true`, an administrator must target the exact placed block and run `/igear station bind <type>`; bindings persist in `station-instances.yml`, and ordinary blocks with the same material do nothing. Use `/igear station status` or `/igear station unbind` while targeting a block to inspect or remove its ownership record. The Nexo adapter uses the documented typed `NexoItems`, `NexoBlocks`, `NexoFurniture`, and interaction-event APIs—no reflection or console commands.
 
 Station menus select live player inventory slots and render clones. Inputs never move into decorative slots. Confirmation re-reads the station, range, player, slots, item identity/UUID, duplicate state, enchantments, policy, output capacity, and payment. Shift-click, drag, hotbar, collect, double-click, repeated confirmation, close, and disconnect cannot leave deposited GUI items because no real inputs are deposited.
 
@@ -87,7 +87,8 @@ Detection is observational. It cannot prove detection of copies that are never s
 - `/igear`: read-only held gear overview (`infinitygear.use`).
 - `/igear give <profile> <player> [level]`: create profile gear.
 - `/igear artifact <runic_eraser|runic_conduit|runic_rivet> <player>`: issue a tracked singleton.
-- `/igear station <runic-table|fusion-altar|gear-forge>`: administrator/test station bypass.
+- `/igear station bind <type>`, `status`, and `unbind`: manage exact proprietary station instances.
+- `/igear station <runic-table|fusion-altar|gear-forge>`: administrator/test GUI bypass.
 - `/igear reload`, `setlevel`, `addxp`, `duplicate ...`, and `migration`: administration and diagnostics.
 - `/ipickaxe` and `/infinitypickaxe` remain deprecated aliases with `infinitypickaxes.*` compatibility permissions. Generic `/pickaxe` is intentionally not claimed.
 

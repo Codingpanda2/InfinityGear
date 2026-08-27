@@ -440,9 +440,41 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleStation(CommandSender sender, String label, String[] args) {
         if (!(sender instanceof Player player)) { sender.sendMessage("§cPlayers only."); return true; }
-        if (args.length < 2) { sender.sendMessage("§cUsage: /" + label + " station <runic-table|fusion-altar|gear-forge>"); return true; }
+        if (args.length < 2) { sender.sendMessage("§cUsage: /" + label + " station <type|bind type|unbind|status>"); return true; }
         try {
-            StationType type = StationType.valueOf(args[1].replace('-', '_').toUpperCase(java.util.Locale.ROOT));
+            String action = args[1].toLowerCase(java.util.Locale.ROOT);
+            if (action.equals("bind")) {
+                if (!hasPermissionOrAdmin(sender, "infinitygear.admin.station")) {
+                    plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true;
+                }
+                if (args.length < 3) { sender.sendMessage("§cUsage: /" + label + " station bind <type>"); return true; }
+                StationType type = StationType.valueOf(args[2].replace('-', '_').toUpperCase(java.util.Locale.ROOT));
+                org.bukkit.block.Block target = player.getTargetBlockExact(8);
+                if (target == null || !plugin.getStationManager().bind(type, player, target)) {
+                    sender.sendMessage("§cTarget a block matching that station's configured provider/material.");
+                    return true;
+                }
+                sender.sendMessage("§aBound this exact block as §f" + type.configKey() + "§a.");
+                return true;
+            }
+            if (action.equals("unbind") || action.equals("status")) {
+                if (!hasPermissionOrAdmin(sender, "infinitygear.admin.station")) {
+                    plugin.getMessageManager().sendMessage(sender, "messages.no-permission"); return true;
+                }
+                org.bukkit.block.Block target = player.getTargetBlockExact(8);
+                if (target == null) { sender.sendMessage("§cTarget a station block within eight blocks."); return true; }
+                if (action.equals("status")) {
+                    sender.sendMessage(plugin.getStationManager().boundType(target)
+                            .map(type -> "§aBound InfinityGear station: §f" + type.configKey())
+                            .orElse("§eThat block is not a registered InfinityGear station."));
+                } else {
+                    sender.sendMessage(plugin.getStationManager().unbind(target)
+                            .map(type -> "§aUnbound InfinityGear station §f" + type.configKey() + "§a.")
+                            .orElse("§eThat block was not registered."));
+                }
+                return true;
+            }
+            StationType type = StationType.valueOf(action.replace('-', '_').toUpperCase(java.util.Locale.ROOT));
             if (!hasPermissionOrAdmin(sender, "infinitygear.admin.station")
                     && !plugin.getStationManager().hasBypass(type, player)) {
                 plugin.getMessageManager().sendMessage(sender, "messages.no-permission");
@@ -483,6 +515,10 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             return List.of("runic_eraser", "runic_conduit", "runic_rivet");
         }
         if (gearCommand && args.length == 2 && args[0].equalsIgnoreCase("station")) {
+            return List.of("runic-table", "fusion-altar", "gear-forge", "bind", "unbind", "status");
+        }
+        if (gearCommand && args.length == 3 && args[0].equalsIgnoreCase("station")
+                && args[1].equalsIgnoreCase("bind")) {
             return List.of("runic-table", "fusion-altar", "gear-forge");
         }
         if (gearCommand && args.length == 3

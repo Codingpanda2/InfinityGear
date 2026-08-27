@@ -10,6 +10,9 @@ config-version: 1
 # integration disables that station instead of granting portable access.
 # Bypass permissions authorize `/igear station <type>`; they never make an
 # arbitrary right-clicked block count as a station.
+# `require-registered-instance: true` means an administrator must target the
+# placed block and run `/igear station bind <type>`. Bindings persist in
+# station-instances.yml. Ordinary blocks of the same material do nothing.
 stations:
   runic-table:
     enabled: true
@@ -17,6 +20,7 @@ stations:
     material: ENCHANTING_TABLE
     # nexo-id: my_pack:runic_table
     interaction-distance: 6.0
+    require-registered-instance: true
     bypass-permission: infinitygear.station.runic-table.bypass
   fusion-altar:
     enabled: true
@@ -24,6 +28,7 @@ stations:
     material: CRYING_OBSIDIAN
     # nexo-id: my_pack:fusion_altar
     interaction-distance: 6.0
+    require-registered-instance: true
     bypass-permission: infinitygear.station.fusion-altar.bypass
   gear-forge:
     enabled: true
@@ -31,4 +36,5 @@ stations:
     material: SMITHING_TABLE
     # nexo-id: my_pack:gear_forge
     interaction-distance: 6.0
+    require-registered-instance: true
     bypass-permission: infinitygear.station.gear-forge.bypass

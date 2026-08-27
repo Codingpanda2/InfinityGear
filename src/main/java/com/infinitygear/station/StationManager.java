@@ -16,9 +16,11 @@ public final class StationManager {
     private final InfinityPickaxes plugin;
     private final Map<StationType, Definition> definitions = new EnumMap<>(StationType.class);
     private final Map<String, StationProvider> providers = new java.util.HashMap<>();
+    private final StationInstanceStore instances;
 
     public record Definition(boolean enabled, String provider, String providerId,
-                             Material vanillaMaterial, double distance, String bypassPermission) {}
+                             Material vanillaMaterial, double distance, String bypassPermission,
+                             boolean requireRegisteredInstance) {}
 
     public StationManager(InfinityPickaxes plugin) {
         this.plugin = plugin;
@@ -26,6 +28,8 @@ public final class StationManager {
         if (plugin.getServer().getPluginManager().isPluginEnabled("Nexo")) {
             providers.put("NEXO", new com.infinitygear.nexo.NexoProvider());
         }
+        this.instances = new StationInstanceStore(plugin.getDataFolder() == null ? null
+                : new java.io.File(plugin.getDataFolder(), "station-instances.yml"), plugin.getLogger());
         reload();
     }
 
@@ -54,7 +58,8 @@ public final class StationManager {
             }
             Definition definition = new Definition(enabled, provider, providerId,
                     material, Math.max(1, section.getDouble("interaction-distance", 6)),
-                    section.getString("bypass-permission", "infinitygear.station." + type.configKey() + ".bypass"));
+                    section.getString("bypass-permission", "infinitygear.station." + type.configKey() + ".bypass"),
+                    section.getBoolean("require-registered-instance", true));
             definitions.put(type, definition);
         }
     }
@@ -62,6 +67,7 @@ public final class StationManager {
     public boolean authorized(StationType type, Player player, Block block) {
         Definition definition = definitions.get(type);
         if (definition == null || !definition.enabled() || player == null) return false;
+        if (definition.requireRegisteredInstance() && !instances.find(block).filter(type::equals).isPresent()) return false;
         if (block == null || block.getWorld() != player.getWorld()
                 || block.getLocation().distanceSquared(player.getLocation()) > definition.distance() * definition.distance()) return false;
         StationProvider provider = providers.get(definition.provider());
@@ -81,6 +87,10 @@ public final class StationManager {
         for (StationType type : StationType.values()) {
             Definition definition = definitions.get(type);
             if (definition == null || !definition.enabled() || !"NEXO".equals(definition.provider())) continue;
+            if (definition.requireRegisteredInstance()) {
+                Block block = location.getBlock();
+                if (!instances.find(block).filter(type::equals).isPresent()) continue;
+            }
             if (itemId.equalsIgnoreCase(definition.providerId())
                     && location.distanceSquared(player.getLocation()) <= definition.distance() * definition.distance()) {
                 return Optional.of(type);
@@ -95,6 +105,29 @@ public final class StationManager {
         return definition != null && definition.enabled() && player != null
                 && definition.bypassPermission() != null && !definition.bypassPermission().isBlank()
                 && player.hasPermission(definition.bypassPermission());
+    }
+
+    public boolean bind(StationType type, Player actor, Block block) {
+        Definition definition = definitions.get(type);
+        if (definition == null || !definition.enabled() || actor == null || block == null) return false;
+        if (!actor.hasPermission("infinitygear.admin.station")
+                && !actor.hasPermission("infinitygear.admin")
+                && !actor.hasPermission("infinitypickaxes.admin")) return false;
+        if (!matchesDefinition(definition, block)) return false;
+        instances.bind(block, type);
+        return true;
+    }
+
+    public Optional<StationType> unbind(Block block) { return instances.unbind(block); }
+
+    public Optional<StationType> boundType(Block block) { return instances.find(block); }
+
+    private boolean matchesDefinition(Definition definition, Block block) {
+        StationProvider provider = providers.get(definition.provider());
+        String id = definition.provider().equals("VANILLA")
+                ? (definition.vanillaMaterial() == null ? "" : definition.vanillaMaterial().name())
+                : definition.providerId();
+        return provider != null && provider.available() && provider.matches(block, id);
     }
 
     public Definition definition(StationType type) { return definitions.get(type); }

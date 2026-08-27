@@ -13,6 +13,7 @@ import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.Test;
 
 import java.util.logging.Logger;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -21,7 +22,9 @@ class StationManagerTest {
     @Test void vanillaStationRequiresMatchingPhysicalBlockInRange() {
         StationManager manager = manager(config("VANILLA", "ENCHANTING_TABLE", null));
         World world = mock(World.class);
+        when(world.getUID()).thenReturn(UUID.randomUUID());
         Player player = mock(Player.class);
+        when(player.hasPermission("infinitygear.admin.station")).thenReturn(true);
         when(player.getWorld()).thenReturn(world);
         when(player.getLocation()).thenReturn(new Location(world, 0, 64, 0));
         Block block = mock(Block.class);
@@ -29,6 +32,8 @@ class StationManagerTest {
         when(block.getLocation()).thenReturn(new Location(world, 2, 64, 0));
         when(block.getType()).thenReturn(Material.ENCHANTING_TABLE);
 
+        assertFalse(manager.authorized(StationType.RUNIC_TABLE, player, block));
+        assertTrue(manager.bind(StationType.RUNIC_TABLE, player, block));
         assertTrue(manager.authorized(StationType.RUNIC_TABLE, player, block));
         when(block.getType()).thenReturn(Material.CRAFTING_TABLE);
         assertFalse(manager.authorized(StationType.RUNIC_TABLE, player, block));
@@ -46,6 +51,7 @@ class StationManagerTest {
     @Test void bypassPermissionNeverMakesAnArbitraryBlockAStation() {
         StationManager manager = manager(config("VANILLA", "ENCHANTING_TABLE", null));
         World world = mock(World.class);
+        when(world.getUID()).thenReturn(UUID.randomUUID());
         Player operator = mock(Player.class);
         when(operator.hasPermission("infinitygear.station.runic-table.bypass")).thenReturn(true);
         when(operator.getWorld()).thenReturn(world);
@@ -82,6 +88,7 @@ class StationManagerTest {
         if (material != null) yaml.set(root + "material", material);
         if (nexoId != null) yaml.set(root + "nexo-id", nexoId);
         yaml.set(root + "interaction-distance", 6.0);
+        yaml.set(root + "require-registered-instance", true);
         yaml.set(root + "bypass-permission", "infinitygear.station.runic-table.bypass");
         return yaml;
     }
