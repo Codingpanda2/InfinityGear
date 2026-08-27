@@ -38,6 +38,8 @@ Only the migrated pickaxe behavior is eligible for automatic vanilla conversion,
 
 Station menus select live player inventory slots and render clones. Inputs never move into decorative slots. Confirmation re-reads the station, range, player, slots, item identity/UUID, duplicate state, enchantments, policy, output capacity, and payment. Shift-click, drag, hotbar, collect, double-click, repeated confirmation, close, and disconnect cannot leave deposited GUI items because no real inputs are deposited.
 
+All player-visible station inventory titles, button names/lore, payment formatting, preview labels, policy-state labels, and dynamic preview lines are configured in `menus/stations_menu.yml`. MiniMessage and the documented `%placeholder%` tokens are supported. Synchronization is additive: reloads append missing defaults without replacing administrator-edited text.
+
 ### Runic Table
 
 - Apply: a normal book must contain exactly one managed enchantment. A higher book installs its target level directly; equal/lower is rejected. A new enchantment consumes one socket, while raising an existing one does not. Normal books cannot pass the standard maximum. Existing oversocketed/overcap/disabled equipment is not stripped or deactivated.

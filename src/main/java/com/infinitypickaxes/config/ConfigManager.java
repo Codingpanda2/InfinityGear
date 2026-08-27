@@ -44,6 +44,8 @@ public class ConfigManager {
 
     private File enchantsMenuFile;
     private FileConfiguration enchantsMenuConfig;
+    private File stationsMenuFile;
+    private FileConfiguration stationsMenuConfig;
 
     private final Map<String, YamlConfiguration> localeConfigs = new HashMap<>();
     private String defaultLanguage = "en";
@@ -100,6 +102,10 @@ public class ConfigManager {
         this.enchantsMenuConfig = YamlConfiguration.loadConfiguration(enchantsMenuFile);
         updateMissingKeys(enchantsMenuFile, "menus/enchants_menu.yml", (YamlConfiguration) this.enchantsMenuConfig);
         migrateEnchantsMenuInstructions((YamlConfiguration) this.enchantsMenuConfig);
+
+        this.stationsMenuFile = loadAndSyncFile("menus/stations_menu.yml");
+        this.stationsMenuConfig = YamlConfiguration.loadConfiguration(stationsMenuFile);
+        updateMissingKeys(stationsMenuFile, "menus/stations_menu.yml", (YamlConfiguration) this.stationsMenuConfig);
 
     }
 
@@ -339,6 +345,10 @@ public class ConfigManager {
 
     public FileConfiguration getEnchantsMenuConfig() {
         return enchantsMenuConfig;
+    }
+
+    public FileConfiguration getStationsMenuConfig() {
+        return stationsMenuConfig;
     }
 
     public String getCurrentLanguage() {

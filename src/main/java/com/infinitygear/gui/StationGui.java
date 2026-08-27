@@ -19,6 +19,7 @@ import com.infinitypickaxes.gui.CustomGui;
 import com.infinitypickaxes.utils.ItemBuilder;
 import com.infinitypickaxes.utils.TextUtil;
 import org.bukkit.Material;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
@@ -32,6 +33,7 @@ import java.util.List;
  */
 public final class StationGui extends CustomGui {
     private final StationSession session;
+    private final FileConfiguration menuConfig;
     private final List<Integer> selectedPlayerSlots = new ArrayList<>();
     private final java.util.Map<Integer, ItemStack> selectedSnapshots = new java.util.HashMap<>();
     private String operation;
@@ -43,16 +45,19 @@ public final class StationGui extends CustomGui {
     }
 
     public StationGui(InfinityPickaxes plugin, Player player, StationSession session) {
-        super(plugin, player, null, TextUtil.parse(title(session.type())), 45);
+        super(plugin, player, null, TextUtil.parse(title(plugin, session.type())), 45);
         this.session = session;
+        this.menuConfig = plugin.getConfigManager().getStationsMenuConfig();
     }
 
-    private static String title(StationType type) {
-        return switch (type) {
+    private static String title(InfinityPickaxes plugin, StationType type) {
+        String key = "titles." + type.configKey();
+        String fallback = switch (type) {
             case RUNIC_TABLE -> "<dark_purple><b>Runic Table</b></dark_purple>";
             case FUSION_ALTAR -> "<light_purple><b>Fusion Altar</b></light_purple>";
             case GEAR_FORGE -> "<gold><b>Gear Forge</b></gold>";
         };
+        return plugin.getConfigManager().getStationsMenuConfig().getString(key, fallback);
     }
 
     @Override public void setupItems() {
@@ -60,16 +65,15 @@ public final class StationGui extends CustomGui {
         ItemStack filler = new ItemBuilder(Material.BLACK_STAINED_GLASS_PANE).name(" ").build();
         for (int i = 0; i < inventory.getSize(); i++) inventory.setItem(i, filler);
         List<String> operations = switch (session.type()) {
-            case RUNIC_TABLE -> List.of("Apply Enchantment", "Remove Enchantment", "Transfer Enchantment", "View Policy");
-            case FUSION_ALTAR -> List.of("Fuse Pair", "Fuse All Matching");
-            case GEAR_FORGE -> List.of("Expand Socket Capacity");
+            case RUNIC_TABLE -> List.of("apply-enchantment", "remove-enchantment", "transfer-enchantment", "view-policy");
+            case FUSION_ALTAR -> List.of("fuse-pair", "fuse-all-matching");
+            case GEAR_FORGE -> List.of("expand-socket-capacity");
         };
         Material[] icons = {Material.ENCHANTED_BOOK, Material.GRINDSTONE, Material.BOOK, Material.KNOWLEDGE_BOOK};
         for (int i = 0; i < operations.size(); i++) {
             inventory.setItem(10 + i * 2, new ItemBuilder(icons[Math.min(i, icons.length - 1)])
-                    .name("<aqua><b>" + operations.get(i) + "</b></aqua>")
-                    .lore(List.of("<gray>Select live input slots from your inventory below.</gray>",
-                            "<dark_gray>Inputs remain in place until a validated confirmation.</dark_gray>"))
+                    .name(text("items.operations." + operations.get(i), operations.get(i)))
+                    .lore(lines("items.operations.lore", List.of()))
                     .build());
         }
         for (int i = 0; i < selectedPlayerSlots.size() && i < 5; i++) {
@@ -79,29 +83,33 @@ public final class StationGui extends CustomGui {
         if (operation != null) {
             if (!"view".equals(operation)) {
                 List<PaymentOption> options = resolvedPaymentOptions();
-                String cost = options.isEmpty() ? "<red>No usable cost option</red>"
+                String cost = options.isEmpty() ? text("items.payment.unavailable", "<red>No usable cost option</red>")
                         : describe(options.get(Math.floorMod(paymentIndex, options.size())));
-                inventory.setItem(36, new ItemBuilder(Material.GOLD_INGOT).name("<gold>Payment Option</gold>")
-                        .lore(List.of(cost, "<gray>Click to select another configured option.</gray>")).build());
+                inventory.setItem(36, new ItemBuilder(Material.GOLD_INGOT)
+                        .name(text("items.payment.name", "Payment Option"))
+                        .lore(List.of(cost, text("items.payment.cycle-lore", "Click to cycle."))).build());
             }
             if (operation.equals("removal") || operation.equals("transfer") || operation.equals("view")
                     || operation.equals("fusion-all")) {
                 List<String> keys = selectedManagedEnchantments();
-                String selected = keys.isEmpty() ? "<red>No managed enchantment selected</red>"
-                        : "<white>" + keys.get(Math.floorMod(selectedEnchantIndex, keys.size())) + "</white>";
+                String selected = keys.isEmpty() ? text("items.selected-enchantment.none", "No managed enchantment selected")
+                        : text("items.selected-enchantment.value", "%enchantment%",
+                        "%enchantment%", keys.get(Math.floorMod(selectedEnchantIndex, keys.size())));
                 inventory.setItem(37, new ItemBuilder(Material.ENCHANTED_BOOK)
-                        .name("<light_purple>Selected Enchantment</light_purple>")
-                        .lore(List.of(selected, "<gray>Click to cycle.</gray>")).build());
+                        .name(text("items.selected-enchantment.name", "Selected Enchantment"))
+                        .lore(List.of(selected, text("items.selected-enchantment.cycle-lore", "Click to cycle."))).build());
             }
-            inventory.setItem(40, new ItemBuilder(Material.LIME_CONCRETE).name("<green><b>Confirm</b></green>")
-                    .lore(List.of("<yellow>All live inputs, station, identity, policy and cost are revalidated.</yellow>"))
+            inventory.setItem(40, new ItemBuilder(Material.LIME_CONCRETE)
+                    .name(text("items.confirm.name", "Confirm"))
+                    .lore(lines("items.confirm.lore", List.of()))
                     .build());
             if ("application".equals(operation)) inventory.setItem(38, applicationPreview());
             if (operation.startsWith("fusion-")) inventory.setItem(38, fusionPreview());
             if ("socket-expansion".equals(operation)) inventory.setItem(38, forgePreview());
             if ("view".equals(operation)) inventory.setItem(38, viewPreview());
         }
-        inventory.setItem(44, new ItemBuilder(Material.BARRIER).name("<red>Close</red>").build());
+        inventory.setItem(44, new ItemBuilder(Material.BARRIER)
+                .name(text("items.close.name", "Close")).build());
     }
 
     @Override public void handleClick(InventoryClickEvent event) {
@@ -548,6 +556,11 @@ public final class StationGui extends CustomGui {
         };
     }
 
+    private String forgeStatus(SocketExpansionPolicy.Failure failure) {
+        String key = failure.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+        return text("previews.forge.status." + key, key);
+    }
+
     private String operationFailureMessage(RuntimeException failure) {
         String detail = failure.getMessage() == null ? "" : failure.getMessage();
         if (detail.contains("STALE_INPUT") || detail.contains("Gear UUID changed")) return "station.stale-confirmation";
@@ -568,6 +581,28 @@ public final class StationGui extends CustomGui {
     private void message(String key, String... placeholders) {
         plugin.getMessageManager().sendMessage(player,
                 key.startsWith("messages.") ? key : "messages." + key, placeholders);
+    }
+
+    private String text(String path, String fallback, String... placeholders) {
+        String value = menuConfig == null ? fallback : menuConfig.getString(path, fallback);
+        return replace(value == null ? fallback : value, placeholders);
+    }
+
+    private List<String> lines(String path, List<String> fallback, String... placeholders) {
+        List<String> source = menuConfig != null && menuConfig.isList(path)
+                ? menuConfig.getStringList(path) : fallback;
+        return source.stream().map(line -> replace(line, placeholders)).toList();
+    }
+
+    private String replace(String value, String... placeholders) {
+        String result = value == null ? "" : value;
+        if (placeholders == null) return result;
+        for (int index = 0; index + 1 < placeholders.length; index += 2) {
+            if (placeholders[index] != null && placeholders[index + 1] != null) {
+                result = result.replace(placeholders[index], placeholders[index + 1]);
+            }
+        }
+        return result;
     }
 
     private List<PaymentOption> scaledFusionOptions(com.infinitygear.enchant.FusionCalculator.Plan plan) {
@@ -762,72 +797,89 @@ public final class StationGui extends CustomGui {
             }
         } else plan = bulkPlan();
         if (plan == null) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>No valid fusion plan</red>").build();
+                .name(text("previews.fusion.invalid", "No valid fusion plan")).build();
         List<String> lore = new ArrayList<>();
         for (int index : plan.consumedInputIndices()) {
-            lore.add("<red>Consume input: level " + plan.inputs().get(index) + "</red>");
+            lore.add(text("previews.fusion.consumed-line", "Consume input: level %level%",
+                    "%level%", String.valueOf(plan.inputs().get(index))));
         }
-        for (int output : plan.createdOutputs()) lore.add("<green>Create output: level " + output + "</green>");
-        lore.add("<gray>Pairwise fusions charged: <white>" + plan.fusionCount() + "</white></gray>");
-        return new ItemBuilder(Material.PAPER).name("<light_purple><b>Fusion Preview</b></light_purple>")
+        for (int output : plan.createdOutputs()) lore.add(text("previews.fusion.output-line",
+                "Create output: level %level%", "%level%", String.valueOf(output)));
+        lore.add(text("previews.fusion.cost-line", "Pairwise fusions charged: %count%",
+                "%count%", String.valueOf(plan.fusionCount())));
+        return new ItemBuilder(Material.PAPER).name(text("previews.fusion.title", "Fusion Preview"))
                 .lore(lore).build();
     }
 
     private ItemStack forgePreview() {
         int slot = selectedSourceSlot();
         if (slot < 0) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>Select one InfinityGear item</red>").build();
+                .name(text("previews.forge.missing-gear", "Select one InfinityGear item")).build();
         var gear = plugin.getGearManager().inspect(player.getInventory().getItem(slot), true).orElse(null);
         var profile = gear == null ? null : plugin.getGearProfiles().find(gear.profileId()).orElse(null);
         if (gear == null || profile == null) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>Invalid gear/profile</red>").build();
+                .name(text("previews.forge.invalid-gear", "Invalid gear/profile")).build();
         var decision = SocketExpansionPolicy.evaluate(gear.socketCapacity(), profile.maximumExpandedSockets(), true);
-        return new ItemBuilder(Material.SMITHING_TABLE).name("<gold><b>Socket Expansion Preview</b></gold>")
-                .lore(List.of("<gray>Gear UUID: <white>" + gear.uuid() + "</white></gray>",
-                        "<gray>Capacity: <white>" + decision.current() + " → " + decision.resulting() + "</white></gray>",
-                        "<gray>Profile maximum: <white>" + decision.maximum() + "</white></gray>",
-                        "<gray>Status: <white>" + decision.failure() + "</white></gray>"))
+        return new ItemBuilder(Material.SMITHING_TABLE)
+                .name(text("previews.forge.title", "Socket Expansion Preview"))
+                .lore(lines("previews.forge.lore", List.of(),
+                        "%uuid%", gear.uuid().toString(), "%current%", String.valueOf(decision.current()),
+                        "%resulting%", String.valueOf(decision.resulting()),
+                        "%maximum%", String.valueOf(decision.maximum()), "%status%", forgeStatus(decision.failure())))
                 .build();
     }
 
     private ItemStack viewPreview() {
         int slot = selectedSourceSlot();
         if (slot < 0) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>Select gear or an enchanted book</red>").build();
+                .name(text("previews.view.missing-source", "Select gear or an enchanted book")).build();
         ItemStack source = player.getInventory().getItem(slot);
         var installed = managedOn(source);
         List<String> lore = new ArrayList<>();
         plugin.getGearManager().inspect(source, true).ifPresentOrElse(gear -> {
             var profile = plugin.getGearProfiles().find(gear.profileId()).orElse(null);
-            lore.add("<gray>Profile: <white>" + gear.profileId() + "</white></gray>");
-            lore.add("<gray>UUID: <white>" + gear.uuid() + "</white></gray>");
-            lore.add("<gray>Level/mode: <white>" + gear.level() + " / "
-                    + (profile == null ? "UNKNOWN" : profile.progressionMode()) + "</white></gray>");
-            lore.add("<gray>Sockets: <white>" + plugin.getGearService().usedSockets(source) + " / "
-                    + gear.socketCapacity() + "</white></gray>");
-            if (profile != null) lore.add("<gray>Expanded maximum: <white>"
-                    + profile.maximumExpandedSockets() + "</white></gray>");
-        }, () -> lore.add("<gray>Source: <white>ordinary enchanted book</white></gray>"));
-        lore.add("");
-        if (installed.isEmpty()) lore.add("<red>No installed managed enchantments.</red>");
+            lore.add(text("previews.view.profile-line", "Profile: %profile%", "%profile%", gear.profileId()));
+            lore.add(text("previews.view.uuid-line", "UUID: %uuid%", "%uuid%", gear.uuid().toString()));
+            lore.add(text("previews.view.level-mode-line", "Level/mode: %level% / %mode%",
+                    "%level%", String.valueOf(gear.level()), "%mode%",
+                    profile == null ? text("previews.view.unknown-mode", "unknown") : profile.progressionMode().name()));
+            lore.add(text("previews.view.sockets-line", "Sockets: %used% / %capacity%",
+                    "%used%", String.valueOf(plugin.getGearService().usedSockets(source)),
+                    "%capacity%", String.valueOf(gear.socketCapacity())));
+            if (profile != null) lore.add(text("previews.view.expanded-maximum-line",
+                    "Expanded maximum: %maximum%", "%maximum%", String.valueOf(profile.maximumExpandedSockets())));
+        }, () -> lore.add(text("previews.view.ordinary-book-line", "Source: ordinary enchanted book")));
+        lore.add(text("previews.view.separator", ""));
+        if (installed.isEmpty()) lore.add(text("previews.view.no-enchantments", "No installed managed enchantments."));
         for (var entry : installed) {
             boolean removable = !plugin.getConfigManager().getEnchantsConfig().getBoolean(
                     "enchants." + entry.socket().getId() + ".non-removable", false);
-            lore.add("<white>" + entry.socket().getKeyString() + " " + entry.level()
-                    + "</white> <dark_gray>(standard " + entry.socket().getMaxLevel()
-                    + ", " + (entry.socket().isEnabled() ? "enabled" : "grandfathered disabled")
-                    + ", " + (removable ? "removable" : "protected") + ")</dark_gray>");
+            lore.add(text("previews.view.enchantment-line", "%enchantment% %level%",
+                    "%enchantment%", entry.socket().getKeyString(), "%level%", String.valueOf(entry.level()),
+                    "%standard_maximum%", String.valueOf(entry.socket().getMaxLevel()),
+                    "%enabled_state%", entry.socket().isEnabled()
+                            ? text("previews.view.enabled", "enabled")
+                            : text("previews.view.grandfathered-disabled", "grandfathered disabled"),
+                    "%removable_state%", removable
+                            ? text("previews.view.removable", "removable")
+                            : text("previews.view.protected", "protected")));
         }
-        return new ItemBuilder(Material.KNOWLEDGE_BOOK).name("<aqua><b>Installed Enchantments & Policy</b></aqua>")
+        return new ItemBuilder(Material.KNOWLEDGE_BOOK)
+                .name(text("previews.view.title", "Installed Enchantments & Policy"))
                 .lore(lore).build();
     }
 
     private String describe(PaymentOption option) {
-        if (option.free()) return "<green>Free</green>";
-        return "<white>" + option.id() + ": " + option.components().stream()
-                .map(component -> component.amount() + " " + component.type()
-                        + (component.itemId().isBlank() ? "" : " " + component.itemId()))
-                .collect(java.util.stream.Collectors.joining(" + ")) + "</white>";
+        if (option.free()) return text("items.payment.free", "<green>Free</green>");
+        String separator = text("items.payment.component-separator", " + ");
+        String components = option.components().stream().map(component -> {
+            String item = component.itemId().isBlank() ? "" : text("items.payment.item-suffix-format",
+                    " %item_id%", "%item_id%", component.itemId());
+            return text("items.payment.component-format", "%amount% %type%%item%",
+                    "%amount%", String.valueOf(component.amount()), "%type%", component.type().name(), "%item%", item);
+        }).collect(java.util.stream.Collectors.joining(separator));
+        return text("items.payment.option-format", "%option%: %components%",
+                "%option%", option.id(), "%components%", components);
     }
 
     private ItemStack applicationPreview() {
@@ -839,21 +891,20 @@ public final class StationGui extends CustomGui {
                     || plugin.getLimitBreakManager().isLimitBreakBook(live)) book = live;
         }
         if (gear == null || book == null) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>Invalid: select gear and one book</red>").build();
+                .name(text("previews.application.invalid-inputs", "Invalid: select gear and one book")).build();
         if (plugin.getLimitBreakManager().isLimitBreakBook(book)) {
-            return new ItemBuilder(Material.PAPER).name("<light_purple><b>LimitBreak Preview</b></light_purple>")
-                    .lore(List.of("<gray>Target must already exist at its standard maximum.</gray>",
-                            "<gray>Result: exactly +1, capped by the absolute maximum.</gray>",
-                            "<gray>Universal books use the selected installed enchantment.</gray>"))
+            return new ItemBuilder(Material.PAPER)
+                    .name(text("previews.limitbreak.title", "LimitBreak Preview"))
+                    .lore(lines("previews.limitbreak.lore", List.of()))
                     .build();
         }
         var found = plugin.getEnchantManager().getManagedBookEnchants(book);
         if (found.size() != 1) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>Invalid: book needs exactly one managed enchantment</red>").build();
+                .name(text("previews.application.invalid-book", "Invalid managed book")).build();
         var enchant = found.getFirst();
         var gearInstance = plugin.getGearManager().inspect(gear, true).orElse(null);
         if (gearInstance == null) return new ItemBuilder(Material.RED_STAINED_GLASS_PANE)
-                .name("<red>Invalid: malformed gear identity</red>").build();
+                .name(text("previews.application.malformed-gear", "Invalid gear identity")).build();
         var bukkitEnchant = plugin.getEnchantManager().getEnchantment(enchant.socket().getKeyString());
         int current = bukkitEnchant == null ? 0 : gear.getEnchantmentLevel(bukkitEnchant);
         int used = plugin.getGearService().usedSockets(gear);
@@ -870,18 +921,23 @@ public final class StationGui extends CustomGui {
                 + plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
         var validation = plugin.getGearService().validateEnchantmentApplication(gear, book,
                 enchant.socket().getKeyString());
-        String invalid = validation.success() ? "<green>None</green>"
+        String invalid = validation.success() ? text("previews.application.valid", "<green>None</green>")
                 : plugin.getMessageManager().getMessage(player, "messages." + validation.messageKey());
-        if (invalid == null) invalid = "<red>" + validation.messageKey() + "</red>";
-        return new ItemBuilder(Material.PAPER).name("<aqua><b>Application Preview</b></aqua>")
-                .lore(List.of(
-                        "<gray>Gear UUID: <white>" + gearInstance.uuid() + "</white></gray>",
-                        "<gray>Enchantment: <white>" + enchant.socket().getKeyString() + "</white></gray>",
-                        "<gray>Level: <white>" + current + " → " + enchant.level() + "</white></gray>",
-                        "<gray>Sockets: <white>" + used + " → " + (used + (current == 0 ? 1 : 0)) + " / " + capacity + "</white></gray>",
-                        "<gray>Standard / absolute max: <white>" + standard + " / " + absolute + "</white></gray>",
-                        "<gray>Compatibility/conflicts: <white>EcoEnchants + configured policy</white></gray>",
-                        "<gray>Invalid reason: <white>" + invalid + "</white></gray>"))
+        if (invalid == null) invalid = text("previews.application.missing-message", "%reason%",
+                "%reason%", validation.messageKey());
+        return new ItemBuilder(Material.PAPER)
+                .name(text("previews.application.title", "Application Preview"))
+                .lore(lines("previews.application.lore", List.of(),
+                        "%uuid%", gearInstance.uuid().toString(),
+                        "%enchantment%", enchant.socket().getKeyString(),
+                        "%current_level%", String.valueOf(current),
+                        "%resulting_level%", String.valueOf(enchant.level()),
+                        "%current_sockets%", String.valueOf(used),
+                        "%resulting_sockets%", String.valueOf(used + (current == 0 ? 1 : 0)),
+                        "%socket_capacity%", String.valueOf(capacity),
+                        "%standard_maximum%", String.valueOf(standard),
+                        "%absolute_maximum%", String.valueOf(absolute),
+                        "%invalid_reason%", invalid))
                 .build();
     }
 }
