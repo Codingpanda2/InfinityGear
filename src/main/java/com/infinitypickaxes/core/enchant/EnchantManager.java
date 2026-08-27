@@ -478,7 +478,7 @@ public class EnchantManager {
                 -1,
                 policy.getBoolean(path + ".enabled", true),
                 Math.max(0, policy.getInt(path + ".unlock-pickaxe-level", 0)),
-                effectiveMaximum(policy.get(path + ".max-level"), enchantment.getMaxLevel(), id),
+                effectiveVanillaMaximum(policy.get(path + ".max-level"), enchantment.getMaxLevel(), id),
                 new TreeMap<>(),
                 description,
                 null,
@@ -503,6 +503,19 @@ public class EnchantManager {
                 if (Integer.parseInt(String.valueOf(configured)) < 1) throw new NumberFormatException();
             } catch (NumberFormatException exception) {
                 plugin.getLogger().warning("Invalid max-level for managed enchantment '" + id
+                        + "'; inheriting its native maximum " + nativeMaximum + ".");
+            }
+        }
+        return effective;
+    }
+
+    private int effectiveVanillaMaximum(Object configured, int nativeMaximum, String id) {
+        int effective = EnchantPolicySynchronizer.effectiveVanillaMaximum(configured, nativeMaximum);
+        if (configured != null && !"inherit".equalsIgnoreCase(String.valueOf(configured))) {
+            try {
+                if (Integer.parseInt(String.valueOf(configured)) < 1) throw new NumberFormatException();
+            } catch (NumberFormatException exception) {
+                plugin.getLogger().warning("Invalid max-level for managed vanilla enchantment '" + id
                         + "'; inheriting its native maximum " + nativeMaximum + ".");
             }
         }

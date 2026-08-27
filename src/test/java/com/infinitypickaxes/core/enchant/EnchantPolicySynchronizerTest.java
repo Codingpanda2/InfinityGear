@@ -151,6 +151,14 @@ class EnchantPolicySynchronizerTest {
         assertEquals(10, EnchantPolicySynchronizer.effectiveMaximum("invalid", 10));
     }
 
+    @Test
+    void configuredVanillaMaximumMayDeliberatelyExceedNativeMaximum() {
+        assertEquals(3, EnchantPolicySynchronizer.effectiveVanillaMaximum("inherit", 3));
+        assertEquals(2, EnchantPolicySynchronizer.effectiveVanillaMaximum(2, 3));
+        assertEquals(5, EnchantPolicySynchronizer.effectiveVanillaMaximum(5, 3));
+        assertEquals(3, EnchantPolicySynchronizer.effectiveVanillaMaximum("invalid", 3));
+    }
+
     private static EnchantPolicySynchronizer.EnchantDescriptor enchant(String id) {
         return new EnchantPolicySynchronizer.EnchantDescriptor(id, "ecoenchants:" + id);
     }

@@ -97,6 +97,24 @@ final class EnchantPolicySynchronizer {
         }
     }
 
+    /**
+     * Vanilla managed exceptions may deliberately use unsafe Bukkit levels.
+     * Unlike EcoEnchants, there is no external provider maximum to preserve;
+     * an explicit administrator value is therefore the standard policy cap.
+     */
+    static int effectiveVanillaMaximum(Object configured, int nativeMaximum) {
+        int safeNativeMaximum = Math.max(1, nativeMaximum);
+        if (configured == null || "inherit".equalsIgnoreCase(String.valueOf(configured))) {
+            return safeNativeMaximum;
+        }
+        try {
+            int administratorMaximum = Integer.parseInt(String.valueOf(configured));
+            return administratorMaximum < 1 ? safeNativeMaximum : administratorMaximum;
+        } catch (NumberFormatException exception) {
+            return safeNativeMaximum;
+        }
+    }
+
     record SyncResult(List<String> added, List<String> orphaned, List<String> updated,
                       List<String> migrated, boolean migrationMarkerAdded) {
         boolean changed() {

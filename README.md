@@ -59,7 +59,7 @@ Socket expansion consumes the configured Runic Rivet/payment, permanently adds o
 
 `items.yml` defines provider, vanilla material or Nexo item ID, name, lore, model data, enabled/required/consumed policy, and unique tracking for Runic Eraser, Runic Conduit, and Runic Rivet. Nexo supplies the visual template; InfinityGear stamps the UUID/kind/type/schema/quarantine identity. A raw Nexo item or stacked tracked singleton is invalid.
 
-Specific and universal legacy LimitBreak books remain recognized. The enchantment must already exist at its configured standard maximum; LimitBreak adds exactly one, cannot introduce an enchantment, and cannot exceed the absolute profile/progression maximum. Used overcap levels are derived as `current - standard`; there is no separate counter. Universal books require explicit selection. Runes, pity, reward distribution, Black Archive gacha, dungeons, and NoxwardArchives are deliberately outside this project.
+Specific and universal legacy LimitBreak books remain recognized. The enchantment must already exist at its configured standard maximum; LimitBreak adds exactly one, cannot introduce an enchantment, and cannot exceed the absolute profile/progression maximum. Used overcap levels are derived as `current - standard`; there is no separate counter. Universal books require explicit selection. EcoEnchant maximums remain authoritative and administrator values may only tighten them; explicitly configured vanilla managed exceptions such as Fortune may deliberately exceed Bukkit's native safe maximum. Runes, pity, reward distribution, Black Archive gacha, dungeons, and NoxwardArchives are deliberately outside this project.
 
 ## Costs
 
