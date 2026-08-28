@@ -1,0 +1,44 @@
+config-version: 1
+# Physical mutation stations. The portable /igear command remains read-only.
+#
+# Providers:
+#   VANILLA - match the configured Bukkit material below.
+#   NEXO    - match the official Nexo item ID from a placed custom block or
+#             furniture interaction. Requires a compatible Nexo installation.
+#
+# A missing provider, invalid material, blank Nexo ID, or unavailable Nexo
+# integration disables that station instead of granting portable access.
+# Bypass permissions authorize `/igear station <type>`; they never make an
+# arbitrary right-clicked block count as a station.
+# `require-registered-instance: true` means an administrator must target the
+# placed block and run `/igear station bind <type>`. Bindings persist in
+# station-instances.yml. Ordinary blocks of the same material do nothing.
+# Nexo furniture is bound and authorized by its stable base-entity location,
+# never by the variable clicked hitbox/interaction point.
+# If direct furniture targeting fails, `station bind` arms a 30-second window;
+# right-click the matching Nexo furniture to complete the binding.
+stations:
+  runic-table:
+    enabled: true
+    provider: VANILLA
+    material: ENCHANTING_TABLE
+    # nexo-id: my_pack:runic_table
+    interaction-distance: 6.0
+    require-registered-instance: true
+    bypass-permission: infinitygear.station.runic-table.bypass
+  fusion-altar:
+    enabled: true
+    provider: VANILLA
+    material: CRYING_OBSIDIAN
+    # nexo-id: my_pack:fusion_altar
+    interaction-distance: 6.0
+    require-registered-instance: true
+    bypass-permission: infinitygear.station.fusion-altar.bypass
+  gear-forge:
+    enabled: true
+    provider: VANILLA
+    material: SMITHING_TABLE
+    # nexo-id: my_pack:gear_forge
+    interaction-distance: 6.0
+    require-registered-instance: true
+    bypass-permission: infinitygear.station.gear-forge.bypass

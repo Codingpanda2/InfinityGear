@@ -39,6 +39,14 @@ public class MessageManager {
 
     public void sendMessage(CommandSender sender, String key, String... placeholders) {
         if (sender == null) return;
+        String message = getMessage(sender, key, placeholders);
+        if (message == null || message.isEmpty()) return;
+        sender.sendMessage(TextUtil.parse(getPrefix(sender) + message));
+    }
+
+    /** Resolves an administrator-editable locale entry without adding the chat prefix. */
+    public String getMessage(CommandSender sender, String key, String... placeholders) {
+        if (sender == null) return null;
         FileConfiguration config = getSenderConfig(sender);
         String message = config.getString(key);
         if (message == null || message.isEmpty()) {
@@ -46,10 +54,7 @@ public class MessageManager {
             config = plugin.getConfigManager().getLocaleConfig("en");
             message = config.getString(key);
         }
-        if (message == null || message.isEmpty()) return;
-
-        message = applyPlaceholders(message, placeholders);
-        sender.sendMessage(TextUtil.parse(getPrefix(sender) + message));
+        return message == null || message.isEmpty() ? null : applyPlaceholders(message, placeholders);
     }
 
     public void sendRawMessage(CommandSender sender, String rawMessage, String... placeholders) {

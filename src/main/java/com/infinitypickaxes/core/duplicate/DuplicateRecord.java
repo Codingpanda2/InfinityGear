@@ -10,5 +10,14 @@ public record DuplicateRecord(
         Instant lastUpdated,
         String reason,
         String resolvedBy,
-        UUID replacementUuid
-) {}
+        UUID replacementUuid,
+        String trackedKind,
+        String trackedType
+) {
+    /** Binary/source compatibility constructor for legacy pickaxe callers. */
+    public DuplicateRecord(UUID uuid, DuplicateStatus status, Instant firstDetected, Instant lastUpdated,
+                           String reason, String resolvedBy, UUID replacementUuid) {
+        this(uuid, status, firstDetected, lastUpdated, reason, resolvedBy, replacementUuid,
+                "GEAR", "infinitygear:pickaxe");
+    }
+}

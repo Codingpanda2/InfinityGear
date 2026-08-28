@@ -10,6 +10,8 @@ import com.infinitypickaxes.core.pickaxe.PickaxeManager;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+/** @deprecated Use the Bukkit-registered InfinityGearService capability API. */
+@Deprecated
 public final class InfinityPickaxesAPI {
 
     private InfinityPickaxesAPI() {}
@@ -44,5 +46,9 @@ public final class InfinityPickaxesAPI {
 
     public static PickaxeDuplicateService getDuplicateService() {
         return InfinityPickaxes.getInstance().getDuplicateService();
+    }
+
+    public static com.infinitygear.api.InfinityGearService getGearService() {
+        return InfinityPickaxes.getInstance().getGearService();
     }
 }

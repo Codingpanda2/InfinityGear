@@ -6,6 +6,7 @@ import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitypickaxes.gui.EnchantSocketsGui;
 import com.infinitypickaxes.gui.MainPickaxeGui;
+import com.infinitygear.data.GearData;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -14,6 +15,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.enchantment.EnchantItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -31,6 +33,9 @@ public class PickaxeInteractListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
+        // Observe cancelled events so we can leave them cancelled, but never
+        // open a GUI or dispatch a configured command after another plugin vetoed use.
+        if (event.isCancelled()) return;
 
         Player player = event.getPlayer();
         if (!player.hasPermission("infinitypickaxes.use")) return;
@@ -99,6 +104,11 @@ public class PickaxeInteractListener implements Listener {
         if (plugin.getLimitBreakManager() == null || !plugin.getLimitBreakManager().isLimitBreakBook(cursor)) {
             return;
         }
+        if (!player.hasPermission("infinitygear.station.runic-table.bypass")) {
+            event.setCancelled(true);
+            plugin.getMessageManager().sendMessage(player, "messages.enchant-use-socket-menu");
+            return;
+        }
 
         if (!PickaxeData.isInfinityPickaxe(current)) {
             return;
@@ -144,7 +154,7 @@ public class PickaxeInteractListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) return;
         ItemStack target = event.getCurrentItem();
         ItemStack cursor = event.getCursor();
-        if (!PickaxeData.isInfinityPickaxe(target)
+        if (!GearData.isGear(target)
                 || !plugin.getEnchantManager().containsManagedEnchantBook(cursor)) {
             return;
         }
@@ -157,16 +167,30 @@ public class PickaxeInteractListener implements Listener {
     public void onPrepareAnvil(PrepareAnvilEvent event) {
         ItemStack pickaxe = event.getInventory().getFirstItem();
         ItemStack result = event.getResult();
-        if (PickaxeData.isInfinityPickaxe(pickaxe)
-                && plugin.getEnchantManager().hasManagedEnchantIncrease(pickaxe, result)) {
+        if (GearData.isGear(pickaxe)
+                && (plugin.getEnchantManager().hasManagedEnchantIncrease(pickaxe, result)
+                || plugin.getEnchantManager().hasAnyEnchantIncrease(pickaxe, result))) {
             event.setResult(null);
+        }
+    }
+
+    /** Final take-time guard in case another plugin rebuilds the preview after PrepareAnvilEvent. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onAnvilResultTake(InventoryClickEvent event) {
+        if (!(event.getInventory() instanceof AnvilInventory anvil) || event.getRawSlot() != 2) return;
+        ItemStack gear = anvil.getFirstItem();
+        ItemStack result = event.getCurrentItem();
+        if (GearData.isGear(gear) && (plugin.getEnchantManager().hasManagedEnchantIncrease(gear, result)
+                || plugin.getEnchantManager().hasAnyEnchantIncrease(gear, result))) {
+            event.setCancelled(true);
+            anvil.setResult(null);
         }
     }
 
     /** Managed pickaxes must not bypass progression through an enchanting table. */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
     public void onEnchantItem(EnchantItemEvent event) {
-        if (PickaxeData.isInfinityPickaxe(event.getItem())) {
+        if (GearData.isGear(event.getItem())) {
             event.setCancelled(true);
         }
     }

@@ -53,6 +53,19 @@ public final class EcoEnchantsHook {
         return List.copyOf(result);
     }
 
+    /** All visible live EcoEnchants; profile/item compatibility is checked at application time. */
+    public Collection<EcoEnchant> getGearEnchants() {
+        if (!isEcoEnchantsPresent()) return List.of();
+        List<EcoEnchant> result = new ArrayList<>();
+        for (EcoEnchant enchant : EcoEnchants.INSTANCE.values()) {
+            if (enchant != null && !enchant.isHiddenFromGui() && enchant.getEnchantment() != null) {
+                result.add(enchant);
+            }
+        }
+        result.sort(Comparator.comparing(EcoEnchant::getID, String.CASE_INSENSITIVE_ORDER));
+        return List.copyOf(result);
+    }
+
     /**
      * EcoEnchants declares pickaxe compatibility with the stable target IDs
      * "pickaxe" and "all". Prefer those identities over re-evaluating their

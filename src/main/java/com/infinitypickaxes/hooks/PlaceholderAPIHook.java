@@ -101,7 +101,7 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                 return String.valueOf(plugin.getEnchantManager().countUsedSockets(pickaxe));
             }
             case "max_sockets" -> {
-                return String.valueOf(plugin.getEnchantManager().getSocketLimit(pickaxe.getLevel()));
+                return String.valueOf(plugin.getEnchantManager().getSocketLimit(pickaxe));
             }
         }
 

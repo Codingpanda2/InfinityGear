@@ -6,6 +6,8 @@ import com.infinitypickaxes.core.enchant.EnchantSocket;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
 import com.infinitypickaxes.utils.ItemBuilder;
 import com.infinitypickaxes.utils.SoundUtil;
+import com.infinitygear.api.events.GearEnchantChangeEvent;
+import com.infinitygear.data.GearData;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -175,7 +177,8 @@ public class LimitBreakManager {
             plugin.getMessageManager().sendMessage(player, "messages.pickaxe-quarantined");
             return false;
         }
-        if (!socket.isEnabled()) return false;
+        var resolved = plugin.getEnchantManager().resolvedPolicy(pickaxe, socket);
+        if (!resolved.enabled()) return false;
         if (!socket.supportsLimitBreak()) {
             plugin.getMessageManager().sendMessage(player, "messages.limitbreak-not-supported",
                     "%enchant%", socket.getDisplayName());
@@ -211,21 +214,32 @@ public class LimitBreakManager {
         }
 
         // 3. The target enchantment's own unlock policy remains authoritative.
-        if (!socket.isUnlocked(pickaxe.getLevel())) {
+        if (!resolved.unlockedAt(pickaxe.getLevel())) {
             plugin.getMessageManager().sendMessage(player, "messages.limitbreak-locked-pickaxe-level",
-                    "%required%", String.valueOf(socket.getUnlockPickaxeLevel()),
+                    "%required%", String.valueOf(resolved.unlockLevel()),
                     "%enchant%", socket.getDisplayName());
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
             return false;
         }
 
         int currentLvl = pickaxe.getEnchantmentLevel(socket.getKeyString());
-        if (currentLvl == 0 && !plugin.getEnchantManager().canIntroduceEnchantment(player, pickaxe, socket)) {
+        if (currentLvl == 0) {
+            plugin.getMessageManager().sendMessage(player, "messages.limitbreak-missing-enchantment",
+                    "%enchant%", socket.getDisplayName());
             return false;
         }
-        int baseMax = socket.getMaxLevel();
+        int baseMax = getStandardMaximum(pickaxe, socket);
         int maxExtra = getMaxExtraLevels(pickaxe.getLevel());
-        int absoluteMax = baseMax + maxExtra;
+        int absoluteMax = getAbsoluteMaximum(pickaxe, socket);
+
+        // LimitBreak is an overcap operation, never a substitute for ordinary
+        // target-level books. It becomes valid only at the standard maximum.
+        if (currentLvl < baseMax) {
+            plugin.getMessageManager().sendMessage(player, "messages.limitbreak-premature",
+                    "%enchant%", socket.getDisplayName(),
+                    "%max%", String.valueOf(baseMax));
+            return false;
+        }
 
         // 4. Check the pickaxe-level LimitBreak ceiling.
         if (currentLvl >= absoluteMax) {
@@ -239,10 +253,20 @@ public class LimitBreakManager {
 
         int nextLvl = currentLvl + 1;
 
-        // 5. Call Bukkit API Event
+        GearEnchantChangeEvent gearEvent = new GearEnchantChangeEvent(player, pickaxe.getItemStack(),
+                GearData.LEGACY_PICKAXE_PROFILE, socket.getKeyString(), currentLvl, nextLvl,
+                GearEnchantChangeEvent.Operation.LIMIT_BREAK);
+        Bukkit.getPluginManager().callEvent(gearEvent);
+        if (gearEvent.isCancelled()) {
+            plugin.getMessageManager().sendMessage(player, "messages.station.cancelled-by-plugin");
+            return false;
+        }
+
+        // Continue firing the compatible legacy pickaxe event.
         LimitBreakApplyEvent event = new LimitBreakApplyEvent(player, pickaxe, socket, bookItem, universal, currentLvl, nextLvl);
         Bukkit.getPluginManager().callEvent(event);
         if (event.isCancelled()) {
+            plugin.getMessageManager().sendMessage(player, "messages.station.cancelled-by-plugin");
             return false;
         }
 
@@ -286,5 +310,17 @@ public class LimitBreakManager {
                 "%limitbreak_indicator%", extraIndicator);
 
         return true;
+    }
+
+    /** Resolves the profile's ordinary cap while retaining the socket cap as the default. */
+    public int getStandardMaximum(InfinityPickaxe pickaxe, EnchantSocket socket) {
+        if (socket == null) return 0;
+        return plugin.getEnchantManager().resolvedPolicy(pickaxe, socket).standardMaximum();
+    }
+
+    /** Resolves the per-profile absolute LimitBreak cap, falling back to progression allowance. */
+    public int getAbsoluteMaximum(InfinityPickaxe pickaxe, EnchantSocket socket) {
+        if (socket == null) return 0;
+        return plugin.getEnchantManager().resolvedPolicy(pickaxe, socket).absoluteMaximum();
     }
 }

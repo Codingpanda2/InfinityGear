@@ -147,10 +147,15 @@ public class EnchantSocket {
         if (!isUnlocked(pickaxeLevel)) {
             return 0;
         }
+        return getMaximumAtLevel(pickaxeLevel);
+    }
+
+    /** Resolves level scaling independently from the global unlock threshold. */
+    public int getMaximumAtLevel(int gearLevel) {
         if (levelScaling.isEmpty()) {
             return maxLevel;
         }
-        var entry = levelScaling.floorEntry(pickaxeLevel);
+        var entry = levelScaling.floorEntry(gearLevel);
         if (entry != null) {
             return Math.min(maxLevel, entry.getValue());
         }

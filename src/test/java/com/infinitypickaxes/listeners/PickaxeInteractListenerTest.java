@@ -6,8 +6,8 @@ import com.infinitypickaxes.config.ConfigManager;
 import com.infinitypickaxes.core.duplicate.PickaxeDuplicateService;
 import com.infinitypickaxes.core.enchant.EnchantManager;
 import com.infinitypickaxes.core.pickaxe.InfinityPickaxe;
-import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
+import com.infinitygear.data.GearData;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -34,6 +34,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PickaxeInteractListenerTest {
@@ -60,8 +61,8 @@ class PickaxeInteractListenerTest {
         when(event.getCursor()).thenReturn(book);
         when(enchantManager.containsManagedEnchantBook(book)).thenReturn(true);
 
-        try (MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
-            pickaxeData.when(() -> PickaxeData.isInfinityPickaxe(pickaxe)).thenReturn(true);
+        try (MockedStatic<GearData> gearData = mockStatic(GearData.class)) {
+            gearData.when(() -> GearData.isGear(pickaxe)).thenReturn(true);
             new PickaxeInteractListener(plugin).onDirectManagedEnchantDrop(event);
         }
 
@@ -87,12 +88,35 @@ class PickaxeInteractListenerTest {
         when(event.getInventory()).thenReturn(inventory);
         when(event.getResult()).thenReturn(result);
 
-        try (MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
-            pickaxeData.when(() -> PickaxeData.isInfinityPickaxe(pickaxe)).thenReturn(true);
+        try (MockedStatic<GearData> gearData = mockStatic(GearData.class)) {
+            gearData.when(() -> GearData.isGear(pickaxe)).thenReturn(true);
             new PickaxeInteractListener(plugin).onPrepareAnvil(event);
         }
 
         verify(event).setResult(null);
+    }
+
+    @Test
+    void anvilResultTakeIsCancelledEvenIfAnotherPluginRestoresThePreview() {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        EnchantManager enchantManager = mock(EnchantManager.class);
+        when(plugin.getEnchantManager()).thenReturn(enchantManager);
+        ItemStack gear = mock(ItemStack.class), result = mock(ItemStack.class);
+        AnvilInventory inventory = mock(AnvilInventory.class);
+        when(inventory.getFirstItem()).thenReturn(gear);
+        when(enchantManager.hasAnyEnchantIncrease(gear, result)).thenReturn(true);
+        InventoryClickEvent event = mock(InventoryClickEvent.class);
+        when(event.getInventory()).thenReturn(inventory);
+        when(event.getRawSlot()).thenReturn(2);
+        when(event.getCurrentItem()).thenReturn(result);
+
+        try (MockedStatic<GearData> gearData = mockStatic(GearData.class)) {
+            gearData.when(() -> GearData.isGear(gear)).thenReturn(true);
+            new PickaxeInteractListener(plugin).onAnvilResultTake(event);
+        }
+
+        verify(event).setCancelled(true);
+        verify(inventory).setResult(null);
     }
 
     @Test
@@ -102,8 +126,8 @@ class PickaxeInteractListenerTest {
         EnchantItemEvent event = mock(EnchantItemEvent.class);
         when(event.getItem()).thenReturn(pickaxe);
 
-        try (MockedStatic<PickaxeData> pickaxeData = mockStatic(PickaxeData.class)) {
-            pickaxeData.when(() -> PickaxeData.isInfinityPickaxe(pickaxe)).thenReturn(true);
+        try (MockedStatic<GearData> gearData = mockStatic(GearData.class)) {
+            gearData.when(() -> GearData.isGear(pickaxe)).thenReturn(true);
             new PickaxeInteractListener(plugin).onEnchantItem(event);
         }
 
@@ -171,5 +195,19 @@ class PickaxeInteractListenerTest {
                 .getAnnotation(EventHandler.class);
 
         assertFalse(handler.ignoreCancelled());
+    }
+
+    @Test
+    void cancelledMenuInteractionDoesNotDispatchOrResolveGear() {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        PickaxeManager pickaxes = mock(PickaxeManager.class);
+        PlayerInteractEvent event = mock(PlayerInteractEvent.class);
+        when(plugin.getPickaxeManager()).thenReturn(pickaxes);
+        when(event.getHand()).thenReturn(EquipmentSlot.HAND);
+        when(event.isCancelled()).thenReturn(true);
+
+        new PickaxeInteractListener(plugin).onPlayerInteract(event);
+
+        verifyNoInteractions(pickaxes);
     }
 }

@@ -13,6 +13,16 @@ import com.infinitypickaxes.gui.GuiManager;
 import com.infinitypickaxes.hooks.PlaceholderAPIHook;
 import com.infinitypickaxes.listeners.*;
 import com.infinitypickaxes.utils.TextUtil;
+import com.infinitygear.config.LegacyDataFolderMigrator;
+import com.infinitygear.gear.GearManager;
+import com.infinitygear.gear.GearProfileRegistry;
+import com.infinitygear.api.InfinityGearService;
+import com.infinitygear.api.InfinityGearServiceImpl;
+import com.infinitygear.station.StationManager;
+import com.infinitygear.station.StationListener;
+import com.infinitygear.cost.CostRegistry;
+import com.infinitygear.cost.MoneyGateway;
+import com.infinitygear.cost.UnavailableMoneyGateway;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -21,7 +31,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class InfinityPickaxes extends JavaPlugin {
+/** @deprecated Bootstrap compatibility type. The deployed main class is InfinityGearPlugin. */
+@Deprecated
+public class InfinityPickaxes extends JavaPlugin {
 
     private static InfinityPickaxes instance;
 
@@ -36,12 +48,40 @@ public final class InfinityPickaxes extends JavaPlugin {
     private PlaceholderAPIHook papiHook;
     private PickaxeDuplicateService duplicateService;
     private DuplicateDetectionListener duplicateListener;
+    private GearProfileRegistry gearProfiles;
+    private GearManager gearManager;
+    private InfinityGearService gearService;
+    private StationManager stationManager;
+    private CostRegistry costRegistry;
+    private MoneyGateway moneyGateway;
 
     @Override
     public void onEnable() {
         instance = this;
         long start = System.currentTimeMillis();
         ConsoleCommandSender console = Bukkit.getConsoleSender();
+
+        org.bukkit.plugin.Plugin legacy = getServer().getPluginManager().getPlugin("InfinityPickaxes");
+        if (legacy != null && legacy != this && legacy.isEnabled()) {
+            getLogger().severe("InfinityGear cannot run while the legacy InfinityPickaxes plugin is active. "
+                    + "Remove the old jar after backing it up; InfinityGear provides the legacy identity.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        try {
+            java.io.File parent = getDataFolder().getParentFile();
+            if (parent != null) {
+                var migration = LegacyDataFolderMigrator.migrate(
+                        parent.toPath().resolve("InfinityPickaxes"), getDataFolder().toPath(), java.time.Clock.systemUTC());
+                if (migration.migrated()) getLogger().info("Migrated " + migration.copiedFiles()
+                        + " missing legacy data files after backup to " + migration.backup() + '.');
+            }
+        } catch (Exception migrationFailure) {
+            getLogger().severe("Legacy data-folder migration failed safely; InfinityGear will not enable: "
+                    + migrationFailure.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
 
         // Print header banner
         console.sendMessage(TextUtil.parse(""));
@@ -51,12 +91,18 @@ public final class InfinityPickaxes extends JavaPlugin {
         console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██║╚██╗██║██╔══╝  ██║██║╚██╗██║██║   ██║     ╚██╔╝  </gradient>"));
         console.sendMessage(TextUtil.parse("<gradient:#00E5FF:#0077FE>  ██║██║ ╚████║██║     ██║██║ ╚████║██║   ██║      ██║   </gradient>"));
         console.sendMessage(TextUtil.parse("<gradient:#0077FE:#00E5FF>  ╚═╝╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝      ╚═╝   </gradient>"));
-        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>       ⛏️ INFINITY PICKAXES </b></gradient><gray>v<yellow>" + getDescription().getVersion() + "</yellow> <dark_gray>┃</dark_gray> <gray>Paper 26.2"));
+        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>       ⚒ INFINITY GEAR </b></gradient><gray>v<yellow>" + getDescription().getVersion() + "</yellow> <dark_gray>┃</dark_gray> <gray>Paper 26.2"));
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
 
         // 1. Initialize Configuration & Locales
         this.configManager = new ConfigManager(this);
         this.messageManager = new MessageManager(this);
+        this.gearProfiles = new GearProfileRegistry();
+        this.gearProfiles.load(configManager.getProfilesConfig(), getLogger());
+        this.costRegistry = new CostRegistry();
+        this.costRegistry.load(configManager.getCostsConfig(), getLogger());
+        this.moneyGateway = createMoneyGateway();
+        validateCostProviders();
         console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[1/6]</dark_gray> <white>Configuration & Locales:</white> <green>Loaded (Default: " + configManager.getCurrentLanguage() + ")</green>"));
 
         // 2. Initialize Core Subsystems & LimitBreak
@@ -64,14 +110,19 @@ public final class InfinityPickaxes extends JavaPlugin {
         this.enchantManager = new EnchantManager(this);
         this.limitBreakManager = new LimitBreakManager(this);
         try {
-            this.duplicateService = new PickaxeDuplicateService(this);
+            this.duplicateService = new com.infinitygear.duplicate.GearDuplicateService(this);
         } catch (Exception exception) {
             getLogger().severe("Could not initialize duplicate protection: " + exception.getMessage());
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
         this.pickaxeManager = new PickaxeManager(this);
+        this.gearManager = new GearManager(this, gearProfiles);
+        this.gearService = new InfinityGearServiceImpl(this, gearManager, gearProfiles);
+        getServer().getServicesManager().register(InfinityGearService.class, gearService, this,
+                org.bukkit.plugin.ServicePriority.Normal);
         this.guiManager = new GuiManager(this);
+        this.stationManager = new StationManager(this);
 
         int socketsCount = enchantManager.getAllSockets().size();
         boolean ecoPresent = enchantManager.getEcoHook().isEcoEnchantsPresent();
@@ -90,6 +141,10 @@ public final class InfinityPickaxes extends JavaPlugin {
         pm.registerEvents(new BlockBreakListener(this, placeListener), this);
         pm.registerEvents(new PickaxeInteractListener(this), this);
         pm.registerEvents(this.guiManager, this);
+        pm.registerEvents(new StationListener(this, stationManager), this);
+        if (getServer().getPluginManager().isPluginEnabled("Nexo")) {
+            pm.registerEvents(new com.infinitygear.nexo.NexoStationListener(this, stationManager), this);
+        }
 
         this.heldListener = new PickaxeHeldListener(this);
         pm.registerEvents(this.heldListener, this);
@@ -106,17 +161,18 @@ public final class InfinityPickaxes extends JavaPlugin {
         }
 
         // 5. Register Commands
-        PluginCommand cmd = getCommand("infinitypickaxes");
-        if (cmd != null) {
-            InfinityPickaxeCommand executor = new InfinityPickaxeCommand(this);
+        InfinityPickaxeCommand executor = new InfinityPickaxeCommand(this);
+        for (String commandName : java.util.List.of("infinitygear", "infinitypickaxes")) {
+            PluginCommand cmd = getCommand(commandName);
+            if (cmd == null) continue;
             cmd.setExecutor(executor);
             cmd.setTabCompleter(executor);
-            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Commands & Events:</white> <green>Registered (/ipickaxe, /ipickaxe book, /ipickaxe reload).</green>"));
+            console.sendMessage(TextUtil.parse("<green>  ✔ <dark_gray>[6/6]</dark_gray> <white>Commands & Events:</white> <green>Registered (/igear plus legacy aliases).</green>"));
         }
 
         long elapsed = System.currentTimeMillis() - start;
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
-        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>  ✨ InfinityPickaxes enabled and ready in " + elapsed + "ms! ✨</b></gradient>"));
+        console.sendMessage(TextUtil.parse("<gradient:#00FF88:#00E5FF><b>  ✨ InfinityGear enabled and ready in " + elapsed + "ms! ✨</b></gradient>"));
         console.sendMessage(TextUtil.parse(""));
     }
 
@@ -135,6 +191,11 @@ public final class InfinityPickaxes extends JavaPlugin {
 
         // 2. Reload configurations and locales
         this.configManager.reload();
+        this.gearProfiles.load(configManager.getProfilesConfig(), getLogger());
+        this.costRegistry.load(configManager.getCostsConfig(), getLogger());
+        this.moneyGateway = createMoneyGateway();
+        validateCostProviders();
+        this.stationManager.reload();
 
         // 3. Reload core subsystems
         this.levelManager.loadConfig();
@@ -154,7 +215,7 @@ public final class InfinityPickaxes extends JavaPlugin {
 
         long elapsed = System.currentTimeMillis() - start;
         messageManager.sendMessage(sender, "messages.reload-success");
-        getLogger().info("InfinityPickaxes reloaded in " + elapsed + "ms. Active language: " + configManager.getCurrentLanguage());
+        getLogger().info("InfinityGear reloaded in " + elapsed + "ms. Active language: " + configManager.getCurrentLanguage());
     }
 
     @Override
@@ -188,7 +249,7 @@ public final class InfinityPickaxes extends JavaPlugin {
 
         ConsoleCommandSender console = Bukkit.getConsoleSender();
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
-        console.sendMessage(TextUtil.parse("<red>  ✖ </red><gradient:#FF5555:#FF0055><b>INFINITY PICKAXES</b></gradient> <dark_gray>»</dark_gray> <gray>Plugin disabled safely and all tasks terminated.</gray>"));
+        console.sendMessage(TextUtil.parse("<red>  ✖ </red><gradient:#FF5555:#FF0055><b>INFINITY GEAR</b></gradient> <dark_gray>»</dark_gray> <gray>Plugin disabled safely and all tasks terminated.</gray>"));
         console.sendMessage(TextUtil.parse("<dark_gray>  ─────────────────────────────────────────────────────────────</dark_gray>"));
         instance = null;
     }
@@ -227,5 +288,40 @@ public final class InfinityPickaxes extends JavaPlugin {
 
     public PickaxeDuplicateService getDuplicateService() {
         return duplicateService;
+    }
+    public com.infinitygear.duplicate.GearDuplicateService getGearDuplicateService() {
+        return duplicateService instanceof com.infinitygear.duplicate.GearDuplicateService service ? service : null;
+    }
+
+    public GearProfileRegistry getGearProfiles() { return gearProfiles; }
+    public GearManager getGearManager() { return gearManager; }
+    public InfinityGearService getGearService() { return gearService; }
+    public StationManager getStationManager() { return stationManager; }
+    public CostRegistry getCostRegistry() { return costRegistry; }
+    public MoneyGateway getMoneyGateway() { return moneyGateway; }
+
+    private MoneyGateway createMoneyGateway() {
+        if (!getServer().getPluginManager().isPluginEnabled("Vault")) return new UnavailableMoneyGateway();
+        try {
+            var registration = getServer().getServicesManager()
+                    .getRegistration(net.milkbowl.vault.economy.Economy.class);
+            if (registration != null) return new com.infinitygear.vault.VaultMoneyGateway(registration.getProvider());
+        } catch (LinkageError unavailable) {
+            getLogger().severe("Vault is enabled but its Economy API could not be linked; money options are disabled.");
+        }
+        return new UnavailableMoneyGateway();
+    }
+
+    private void validateCostProviders() {
+        com.infinitygear.nexo.NexoProvider nexo = getServer().getPluginManager().isPluginEnabled("Nexo")
+                ? new com.infinitygear.nexo.NexoProvider() : null;
+        costRegistry.disableUnavailableProviders(moneyGateway, nexo,
+                configManager.getItemsConfig(), getLogger());
+    }
+
+    public void refreshCostProviders() {
+        costRegistry.load(configManager.getCostsConfig(), getLogger());
+        moneyGateway = createMoneyGateway();
+        validateCostProviders();
     }
 }

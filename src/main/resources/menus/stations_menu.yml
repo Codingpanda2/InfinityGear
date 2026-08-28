@@ -1,0 +1,104 @@
+config-version: 1
+
+# All player-visible text rendered inside the Runic Table, Fusion Altar, and
+# Gear Forge inventories. MiniMessage formatting is supported. Unknown or
+# missing entries are restored additively on startup/reload without replacing
+# administrator edits.
+
+titles:
+  runic-table: "<dark_purple><b>Runic Table</b></dark_purple>"
+  fusion-altar: "<light_purple><b>Fusion Altar</b></light_purple>"
+  gear-forge: "<gold><b>Gear Forge</b></gold>"
+
+items:
+  operations:
+    apply-enchantment: "<aqua><b>Apply Enchantment</b></aqua>"
+    remove-enchantment: "<aqua><b>Remove Enchantment</b></aqua>"
+    transfer-enchantment: "<aqua><b>Transfer Enchantment</b></aqua>"
+    view-policy: "<aqua><b>View Policy</b></aqua>"
+    fuse-pair: "<aqua><b>Fuse Pair</b></aqua>"
+    fuse-all-matching: "<aqua><b>Fuse All Matching</b></aqua>"
+    expand-socket-capacity: "<aqua><b>Expand Socket Capacity</b></aqua>"
+    lore:
+      - "<gray>Select live input slots from your inventory below.</gray>"
+      - "<dark_gray>Inputs remain in place until a validated confirmation.</dark_gray>"
+  payment:
+    name: "<gold>Payment Option</gold>"
+    cycle-lore: "<gray>Click to select another configured option.</gray>"
+    unavailable: "<red>No usable cost option</red>"
+    free: "<green>Free</green>"
+    option-format: "<white>%option%: %components%</white>"
+    component-format: "%amount% %type%%item%"
+    item-suffix-format: " %item_id%"
+    component-separator: " + "
+  selected-enchantment:
+    name: "<light_purple>Selected Enchantment</light_purple>"
+    value: "<white>%enchantment%</white>"
+    none: "<red>No managed enchantment selected</red>"
+    cycle-lore: "<gray>Click to cycle.</gray>"
+  confirm:
+    name: "<green><b>Confirm</b></green>"
+    lore:
+      - "<yellow>All live inputs, station, identity, policy and cost are revalidated.</yellow>"
+  close:
+    name: "<red>Close</red>"
+
+previews:
+  application:
+    title: "<aqua><b>Application Preview</b></aqua>"
+    invalid-inputs: "<red>Invalid: select gear and one book</red>"
+    malformed-gear: "<red>Invalid: malformed gear identity</red>"
+    invalid-book: "<red>Invalid: book needs exactly one managed enchantment</red>"
+    valid: "<green>None</green>"
+    missing-message: "<red>%reason%</red>"
+    lore:
+      - "<gray>Gear UUID: <white>%uuid%</white></gray>"
+      - "<gray>Enchantment: <white>%enchantment%</white></gray>"
+      - "<gray>Level: <white>%current_level% → %resulting_level%</white></gray>"
+      - "<gray>Sockets: <white>%current_sockets% → %resulting_sockets% / %socket_capacity%</white></gray>"
+      - "<gray>Standard / absolute max: <white>%standard_maximum% / %absolute_maximum%</white></gray>"
+      - "<gray>Compatibility/conflicts: <white>EcoEnchants + configured policy</white></gray>"
+      - "<gray>Invalid reason: <white>%invalid_reason%</white></gray>"
+  limitbreak:
+    title: "<light_purple><b>LimitBreak Preview</b></light_purple>"
+    lore:
+      - "<gray>Target must already exist at its standard maximum.</gray>"
+      - "<gray>Result: exactly +1, capped by the absolute maximum.</gray>"
+      - "<gray>Universal books use the selected installed enchantment.</gray>"
+  fusion:
+    title: "<light_purple><b>Fusion Preview</b></light_purple>"
+    invalid: "<red>No valid fusion plan</red>"
+    consumed-line: "<red>Consume input: level %level%</red>"
+    output-line: "<green>Create output: level %level%</green>"
+    cost-line: "<gray>Pairwise fusions charged: <white>%count%</white></gray>"
+  forge:
+    title: "<gold><b>Socket Expansion Preview</b></gold>"
+    missing-gear: "<red>Select one InfinityGear item</red>"
+    invalid-gear: "<red>Invalid gear/profile</red>"
+    status:
+      none: "valid"
+      catalyst-missing: "catalyst missing"
+      at-maximum: "at maximum"
+      grandfathered-over-maximum: "grandfathered above maximum"
+    lore:
+      - "<gray>Gear UUID: <white>%uuid%</white></gray>"
+      - "<gray>Capacity: <white>%current% → %resulting%</white></gray>"
+      - "<gray>Profile maximum: <white>%maximum%</white></gray>"
+      - "<gray>Status: <white>%status%</white></gray>"
+  view:
+    title: "<aqua><b>Installed Enchantments & Policy</b></aqua>"
+    missing-source: "<red>Select gear or an enchanted book</red>"
+    profile-line: "<gray>Profile: <white>%profile%</white></gray>"
+    uuid-line: "<gray>UUID: <white>%uuid%</white></gray>"
+    level-mode-line: "<gray>Level/mode: <white>%level% / %mode%</white></gray>"
+    sockets-line: "<gray>Sockets: <white>%used% / %capacity%</white></gray>"
+    expanded-maximum-line: "<gray>Expanded maximum: <white>%maximum%</white></gray>"
+    ordinary-book-line: "<gray>Source: <white>ordinary enchanted book</white></gray>"
+    separator: ""
+    unknown-mode: "unknown"
+    no-enchantments: "<red>No installed managed enchantments.</red>"
+    enchantment-line: "<white>%enchantment% %level%</white> <dark_gray>(standard %standard_maximum%, %enabled_state%, %removable_state%)</dark_gray>"
+    enabled: "enabled"
+    grandfathered-disabled: "grandfathered disabled"
+    removable: "removable"
+    protected: "protected"

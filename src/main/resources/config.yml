@@ -1,9 +1,9 @@
 # ==============================================================================
-#                  INFINITY PICKAXES - MAIN CONFIGURATION
+#                  INFINITY GEAR - MAIN CONFIGURATION
 # ==============================================================================
 
 # Configuration Version - do not change manually
-config-version: "1.0.0"
+config-version: "2.0.0"
 
 # Plugin language (locales/en.yml or locales/es.yml)
 # Default: "en" (English). Set to "es" for Spanish.
@@ -92,6 +92,13 @@ pickaxe-lore:
   # Set to true if you want to override the item name. Default is false (keeps default/vanilla/anvil name).
   custom-display-name: false
   display-name: "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient>"
+  # Prepended only while duplicate protection restricts this item. Empty the
+  # list to hide the visual warning; this never changes quarantine enforcement.
+  # Placeholders: %uuid%, %profile%.
+  quarantine-lore:
+    - "<red><b>QUARANTINED PICKAXE</b></red>"
+    - "<gray>Duplicate UUID: <white>%uuid%</white></gray>"
+    - "<yellow>Contact an administrator to resolve this item.</yellow>"
   lore:
     - "<dark_gray>---------------------</dark_gray>"
     - "<gray>Level: <gold><b>%level%</b></gold></gray>"

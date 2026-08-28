@@ -2,7 +2,7 @@
 #                  INFINITY PICKAXES - ENGLISH LOCALIZATION (en)
 # ==============================================================================
 
-prefix: "<gradient:#00E5FF:#0077FE><b>InfinityPickaxes</b></gradient> <dark_gray>»</dark_gray> "
+prefix: "<gradient:#00E5FF:#0077FE><b>InfinityGear</b></gradient> <dark_gray>»</dark_gray> "
 
 # Real-time Action Bar sent on every block mined
 mining-actionbar:
@@ -11,6 +11,93 @@ mining-actionbar:
   message: "<gradient:#00FF88:#00E5FF><b>+%gained_xp% XP</b></gradient> <dark_gray>┃</dark_gray> %xp_bar% <dark_gray>┃</dark_gray> <yellow>%current_xp%<gray>/<yellow>%required_xp% XP <dark_gray>(<gold>Lv.%level%<dark_gray>)"
 
 messages:
+  # Runic Table, Fusion Altar, and Gear Forge validation. These deliberately
+  # identify the failed precondition instead of sharing one generic rejection.
+  station:
+    session-invalid: "<red>This station is no longer authorized: it was unbound, replaced, moved, or is out of interaction range.</red>"
+    stale-input: "<red>Selected inventory slot <yellow>%slot%</yellow> changed after the preview. No items or payment were consumed; select the inputs again.</red>"
+    stale-confirmation: "<red>An input or gear UUID changed during final confirmation. No items or payment were consumed; select the inputs again.</red>"
+    unknown-operation: "<red>The selected station operation is no longer available. Close and reopen the station.</red>"
+    cancelled-by-plugin: "<red>Another plugin cancelled this operation during final validation. Nothing was charged or consumed.</red>"
+    invalid-input: "<red>The selected input could not be transformed safely. Re-select an unmodified supported item.</red>"
+    selected-enchantment-missing: "<red>The selected enchantment is no longer present on the live source item.</red>"
+    source-no-managed-enchantment: "<red>The selected source contains no installed enchantment managed by InfinityGear.</red>"
+    gear-malformed: "<red>The selected item has malformed InfinityGear identity data. It was not modified; ask an administrator to run migration diagnostics.</red>"
+    gear-restricted: "<red>The selected gear is quarantined or revoked by duplicate protection and cannot be modified.</red>"
+    gear-unknown-profile: "<red>The selected gear references unavailable profile <yellow>%profile%</yellow>. Enable or restore that profile before modifying it.</red>"
+    inventory-full: "<red>The operation needs more inventory space for its outputs. Free a storage slot and try again.</red>"
+    mutation-failed: "<red>The inventory mutation failed and was rolled back. No cost or input should remain consumed.</red>"
+    operation-failed: "<red>The operation failed during final revalidation and was rolled back. Reopen the station and try again.</red>"
+    application:
+      missing-gear: "<red>Select exactly one InfinityGear item from your player inventory.</red>"
+      missing-book: "<red>Select one enchanted book containing exactly one managed enchantment.</red>"
+      unmanaged-book: "<red>The selected book contains no enchantment managed by InfinityGear.</red>"
+      multiple-enchantments: "<red>Application books must contain exactly one managed enchantment; this book contains multiple.</red>"
+    limitbreak:
+      pickaxe-profile-required: "<red>Legacy LimitBreak books currently support only gear using the migrated pickaxe profile.</red>"
+      no-installed-enchantment: "<red>This gear has no installed managed enchantment available for the universal LimitBreak book.</red>"
+      target-unavailable: "<red>The enchantment named by this LimitBreak book is unavailable or no longer managed.</red>"
+      disabled: "<red><aqua>%enchant%</aqua> is disabled by administrator policy. Existing levels remain active, but it cannot be LimitBroken.</red>"
+      enchantment-locked: "<red><aqua>%enchant%</aqua> requires pickaxe level <yellow>%required%</yellow> before it can be modified.</red>"
+    removal:
+      missing-source: "<red>Select one InfinityGear item or enchanted book as the removal source.</red>"
+      non-removable: "<red><aqua>%enchant%</aqua> is protected by the non-removable policy.</red>"
+    transfer:
+      missing-source: "<red>Select one InfinityGear item or enchanted book as the transfer source.</red>"
+      non-removable: "<red><aqua>%enchant%</aqua> is protected by the profile's non-removable policy and cannot be transferred.</red>"
+      blank-book-required: "<red>Select a completely blank ordinary book. Enchanted books and books with enchantment metadata are not valid.</red>"
+      overcap-not-supported: "<red>LimitBroken or over-standard enchantment levels cannot be transferred in this version.</red>"
+    fusion:
+      exactly-two-books: "<red>Fuse Pair requires exactly two enchanted-book slots; <yellow>%selected%</yellow> valid books are currently selected.</red>"
+      missing-selection: "<red>Select one single-enchantment book to choose the canonical enchantment for Fuse All Matching.</red>"
+      invalid-book: "<red>Each fusion input must be an enchanted book containing exactly one managed enchantment and no unrelated enchantments.</red>"
+      multiple-enchantments: "<red>Fusion books cannot contain multiple enchantments.</red>"
+      different-enchantments: "<red>The two books contain different canonical enchantments.</red>"
+      different-levels: "<red>The two books must have identical levels.</red>"
+      standard-maximum: "<red>Fusion cannot create a book above this enchantment's configured standard maximum.</red>"
+      no-matching-pair: "<red>No two matching books at the same level can be fused. Books already at the standard maximum remain untouched.</red>"
+      unknown: "<red>The fusion plan became invalid. Re-select the books and preview it again.</red>"
+    forge:
+      missing-gear: "<red>Select one InfinityGear item to expand its socket capacity.</red>"
+      catalyst-missing: "<red>The configured socket-expansion catalyst is missing.</red>"
+      at-maximum: "<red>This item's socket capacity is already at its profile maximum of <yellow>%maximum%</yellow>.</red>"
+      grandfathered-over-maximum: "<red>This grandfathered item already has <yellow>%current%</yellow> sockets, above its current profile maximum of <yellow>%maximum%</yellow>; it cannot be expanded further.</red>"
+      unknown: "<red>The socket expansion policy rejected this item for an unknown reason.</red>"
+    payment:
+      no-option: "<red><yellow>%operation%</yellow> is disabled because configuration validation left no usable payment option.</red>"
+      provider-unavailable: "<red>Payment option <yellow>%option%</yellow> requires an unavailable or invalid Vault/Nexo provider.</red>"
+      insufficient: "<red>You cannot afford payment option <yellow>%option%</yellow>. Required: <white>%cost%</white>.</red>"
+      changed: "<red>Your balance, XP, or required items changed during confirmation. The operation was cancelled and earlier withdrawals were compensated.</red>"
+
+  api:
+    primary-thread: "<red>This operation must run on the server thread.</red>"
+    not-gear: "<red>The selected equipment is not a valid InfinityGear item.</red>"
+    quarantined: "<red>The selected gear is quarantined or revoked by duplicate protection.</red>"
+    single-managed-book: "<red>The selected book must contain exactly one managed enchantment.</red>"
+    wrong-enchantment: "<red>The selected book does not contain the enchantment chosen in the preview.</red>"
+    unknown-enchantment: "<red>The selected enchantment is no longer available from Bukkit or EcoEnchants.</red>"
+    unknown-profile: "<red>The selected gear's configured profile is unavailable.</red>"
+    atomic-mutation-failed: "<red>The final item mutation failed and was rolled back.</red>"
+    cancelled: "<red>Another plugin cancelled this operation during final validation. Nothing was charged or consumed.</red>"
+    invalid-item: "<red>The live item no longer has valid mutable metadata.</red>"
+    default-item-provider: "<red>The profile's configured default item provider is unavailable.</red>"
+
+  enchant:
+    application:
+      not_managed_book: "<red>The selected book contains no managed enchantment.</red>"
+      multiple_managed_enchantments: "<red>The selected book contains more than one managed enchantment.</red>"
+      wrong_enchantment: "<red>The book's canonical enchantment differs from the selected preview enchantment.</red>"
+      disabled: "<red><aqua>%enchant%</aqua> is disabled by administrator policy and cannot receive new levels.</red>"
+      locked: "<red><aqua>%enchant%</aqua> unlocks at pickaxe level <yellow>%required%</yellow>.</red>"
+      equal_or_lower_level: "<red>The book is level <yellow>%book_level%</yellow>, but the gear already has level <yellow>%current_level%</yellow>. Application requires a strictly higher target level.</red>"
+      above_standard_maximum: "<red>The book is level <yellow>%book_level%</yellow>, above the configured standard maximum of <yellow>%maximum%</yellow>. Use LimitBreak after reaching the standard maximum.</red>"
+      sockets_full: "<red>Introducing this enchantment requires a new socket, but the gear has no free socket capacity.</red>"
+      conflict: "<red>This enchantment conflicts with an enchantment already installed on the gear.</red>"
+      incompatible_target: "<red>This enchantment cannot target this gear material or profile.</red>"
+
+  enchant-invalid-single-book: "<red>An application book must contain exactly one managed enchantment.</red>"
+  limitbreak-missing-enchantment: "<red>%enchant% must already be installed before LimitBreak can be used.</red>"
+  limitbreak-premature: "<red>%enchant% must first reach its standard maximum of %max%.</red>"
   pickaxe-quarantined: "<red>This pickaxe is quarantined because its UUID was duplicated. Contact an administrator.</red>"
   enchant-conflict: "<red>%enchant% cannot be applied because of a native or configured conflict, requirement, or invalid target.</red>"
   no-permission: "<red>You don't have permission to execute this command.</red>"
@@ -45,9 +132,9 @@ messages:
   enchant-max-reached: "<red>This enchantment is already at the maximum allowed level for your pickaxe (<yellow>Max: %max%</yellow>).</red>"
   enchant-sockets-full: "<red>This pickaxe has no free managed enchantment sockets (<yellow>%used%/%max%</yellow>). Existing enchantments remain usable and upgradeable.</red>"
   enchant-locked-pickaxe-level: "<red>Your pickaxe must be <yellow>Level %required%</yellow> to unlock this socket.</red>"
-  enchant-invalid-book: "<red>You must place a <aqua>%enchant%</aqua> <yellow>Level %required_book_level%</yellow> book to upgrade this socket.</red>"
+  enchant-invalid-book: "<red>Use one <aqua>%enchant%</aqua> book above the current level and no higher than <yellow>%required_book_level%</yellow>.</red>"
   enchant-no-book-in-hand: "<red>You do not have the required enchanted book in your hand/cursor.</red>"
-  enchant-use-socket-menu: "<red>Managed enchantment books must be applied through the enchantment sockets in <yellow>/ipickaxe</yellow>.</red>"
+  enchant-use-socket-menu: "<red>Managed enchantment books must be applied at the configured Runic Table.</red>"
 
   # LimitBreak & Special Books
   limitbreak-upgraded: "<gradient:#FF00FF:#00FFFF><b>✦ LIMITBREAK APPLIED! ✦</b></gradient> <green>Upgraded <aqua>%enchant%</aqua> to <yellow>Level %level%</yellow>!%limitbreak_indicator%</green>"
