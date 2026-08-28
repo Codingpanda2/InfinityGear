@@ -1,6 +1,7 @@
 package com.infinitypickaxes.gui;
 
 import org.bukkit.event.inventory.InventoryAction;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -27,5 +28,11 @@ class EnchantSocketsGuiInteractionPolicyTest {
     void onlyOrdinaryBottomInventoryCursorActionsAreAllowed(InventoryAction action) {
         assertEquals(SAFE_BOTTOM_ACTIONS.contains(action),
                 EnchantSocketsGui.isSafeBottomAction(action), action.name());
+    }
+
+    @Test
+    void upgradeLoreRequiresTheNextStrictlyHigherBookLevel() {
+        assertEquals(1, EnchantSocketsGui.requiredBookLevel(0));
+        assertEquals(4, EnchantSocketsGui.requiredBookLevel(3));
     }
 }

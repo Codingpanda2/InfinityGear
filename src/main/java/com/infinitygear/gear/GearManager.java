@@ -58,7 +58,7 @@ public final class GearManager {
         }
         GearInstance gear = new GearInstance(item, UUID.randomUUID(), profile.id(),
                 level, 0, 0,
-                profile.socketCapacityAtLevel(startingLevel));
+                profile.socketCapacityAtLevel(level));
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setUnbreakable(profile.unbreakable());

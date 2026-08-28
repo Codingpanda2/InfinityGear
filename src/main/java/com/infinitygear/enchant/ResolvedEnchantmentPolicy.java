@@ -54,6 +54,30 @@ public record ResolvedEnchantmentPolicy(
             boolean globallyRemovable,
             double globalCostWeight
     ) {
+        return resolve(profile, socket, gearLevel, defaultLimitBreakExtra,
+                globallyRemovable, globalCostWeight, false);
+    }
+
+    /** Resolves policy for ordinary enchanted books, which have no gear progression profile. */
+    public static ResolvedEnchantmentPolicy resolveProfileNeutral(
+            EnchantSocket socket,
+            int defaultLimitBreakExtra,
+            boolean globallyRemovable,
+            double globalCostWeight
+    ) {
+        return resolve(null, socket, 0, defaultLimitBreakExtra,
+                globallyRemovable, globalCostWeight, true);
+    }
+
+    private static ResolvedEnchantmentPolicy resolve(
+            GearProfile profile,
+            EnchantSocket socket,
+            int gearLevel,
+            int defaultLimitBreakExtra,
+            boolean globallyRemovable,
+            double globalCostWeight,
+            boolean profileNeutral
+    ) {
         if (socket == null) throw new IllegalArgumentException("Managed enchantment socket is required.");
         GearProfile.EnchantmentOverride override = profile == null || profile.enchantmentOverrides() == null ? null
                 : profile.enchantmentOverrides().get(normalize(socket.getKeyString()));
@@ -64,7 +88,7 @@ public record ResolvedEnchantmentPolicy(
                 ? override.unlockLevel() : socket.getUnlockPickaxeLevel();
         int standard = override != null && override.standardMaximum() != null
                 ? Math.min(socket.getMaxLevel(), override.standardMaximum())
-                : socket.getMaximumAtLevel(Math.max(0, gearLevel));
+                : profileNeutral ? socket.getMaxLevel() : socket.getMaximumAtLevel(Math.max(0, gearLevel));
         int progressionAbsolute = standard
                 + (socket.supportsLimitBreak() ? Math.max(0, defaultLimitBreakExtra) : 0);
         int absolute = override != null && override.absoluteMaximum() != null

@@ -287,7 +287,7 @@ public class EnchantSocketsGui extends CustomGui {
                                            ResolvedEnchantmentPolicy policy, int currentLvl,
                                            int maxForPickaxe, int globalMax, int absoluteMax) {
         List<Component> formatted = new ArrayList<>();
-        int requiredBookLevel = (currentLvl == 0) ? 1 : currentLvl;
+        int requiredBookLevel = requiredBookLevel(currentLvl);
 
         for (String line : rawLore) {
             if (line.contains("%enchant_description%")) {
@@ -456,5 +456,9 @@ public class EnchantSocketsGui extends CustomGui {
                 || action == InventoryAction.PLACE_ONE
                 || action == InventoryAction.PLACE_SOME
                 || action == InventoryAction.SWAP_WITH_CURSOR;
+    }
+
+    static int requiredBookLevel(int currentLevel) {
+        return currentLevel <= 0 ? 1 : currentLevel + 1;
     }
 }

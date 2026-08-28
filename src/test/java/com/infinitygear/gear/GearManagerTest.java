@@ -3,6 +3,7 @@ package com.infinitygear.gear;
 import com.infinitygear.data.GearData;
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
+import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.junit.jupiter.api.Test;
 
@@ -29,5 +30,25 @@ class GearManagerTest {
 
         assertSame(expected, created);
         verify(pickaxes).createPickaxe(12);
+    }
+
+    @Test void customGearCapacityUsesTheClampedStartingLevel() {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        GearProfileRegistry profiles = mock(GearProfileRegistry.class);
+        GearProfile profile = mock(GearProfile.class);
+        when(profiles.find("test:gear")).thenReturn(Optional.of(profile));
+        when(profile.enabled()).thenReturn(true);
+        when(profile.id()).thenReturn("test:gear");
+        when(profile.maximumLevel()).thenReturn(100);
+        when(profile.defaultExternalProvider()).thenReturn("");
+        when(profile.defaultMaterial()).thenReturn(Material.DIAMOND_PICKAXE);
+
+        try (var gearData = mockStatic(GearData.class);
+             var itemStacks = mockConstruction(ItemStack.class)) {
+            new GearManager(plugin, profiles).create("test:gear", 250);
+        }
+
+        verify(profile).socketCapacityAtLevel(100);
+        verify(profile, never()).socketCapacityAtLevel(250);
     }
 }

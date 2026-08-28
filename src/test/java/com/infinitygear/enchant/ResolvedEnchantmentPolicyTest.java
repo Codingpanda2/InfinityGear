@@ -72,6 +72,19 @@ class ResolvedEnchantmentPolicyTest {
         assertEquals(7, policy.absoluteMaximum());
     }
 
+    @Test
+    void profileNeutralBookUsesGlobalMaximumInsteadOfLevelZeroScaling() {
+        EnchantSocket socket = new EnchantSocket("fortune", "minecraft:fortune",
+                NamespacedKey.minecraft("fortune"), "Fortune", Material.ENCHANTED_BOOK, -1,
+                true, 0, 5, new TreeMap<>(Map.of(0, 1, 100, 5)), List.of(), null, Set.of());
+
+        var gearPolicy = ResolvedEnchantmentPolicy.resolve(null, socket, 0, 0, true, 1.0);
+        var bookPolicy = ResolvedEnchantmentPolicy.resolveProfileNeutral(socket, 0, true, 1.0);
+
+        assertEquals(1, gearPolicy.standardMaximum());
+        assertEquals(5, bookPolicy.standardMaximum());
+    }
+
     private static EnchantSocket socket(boolean enabled, int unlock, int maximum, Set<String> conflicts) {
         return new EnchantSocket("fortune", "minecraft:fortune", NamespacedKey.minecraft("fortune"),
                 "Fortune", Material.ENCHANTED_BOOK, -1, enabled, unlock, maximum,

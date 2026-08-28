@@ -700,6 +700,10 @@ public final class StationGui extends CustomGui {
                 : plugin.getEnchantManager().getProgressionPolicy().getMaximumLimitBreakExtraLevels();
         boolean globallyRemovable = !plugin.getConfigManager().getEnchantsConfig().getBoolean(
                 "enchants." + socket.getId() + ".non-removable", false);
+        if (gear == null && source.getType() == Material.ENCHANTED_BOOK) {
+            return ResolvedEnchantmentPolicy.resolveProfileNeutral(socket, limitBreakExtra,
+                    globallyRemovable, globalCostWeight);
+        }
         return ResolvedEnchantmentPolicy.resolve(profile, socket, level, limitBreakExtra,
                 globallyRemovable, globalCostWeight);
     }
