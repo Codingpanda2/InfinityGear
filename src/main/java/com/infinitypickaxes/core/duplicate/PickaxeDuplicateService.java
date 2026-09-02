@@ -97,6 +97,7 @@ public class PickaxeDuplicateService implements AutoCloseable {
             collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), sightings);
             Inventory top = player.getOpenInventory().getTopInventory();
             collectPhysicalInventory(top, "open-container:" + player.getName(), visitedStorages, sightings);
+            unequipPersistentlyRestrictedArmor(player);
         }
         for (PhysicalStorageKey retained : retainedStorages) {
             if (!visitedStorages.add(retained)) continue;
@@ -116,6 +117,7 @@ public class PickaxeDuplicateService implements AutoCloseable {
         DuplicateObservations<ItemStack> sightings = new DuplicateObservations<>();
         collectInventory(player.getInventory(), "player:" + player.getName(), sightings);
         collectInventory(player.getEnderChest(), "enderchest:" + player.getName(), sightings);
+        unequipPersistentlyRestrictedArmor(player);
         return quarantineDuplicates(sightings, actor);
     }
 
@@ -321,13 +323,21 @@ public class PickaxeDuplicateService implements AutoCloseable {
     }
 
     private void unequipRestrictedArmor(Player player, UUID uuid) {
+        unequipRestrictedArmor(player, uuid::equals);
+    }
+
+    private void unequipPersistentlyRestrictedArmor(Player player) {
+        unequipRestrictedArmor(player, this::isRestricted);
+    }
+
+    private void unequipRestrictedArmor(Player player, java.util.function.Predicate<UUID> restrictedUuid) {
         if (player == null) return;
         for (org.bukkit.inventory.EquipmentSlot slot : List.of(
                 org.bukkit.inventory.EquipmentSlot.HEAD, org.bukkit.inventory.EquipmentSlot.CHEST,
                 org.bukkit.inventory.EquipmentSlot.LEGS, org.bukkit.inventory.EquipmentSlot.FEET)) {
             ItemStack equipped = player.getInventory().getItem(slot);
             TrackedItemData.Identity identity = trackedIdentity(equipped);
-            if (identity == null || !uuid.equals(identity.uuid())) continue;
+            if (identity == null || !restrictedUuid.test(identity.uuid())) continue;
             markRestricted(equipped);
             player.getInventory().setItem(slot, null);
             Map<Integer, ItemStack> leftovers = player.getInventory().addItem(equipped);

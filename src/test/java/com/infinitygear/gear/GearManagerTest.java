@@ -5,10 +5,13 @@ import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.config.ConfigManager;
 import com.infinitypickaxes.core.duplicate.PickaxeDuplicateService;
 import com.infinitypickaxes.core.pickaxe.PickaxeManager;
+import com.infinitygear.nexo.NexoProvider;
 import org.bukkit.Material;
+import org.bukkit.Server;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -85,6 +88,26 @@ class GearManagerTest {
         }
         verify(armor, never()).setType(any());
         verify(meta, atLeastOnce()).setUnbreakable(true);
+    }
+
+    @Test void recognizedNexoItemIsNeverMaterialAutoConverted() {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        GearProfileRegistry profiles = mock(GearProfileRegistry.class);
+        Server server = mock(Server.class);
+        PluginManager pluginManager = mock(PluginManager.class);
+        ItemStack customBow = mock(ItemStack.class);
+        when(plugin.getServer()).thenReturn(server);
+        when(server.getPluginManager()).thenReturn(pluginManager);
+        when(pluginManager.isPluginEnabled("Nexo")).thenReturn(true);
+        when(customBow.getType()).thenReturn(Material.BOW);
+        when(customBow.getAmount()).thenReturn(1);
+
+        try (var nexoProviders = mockConstruction(NexoProvider.class, (provider, context) ->
+                when(provider.itemId(customBow)).thenReturn("noxward:custom_bow"))) {
+            assertTrue(new GearManager(plugin, profiles).autoConvert(customBow).isEmpty());
+        }
+
+        verify(profiles, never()).accepting(Material.BOW, true);
     }
 
     @Test void profilePresentationSupportsMaterialAndSocketPlaceholders() {

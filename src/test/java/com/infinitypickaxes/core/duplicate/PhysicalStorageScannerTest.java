@@ -48,6 +48,44 @@ import static org.mockito.Mockito.when;
 class PhysicalStorageScannerTest {
 
     @Test
+    void persistedRestrictedArmorIsUnequippedWithOnlyOneVisibleCopy() throws Exception {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        DuplicateStore store = mock(DuplicateStore.class);
+        UUID uuid = UUID.randomUUID();
+        when(store.loadRestrictedUuids()).thenReturn(Set.of(uuid));
+        PickaxeDuplicateService service = new PickaxeDuplicateService(plugin, store);
+
+        ItemStack armor = mock(ItemStack.class);
+        when(armor.getType()).thenReturn(Material.NETHERITE_CHESTPLATE);
+        when(armor.getAmount()).thenReturn(1);
+        PlayerInventory personal = mock(PlayerInventory.class);
+        when(personal.getSize()).thenReturn(1);
+        when(personal.getItem(0)).thenReturn(armor);
+        when(personal.getContents()).thenReturn(new ItemStack[]{armor});
+        when(personal.getItem(EquipmentSlot.CHEST)).thenReturn(armor);
+        when(personal.addItem(armor)).thenReturn(new java.util.HashMap<>());
+        Player player = playerViewing("returning", mock(Inventory.class));
+        when(player.getInventory()).thenReturn(personal);
+        var identity = new TrackedItemData.Identity(uuid, TrackedKind.GEAR,
+                "infinitygear:armor", 1, true);
+
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+             MockedStatic<TrackedItemData> tracked = mockStatic(TrackedItemData.class)) {
+            bukkit.when(Bukkit::getOnlinePlayers).thenReturn(List.of(player));
+            bukkit.when(Bukkit::getWorlds).thenReturn(List.of());
+            tracked.when(() -> TrackedItemData.readRaw(armor)).thenReturn(identity);
+
+            DuplicateScanResult result = service.scanOnline("automatic:join:returning");
+
+            assertEquals(1, result.itemsScanned());
+            assertTrue(result.duplicatesDetected().isEmpty());
+            verify(personal).setItem(EquipmentSlot.CHEST, null);
+            verify(personal).addItem(armor);
+            verify(store, never()).quarantine(eq(uuid), anyString(), anyString(), anyList());
+        }
+    }
+
+    @Test
     void duplicateArmorIsRecordedWithItsGearProfile() throws Exception {
         InfinityPickaxes plugin = mock(InfinityPickaxes.class);
         DuplicateStore store = mock(DuplicateStore.class);

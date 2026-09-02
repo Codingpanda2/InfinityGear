@@ -88,13 +88,10 @@ public final class GearManager {
             existing.ifPresent(this::refreshPresentation);
             return existing;
         }
+        if (isRecognizedExternalItem(item)) return Optional.empty();
 
         List<GearProfile> matches = profiles.accepting(item.getType(), true);
-        if (matches.size() != 1) {
-            if (matches.size() > 1) plugin.getLogger().warning("Skipped ambiguous auto-conversion for "
-                    + item.getType() + ": " + matches.stream().map(GearProfile::id).toList());
-            return Optional.empty();
-        }
+        if (matches.size() != 1) return Optional.empty();
 
         GearProfile profile = matches.getFirst();
         if (GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id())) {
@@ -111,6 +108,19 @@ public final class GearManager {
         GearData.save(gear, false, false);
         refreshPresentation(gear, profile);
         return Optional.of(gear);
+    }
+
+    private boolean isRecognizedExternalItem(ItemStack item) {
+        if (plugin.getServer() == null || !plugin.getServer().getPluginManager().isPluginEnabled("Nexo")) {
+            return false;
+        }
+        try {
+            return new com.infinitygear.nexo.NexoProvider().itemId(item) != null;
+        } catch (LinkageError | RuntimeException unavailable) {
+            // If Nexo is enabled but its item classifier is unavailable, fail
+            // closed instead of destructively treating a custom item as vanilla.
+            return true;
+        }
     }
 
     /** Rebuilds profile presentation while leaving enchantments and unconfigured names intact. */
