@@ -478,10 +478,7 @@ public final class StationGui extends CustomGui {
             live.socketCapacity(decision.resulting());
             GearData.save(live, plugin.getDuplicateService().isRestricted(live.uuid()),
                     GearData.LEGACY_PICKAXE_PROFILE.equals(live.profileId()));
-            if (GearData.LEGACY_PICKAXE_PROFILE.equals(live.profileId())) {
-                var legacy = PickaxeData.fromItemStack(live.item());
-                if (legacy != null) plugin.getPickaxeManager().syncPickaxe(legacy);
-            }
+            plugin.getGearManager().refreshPresentation(live);
         });
     }
 

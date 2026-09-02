@@ -146,8 +146,10 @@ public class PickaxeDuplicateService implements AutoCloseable {
         UUID replacement = UUID.randomUUID();
         store.revoke(oldUuid, "Administrator selected a canonical replacement", administrator.getName(), replacement);
         restricted.add(oldUuid);
-        PickaxeData.setPickaxeUuid(held, replacement);
-        PickaxeData.setQuarantined(held, false);
+        if (PickaxeData.isInfinityPickaxe(held)) {
+            PickaxeData.setPickaxeUuid(held, replacement);
+            PickaxeData.setQuarantined(held, false);
+        }
         if (held.hasItemMeta()) {
             var meta = held.getItemMeta();
             var pdc = meta.getPersistentDataContainer();
@@ -158,6 +160,7 @@ public class PickaxeDuplicateService implements AutoCloseable {
         markVisibleCopies(oldUuid);
         InfinityPickaxe pickaxe = PickaxeData.fromItemStack(held);
         if (pickaxe != null) plugin.getPickaxeManager().syncPickaxe(pickaxe);
+        else if (plugin.getGearManager() != null) plugin.getGearManager().refreshPresentation(held);
         Bukkit.getPluginManager().callEvent(new PickaxeRekeyedEvent(administrator, held, oldUuid, replacement));
         return replacement;
     }
@@ -174,12 +177,21 @@ public class PickaxeDuplicateService implements AutoCloseable {
         return PhysicalStorageKey.from(inventory).isPresent();
     }
 
-    public boolean containsInfinityPickaxe(Inventory inventory) {
+    public boolean containsTrackedItem(Inventory inventory) {
         if (inventory == null) return false;
         for (ItemStack item : inventory.getContents()) {
-            if (containsInfinityPickaxe(item, 0)) return true;
+            if (containsTrackedItem(item, 0)) return true;
         }
         return false;
+    }
+
+    /** Legacy name retained for integrations; this now covers every tracked kind and gear profile. */
+    public boolean containsInfinityPickaxe(Inventory inventory) {
+        return containsTrackedItem(inventory);
+    }
+
+    public boolean isTracked(ItemStack item) {
+        return trackedIdentity(item) != null;
     }
 
     static boolean isPhysicalStorageHolder(InventoryHolder holder) {
@@ -188,11 +200,11 @@ public class PickaxeDuplicateService implements AutoCloseable {
 
     static void validateRekeyAmount(int amount) {
         if (amount != 1) {
-            throw new IllegalArgumentException("Canonical rekeying requires exactly one unstacked pickaxe.");
+            throw new IllegalArgumentException("Canonical rekeying requires exactly one unstacked tracked item.");
         }
     }
 
-    private boolean containsInfinityPickaxe(ItemStack item, int depth) {
+    private boolean containsTrackedItem(ItemStack item, int depth) {
         if (isEmpty(item)) return false;
         if (trackedIdentity(item) != null || PickaxeData.isInfinityPickaxe(item)) return true;
 
@@ -204,7 +216,7 @@ public class PickaxeDuplicateService implements AutoCloseable {
                 .getInt("duplicate-protection.container-recursion-depth", 3));
         if (depth >= maxDepth) return false;
         for (ItemStack nested : container.getInventory().getContents()) {
-            if (containsInfinityPickaxe(nested, depth + 1)) return true;
+            if (containsTrackedItem(nested, depth + 1)) return true;
         }
         return false;
     }
@@ -268,15 +280,17 @@ public class PickaxeDuplicateService implements AutoCloseable {
                         "Multiple physical tracked items observed in one scan", actor, locations);
                 restricted.add(uuid);
                 entry.getValue().forEach(sighting -> markRestricted(sighting.value()));
+                unequipVisibleArmorCopies(uuid);
                 detected.add(uuid);
                 if (newlyDetected) {
                     Bukkit.getPluginManager().callEvent(new PickaxeDuplicateDetectedEvent(uuid, locations));
                     Bukkit.getPluginManager().callEvent(new PickaxeQuarantinedEvent(
                             uuid, DuplicateStatus.QUARANTINED,
                             "Multiple physical tracked items observed in one scan", actor));
+                    notifyVisibleOwners(uuid, type);
                 }
             } catch (SQLException exception) {
-                plugin.getLogger().log(Level.SEVERE, "Could not quarantine duplicate pickaxe " + uuid, exception);
+                plugin.getLogger().log(Level.SEVERE, "Could not quarantine duplicate tracked item " + uuid, exception);
             }
         }
         return new DuplicateScanResult(sightings.observedCopies(), detected);
@@ -286,6 +300,7 @@ public class PickaxeDuplicateService implements AutoCloseable {
         Set<PhysicalStorageKey> visitedStorages = new HashSet<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             markInventoryCopies(player.getInventory(), uuid);
+            unequipRestrictedArmor(player, uuid);
             markInventoryCopies(player.getEnderChest(), uuid);
             Inventory top = player.getOpenInventory().getTopInventory();
             PhysicalStorageKey.from(top).filter(visitedStorages::add)
@@ -301,6 +316,27 @@ public class PickaxeDuplicateService implements AutoCloseable {
         }
     }
 
+    private void unequipVisibleArmorCopies(UUID uuid) {
+        for (Player player : Bukkit.getOnlinePlayers()) unequipRestrictedArmor(player, uuid);
+    }
+
+    private void unequipRestrictedArmor(Player player, UUID uuid) {
+        if (player == null) return;
+        for (org.bukkit.inventory.EquipmentSlot slot : List.of(
+                org.bukkit.inventory.EquipmentSlot.HEAD, org.bukkit.inventory.EquipmentSlot.CHEST,
+                org.bukkit.inventory.EquipmentSlot.LEGS, org.bukkit.inventory.EquipmentSlot.FEET)) {
+            ItemStack equipped = player.getInventory().getItem(slot);
+            TrackedItemData.Identity identity = trackedIdentity(equipped);
+            if (identity == null || !uuid.equals(identity.uuid())) continue;
+            markRestricted(equipped);
+            player.getInventory().setItem(slot, null);
+            Map<Integer, ItemStack> leftovers = player.getInventory().addItem(equipped);
+            for (ItemStack leftover : leftovers.values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+            }
+        }
+    }
+
     private void markInventoryCopies(Inventory inventory, UUID uuid) {
         for (ItemStack item : inventory.getContents()) {
             TrackedItemData.Identity identity = trackedIdentity(item);
@@ -309,7 +345,7 @@ public class PickaxeDuplicateService implements AutoCloseable {
     }
 
     private void markRestricted(ItemStack item) {
-        PickaxeData.setQuarantined(item, true);
+        if (PickaxeData.isInfinityPickaxe(item)) PickaxeData.setQuarantined(item, true);
         if (item != null && item.hasItemMeta()) {
             var meta = item.getItemMeta();
             meta.getPersistentDataContainer().set(GearData.KEY_QUARANTINED,
@@ -319,7 +355,32 @@ public class PickaxeDuplicateService implements AutoCloseable {
         InfinityPickaxe pickaxe = PickaxeData.fromItemStack(item);
         if (pickaxe != null && plugin.getPickaxeManager() != null) {
             plugin.getPickaxeManager().syncPickaxe(pickaxe);
+        } else if (plugin.getGearManager() != null && GearData.isGear(item)) {
+            plugin.getGearManager().refreshPresentation(item);
         }
+    }
+
+    private void notifyVisibleOwners(UUID uuid, String profile) {
+        if (plugin.getMessageManager() == null) return;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            boolean ownsVisibleCopy = containsUuid(player.getInventory(), uuid)
+                    || containsUuid(player.getEnderChest(), uuid)
+                    || containsUuid(player.getOpenInventory().getTopInventory(), uuid);
+            if (ownsVisibleCopy) plugin.getMessageManager().sendMessage(player,
+                    "messages.gear-duplicate-detected",
+                    "%uuid%", uuid.toString(), "%profile%", profile);
+        }
+    }
+
+    private boolean containsUuid(Inventory inventory, UUID uuid) {
+        if (inventory == null) return false;
+        ItemStack[] contents = inventory.getContents();
+        if (contents == null) return false;
+        for (ItemStack item : contents) {
+            TrackedItemData.Identity identity = trackedIdentity(item);
+            if (identity != null && uuid.equals(identity.uuid())) return true;
+        }
+        return false;
     }
 
     private static boolean isEmpty(ItemStack item) {

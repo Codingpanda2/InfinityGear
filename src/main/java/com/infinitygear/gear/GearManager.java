@@ -2,9 +2,16 @@ package com.infinitygear.gear;
 
 import com.infinitygear.data.GearData;
 import com.infinitypickaxes.InfinityPickaxes;
+import com.infinitypickaxes.utils.TextUtil;
+import net.kyori.adventure.text.Component;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -65,11 +72,114 @@ public final class GearManager {
             item.setItemMeta(meta);
         }
         GearData.save(gear, false, GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id()));
-        if (GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id())) {
-            var legacy = com.infinitypickaxes.core.pickaxe.PickaxeData.fromItemStack(item);
-            if (legacy != null) plugin.getPickaxeManager().syncPickaxe(legacy);
-        }
+        refreshPresentation(gear, profile);
         return item;
+    }
+
+    /**
+     * Converts one ordinary vanilla item when exactly one enabled profile opts in.
+     * Existing gear is only inspected; stacked items and ambiguous profile matches
+     * fail closed so a unique identity is never stamped onto multiple objects.
+     */
+    public Optional<GearInstance> autoConvert(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR || item.getAmount() != 1) return Optional.empty();
+        if (GearData.isGear(item)) {
+            Optional<GearInstance> existing = inspect(item, true);
+            existing.ifPresent(this::refreshPresentation);
+            return existing;
+        }
+
+        List<GearProfile> matches = profiles.accepting(item.getType(), true);
+        if (matches.size() != 1) {
+            if (matches.size() > 1) plugin.getLogger().warning("Skipped ambiguous auto-conversion for "
+                    + item.getType() + ": " + matches.stream().map(GearProfile::id).toList());
+            return Optional.empty();
+        }
+
+        GearProfile profile = matches.getFirst();
+        if (GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id())) {
+            var converted = plugin.getPickaxeManager().convertVanillaPickaxe(item, null);
+            return converted == null ? Optional.empty() : inspect(item, true);
+        }
+
+        GearInstance gear = new GearInstance(item, UUID.randomUUID(), profile.id(),
+                0, 0, 0, profile.socketCapacityAtLevel(0));
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return Optional.empty();
+        meta.setUnbreakable(profile.unbreakable());
+        item.setItemMeta(meta);
+        GearData.save(gear, false, false);
+        refreshPresentation(gear, profile);
+        return Optional.of(gear);
+    }
+
+    /** Rebuilds profile presentation while leaving enchantments and unconfigured names intact. */
+    public void refreshPresentation(GearInstance gear) {
+        if (gear == null) return;
+        profiles.find(gear.profileId()).filter(GearProfile::enabled)
+                .ifPresent(profile -> refreshPresentation(gear, profile));
+    }
+
+    /** Refreshes one already-managed item without ever converting ordinary equipment. */
+    public void refreshPresentation(ItemStack item) {
+        if (!GearData.isGear(item)) return;
+        inspect(item, true).ifPresent(this::refreshPresentation);
+    }
+
+    private void refreshPresentation(GearInstance gear, GearProfile profile) {
+        if (GearData.LEGACY_PICKAXE_PROFILE.equals(profile.id())) {
+            var legacy = com.infinitypickaxes.core.pickaxe.PickaxeData.fromItemStack(gear.item());
+            if (legacy != null) plugin.getPickaxeManager().syncPickaxe(legacy);
+            return;
+        }
+        ItemMeta meta = gear.item().getItemMeta();
+        if (meta == null) return;
+        meta.setUnbreakable(profile.unbreakable());
+        // EcoEnchants treats this flag as a request to suppress its generated lore.
+        meta.removeItemFlags(ItemFlag.HIDE_ENCHANTS);
+        String displayName = render(profile.displayName(), gear, profile);
+        if (!displayName.isBlank()) meta.displayName(TextUtil.parse(displayName));
+        List<Component> lore = new ArrayList<>();
+        boolean quarantined = plugin.getDuplicateService() != null
+                && plugin.getDuplicateService().isRestricted(gear.uuid());
+        if (quarantined) {
+            var config = plugin.getConfigManager().getConfig();
+            List<String> warning = config.isList("gear-lore.quarantine-lore")
+                    ? config.getStringList("gear-lore.quarantine-lore") : List.of(
+                    "<red><b>QUARANTINED GEAR</b></red>",
+                    "<gray>Duplicate UUID: <white>%uuid%</white></gray>",
+                    "<yellow>Contact an administrator to resolve this item.</yellow>");
+            for (String template : warning) lore.add(TextUtil.parse(render(template, gear, profile)));
+        }
+        for (String template : profile.lore()) lore.add(TextUtil.parse(render(template, gear, profile)));
+        meta.lore(lore);
+        gear.item().setItemMeta(meta);
+    }
+
+    static String render(String template, GearInstance gear, GearProfile profile) {
+        if (template == null || template.isEmpty()) return "";
+        String material = humanize(gear.item().getType().name());
+        return template
+                .replace("%uuid%", gear.uuid().toString())
+                .replace("%profile%", gear.profileId())
+                .replace("%level%", String.valueOf(gear.level()))
+                .replace("%max_level%", String.valueOf(profile.maximumLevel()))
+                .replace("%current_xp%", String.format(Locale.ROOT, "%.0f", gear.xp()))
+                .replace("%xp%", String.format(Locale.ROOT, "%.0f", gear.xp()))
+                .replace("%blocks_mined%", String.format(Locale.ROOT, "%,d", gear.blocksMined()))
+                .replace("%sockets%", String.valueOf(gear.socketCapacity()))
+                .replace("%max_sockets%", String.valueOf(profile.maximumExpandedSockets()))
+                .replace("%material%", material)
+                .replace("%item%", material);
+    }
+
+    private static String humanize(String material) {
+        StringBuilder result = new StringBuilder();
+        for (String word : material.toLowerCase(Locale.ROOT).split("_")) {
+            if (!result.isEmpty()) result.append(' ');
+            result.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return result.toString();
     }
 
     private boolean accepts(GearProfile profile, ItemStack item) {

@@ -34,7 +34,7 @@ Book fusion deliberately remains profile-neutral because no destination gear/pro
 - `ITEM_UPGRADES`: levels only through explicit upgrade operations; the armor starter uses this.
 - `STATIC`: no passive progression; starter axe/sword profiles use this.
 
-Only the migrated pickaxe behavior is eligible for automatic vanilla conversion, and conversion remains disabled by the preserved default setting. No passive damage-taking armor XP is implemented.
+Every profile may opt into automatic vanilla conversion with `auto-convert: true`; conversion remains disabled in the shipped defaults. Eligible single items are converted when acquired, held, used, or moved in a player inventory, including armor slots. Profile lore is rebuilt while existing item names and enchantments are preserved. Administrators may still opt into a profile-wide `display-name`, but the shipped generic profiles leave names untouched. No passive damage-taking armor XP is implemented.
 
 ## Stations and enchantments
 

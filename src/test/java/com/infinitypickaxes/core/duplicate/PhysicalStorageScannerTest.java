@@ -2,7 +2,10 @@ package com.infinitypickaxes.core.duplicate;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.config.ConfigManager;
+import com.infinitypickaxes.config.MessageManager;
 import com.infinitypickaxes.core.pickaxe.PickaxeData;
+import com.infinitygear.data.TrackedItemData;
+import com.infinitygear.data.TrackedKind;
 import io.papermc.paper.block.TileStateInventoryHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -18,10 +21,12 @@ import org.bukkit.entity.minecart.HopperMinecart;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.DecoratedPotInventory;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.plugin.PluginManager;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
@@ -41,6 +46,56 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PhysicalStorageScannerTest {
+
+    @Test
+    void duplicateArmorIsRecordedWithItsGearProfile() throws Exception {
+        InfinityPickaxes plugin = mock(InfinityPickaxes.class);
+        DuplicateStore store = mock(DuplicateStore.class);
+        UUID uuid = UUID.randomUUID();
+        MessageManager messages = mock(MessageManager.class);
+        when(plugin.getMessageManager()).thenReturn(messages);
+        when(store.loadRestrictedUuids()).thenReturn(Set.of());
+        PickaxeDuplicateService service = new PickaxeDuplicateService(plugin, store);
+
+        ItemStack first = mock(ItemStack.class);
+        ItemStack second = mock(ItemStack.class);
+        for (ItemStack armor : List.of(first, second)) {
+            when(armor.getType()).thenReturn(Material.NETHERITE_CHESTPLATE);
+            when(armor.getAmount()).thenReturn(1);
+        }
+        PlayerInventory personal = mock(PlayerInventory.class);
+        when(personal.getSize()).thenReturn(2);
+        when(personal.getItem(0)).thenReturn(first);
+        when(personal.getItem(1)).thenReturn(second);
+        when(personal.getContents()).thenReturn(new ItemStack[]{first, second});
+        when(personal.getItem(EquipmentSlot.CHEST)).thenReturn(first);
+        when(personal.addItem(first)).thenReturn(new java.util.HashMap<>());
+        Player player = playerViewing("armored", mock(Inventory.class));
+        when(player.getInventory()).thenReturn(personal);
+
+        var identity = new TrackedItemData.Identity(uuid, TrackedKind.GEAR,
+                "infinitygear:armor", 1, false);
+        PluginManager pluginManager = mock(PluginManager.class);
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class);
+             MockedStatic<TrackedItemData> tracked = mockStatic(TrackedItemData.class)) {
+            bukkit.when(Bukkit::getOnlinePlayers).thenReturn(List.of(player));
+            bukkit.when(Bukkit::getWorlds).thenReturn(List.of());
+            bukkit.when(Bukkit::getPluginManager).thenReturn(pluginManager);
+            tracked.when(() -> TrackedItemData.readRaw(first)).thenReturn(identity);
+            tracked.when(() -> TrackedItemData.readRaw(second)).thenReturn(identity);
+
+            DuplicateScanResult result = service.scanOnline("test:armor-profile");
+
+            assertEquals(2, result.itemsScanned());
+            assertTrue(result.duplicatesDetected().contains(uuid));
+            verify(store).quarantine(eq(uuid), eq(TrackedKind.GEAR.name()), eq("infinitygear:armor"),
+                    anyString(), eq("test:armor-profile"), anyList());
+            verify(messages).sendMessage(eq(player), eq("messages.gear-duplicate-detected"),
+                    eq("%uuid%"), eq(uuid.toString()), eq("%profile%"), eq("infinitygear:armor"));
+            verify(personal).setItem(EquipmentSlot.CHEST, null);
+            verify(personal).addItem(first);
+        }
+    }
 
     @Test
     void twoPlayersViewingSameChestWrapperDoNotCreateDuplicate() throws Exception {

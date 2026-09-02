@@ -136,6 +136,7 @@ public class InfinityPickaxes extends JavaPlugin {
         // 3. Register Event Listeners
         PluginManager pm = getServer().getPluginManager();
         pm.registerEvents(new QuarantineListener(this), this);
+        pm.registerEvents(new com.infinitygear.gear.GearAutoConvertListener(this), this);
         BlockPlaceListener placeListener = new BlockPlaceListener(this);
         pm.registerEvents(placeListener, this);
         pm.registerEvents(new BlockBreakListener(this, placeListener), this);
@@ -205,6 +206,13 @@ public class InfinityPickaxes extends JavaPlugin {
         // 4. Refresh all pickaxes currently held by players
         if (this.heldListener != null) {
             this.heldListener.refreshAllHeldPickaxes();
+        }
+        // Apply changed generic profile lore immediately. PlayerInventory contents
+        // include storage, armor and offhand slots; ordinary items are never converted here.
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+                this.gearManager.refreshPresentation(item);
+            }
         }
 
         // 5. Ensure PlaceholderAPI hook is registered

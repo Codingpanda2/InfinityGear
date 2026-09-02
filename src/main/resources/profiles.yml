@@ -1,5 +1,5 @@
-# InfinityGear profiles are stable policy identities. Only the migrated pickaxe
-# profile auto-converts vanilla items by default.
+# InfinityGear profiles are stable policy identities. Any profile can opt into
+# vanilla conversion with auto-convert; it is disabled by default for safety.
 # To create a profile from a Nexo visual template, configure:
 #   external-items: {nexo: [my_pack:my_item]}
 #   default-item: {provider: nexo, id: my_pack:my_item}
@@ -47,7 +47,6 @@ profiles:
     xp-sources:
       BLOCK_BREAK: 1.0
     cost-multiplier: 1.0
-    display-name: "<gradient:#00E5FF:#0077FE><b>INFINITY PICKAXE</b></gradient>"
     lore:
       - "<gray>Level: <gold>%level%</gold>"
       - "<gray>Progress: %xp_bar%</gray>"
@@ -65,6 +64,9 @@ profiles:
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
+    lore:
+      - "<dark_gray>InfinityGear Axe</dark_gray>"
+      - "<gray>Runic Sockets: <aqua>%sockets%</aqua>/<aqua>%max_sockets%</aqua></gray>"
   infinitygear:sword:
     enabled: true
     accepted-materials: [WOODEN_SWORD, STONE_SWORD, IRON_SWORD, GOLDEN_SWORD, DIAMOND_SWORD, NETHERITE_SWORD]
@@ -78,6 +80,9 @@ profiles:
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
+    lore:
+      - "<dark_gray>InfinityGear Sword</dark_gray>"
+      - "<gray>Runic Sockets: <aqua>%sockets%</aqua>/<aqua>%max_sockets%</aqua></gray>"
   infinitygear:shovel:
     enabled: true
     accepted-materials: [WOODEN_SHOVEL, STONE_SHOVEL, IRON_SHOVEL, GOLDEN_SHOVEL, DIAMOND_SHOVEL, NETHERITE_SHOVEL]
@@ -91,6 +96,9 @@ profiles:
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
+    lore:
+      - "<dark_gray>InfinityGear Shovel</dark_gray>"
+      - "<gray>Runic Sockets: <aqua>%sockets%</aqua>/<aqua>%max_sockets%</aqua></gray>"
   infinitygear:hoe:
     enabled: true
     accepted-materials: [WOODEN_HOE, STONE_HOE, IRON_HOE, GOLDEN_HOE, DIAMOND_HOE, NETHERITE_HOE]
@@ -104,6 +112,9 @@ profiles:
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
+    lore:
+      - "<dark_gray>InfinityGear Hoe</dark_gray>"
+      - "<gray>Runic Sockets: <aqua>%sockets%</aqua>/<aqua>%max_sockets%</aqua></gray>"
   infinitygear:bow:
     enabled: true
     accepted-materials: [BOW, CROSSBOW]
@@ -117,6 +128,9 @@ profiles:
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
+    lore:
+      - "<dark_gray>InfinityGear Ranged Weapon</dark_gray>"
+      - "<gray>Runic Sockets: <aqua>%sockets%</aqua>/<aqua>%max_sockets%</aqua></gray>"
   infinitygear:armor:
     enabled: true
     accepted-materials: [LEATHER_HELMET, LEATHER_CHESTPLATE, LEATHER_LEGGINGS, LEATHER_BOOTS, CHAINMAIL_HELMET, CHAINMAIL_CHESTPLATE, CHAINMAIL_LEGGINGS, CHAINMAIL_BOOTS, IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS, GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS, DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS, NETHERITE_HELMET, NETHERITE_CHESTPLATE, NETHERITE_LEGGINGS, NETHERITE_BOOTS]
@@ -130,3 +144,6 @@ profiles:
     unbreakable: true
     auto-convert: false
     cost-multiplier: 1.0
+    lore:
+      - "<dark_gray>InfinityGear Armor</dark_gray>"
+      - "<gray>Runic Sockets: <aqua>%sockets%</aqua>/<aqua>%max_sockets%</aqua></gray>"

@@ -99,6 +99,8 @@ messages:
   limitbreak-missing-enchantment: "<red>%enchant% must already be installed before LimitBreak can be used.</red>"
   limitbreak-premature: "<red>%enchant% must first reach its standard maximum of %max%.</red>"
   pickaxe-quarantined: "<red>This pickaxe is quarantined because its UUID was duplicated. Contact an administrator.</red>"
+  gear-quarantined: "<red>This gear is quarantined because its UUID was duplicated. Contact an administrator.</red>"
+  gear-duplicate-detected: "<red>A duplicated <yellow>%profile%</yellow> item was detected in your inventory. UUID <white>%uuid%</white> has been quarantined; contact an administrator.</red>"
   enchant-conflict: "<red>%enchant% cannot be applied because of a native or configured conflict, requirement, or invalid target.</red>"
   no-permission: "<red>You don't have permission to execute this command.</red>"
   player-only: "<red>This command can only be executed by in-game players.</red>"

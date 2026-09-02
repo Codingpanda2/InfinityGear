@@ -88,6 +88,16 @@ progress-bar:
   uncompleted-color: "<#555555>"
 
 # Pickaxe Visual Lore Template (Fully customizable with MiniMessage & Hex Colors)
+gear-lore:
+  # Prepended to non-pickaxe profile lore while duplicate protection restricts
+  # the item. Emptying this list hides only the warning, not enforcement.
+  # Placeholders: %uuid%, %profile%, %material%.
+  quarantine-lore:
+    - "<red><b>QUARANTINED GEAR</b></red>"
+    - "<gray>Duplicate UUID: <white>%uuid%</white></gray>"
+    - "<gray>Profile: <white>%profile%</white></gray>"
+    - "<yellow>Contact an administrator to resolve this item.</yellow>"
+
 pickaxe-lore:
   # Set to true if you want to override the item name. Default is false (keeps default/vanilla/anvil name).
   custom-display-name: false

@@ -2,15 +2,17 @@ package com.infinitypickaxes.listeners;
 
 import com.infinitypickaxes.InfinityPickaxes;
 import com.infinitypickaxes.core.duplicate.PhysicalStorageKey;
-import com.infinitypickaxes.core.pickaxe.PickaxeData;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.scheduler.BukkitTask;
@@ -39,7 +41,7 @@ public final class DuplicateDetectionListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (plugin.getDuplicateService().isPhysicalStorageInventory(event.getInventory())
-                && plugin.getDuplicateService().containsInfinityPickaxe(event.getInventory())) {
+                && plugin.getDuplicateService().containsTrackedItem(event.getInventory())) {
             PhysicalStorageKey.from(event.getInventory())
                     .ifPresent(pendingStorages::add);
             scheduleScan("automatic:storage-open:" + event.getPlayer().getName());
@@ -49,7 +51,7 @@ public final class DuplicateDetectionListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onInventoryClose(InventoryCloseEvent event) {
         if (plugin.getDuplicateService().isPhysicalStorageInventory(event.getInventory())
-                && plugin.getDuplicateService().containsInfinityPickaxe(event.getInventory())) {
+                && plugin.getDuplicateService().containsTrackedItem(event.getInventory())) {
             PhysicalStorageKey.from(event.getInventory()).ifPresent(pendingStorages::add);
             scheduleScan("automatic:storage-close:" + event.getPlayer().getName());
         }
@@ -58,23 +60,45 @@ public final class DuplicateDetectionListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPickup(EntityPickupItemEvent event) {
         if (event.getEntity() instanceof org.bukkit.entity.Player player
-                && PickaxeData.isInfinityPickaxe(event.getItem().getItemStack())) {
+                && plugin.getDuplicateService().isTracked(event.getItem().getItemStack())) {
             scheduleScan("automatic:pickup:" + player.getName());
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDrop(PlayerDropItemEvent event) {
-        if (PickaxeData.isInfinityPickaxe(event.getItemDrop().getItemStack())) {
+        if (plugin.getDuplicateService().isTracked(event.getItemDrop().getItemStack())) {
             scheduleScan("automatic:drop:" + event.getPlayer().getName());
         }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onCreativeInventory(InventoryCreativeEvent event) {
-        if (PickaxeData.isInfinityPickaxe(event.getCurrentItem())
-                || PickaxeData.isInfinityPickaxe(event.getCursor())) {
+        if (plugin.getDuplicateService().isTracked(event.getCurrentItem())
+                || plugin.getDuplicateService().isTracked(event.getCursor())) {
             scheduleScan("automatic:creative:" + event.getWhoClicked().getName());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (plugin.getDuplicateService().isTracked(event.getCurrentItem())
+                || plugin.getDuplicateService().isTracked(event.getCursor())) {
+            scheduleScan("automatic:inventory-click:" + event.getWhoClicked().getName());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (plugin.getDuplicateService().isTracked(event.getOldCursor())) {
+            scheduleScan("automatic:inventory-drag:" + event.getWhoClicked().getName());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onInteract(PlayerInteractEvent event) {
+        if (plugin.getDuplicateService().isTracked(event.getItem())) {
+            scheduleScan("automatic:interact:" + event.getPlayer().getName());
         }
     }
 

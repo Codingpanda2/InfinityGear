@@ -228,6 +228,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                         gear.level(Math.min(profile.maximumLevel(), Math.max(0, targetLevel)));
                         com.infinitygear.data.GearData.save(gear, plugin.getDuplicateService().isRestricted(gear.uuid()),
                                 com.infinitygear.data.GearData.LEGACY_PICKAXE_PROFILE.equals(gear.profileId()));
+                        plugin.getGearManager().refreshPresentation(gear);
                         sender.sendMessage("§aGear level set to §f" + gear.level() + "§a.");
                     } catch (NumberFormatException invalid) { sender.sendMessage("§cInvalid level."); }
                     return true;
@@ -274,6 +275,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
                         gear.xp(gear.xp() + Math.max(0, amount));
                         com.infinitygear.data.GearData.save(gear, plugin.getDuplicateService().isRestricted(gear.uuid()),
                                 com.infinitygear.data.GearData.LEGACY_PICKAXE_PROFILE.equals(gear.profileId()));
+                        plugin.getGearManager().refreshPresentation(gear);
                         sender.sendMessage("§aAdded §f" + amount + "§a gear XP.");
                     } catch (NumberFormatException invalid) { sender.sendMessage("§cInvalid XP amount."); }
                     return true;
@@ -512,7 +514,7 @@ public class InfinityPickaxeCommand implements CommandExecutor, TabCompleter {
             List<String> list = new ArrayList<>(gearCommand ? List.of() : Arrays.asList("menu", "gui"));
             if (hasAdmin(sender)) {
                 list.addAll(gearCommand
-                        ? Arrays.asList("give", "artifact", "station", "reload", "setlevel", "addxp", "migration")
+                        ? Arrays.asList("give", "book", "artifact", "station", "reload", "setlevel", "addxp", "migration")
                         : Arrays.asList("give", "book", "reload", "setlevel", "addxp"));
                 list.add("duplicate");
             }

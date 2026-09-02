@@ -170,16 +170,23 @@ public final class InfinityGearServiceImpl implements InfinityGearService {
     public Collection<EnchantSocket> eligibleEnchantments(String profileId) {
         Optional<GearProfile> profile = profiles.find(profileId).filter(GearProfile::enabled);
         if (profile.isEmpty()) return java.util.List.of();
-        ItemStack probe = new ItemStack(profile.get().defaultMaterial());
+        // A profile may span multiple native targets (notably helmet, chestplate,
+        // leggings and boots). Report the union instead of testing only the
+        // configured creation material; application still validates the live item.
+        java.util.List<ItemStack> acceptedProbes = profile.get().acceptedMaterials().stream()
+                .map(ItemStack::new).toList();
+        java.util.List<ItemStack> probes = acceptedProbes.isEmpty()
+                ? java.util.List.of(new ItemStack(profile.get().defaultMaterial())) : acceptedProbes;
         return plugin.getEnchantManager().getAllSockets().stream()
                 .filter(socket -> {
                     ResolvedEnchantmentPolicy policy = resolve(profile.get(), 0, socket, 1.0);
                     if (!policy.enabled()) return false;
                     var enchantment = plugin.getEnchantManager().getEnchantment(socket.getKeyString());
                     if (enchantment == null) return false;
-                    return plugin.getEnchantManager().getEcoHook().findEcoEnchant(enchantment) != null
-                            ? plugin.getEnchantManager().getEcoHook().canApply(probe, enchantment)
-                            : enchantment.canEnchantItem(probe);
+                    return probes.stream().anyMatch(probe ->
+                            plugin.getEnchantManager().getEcoHook().findEcoEnchant(enchantment) != null
+                                    ? plugin.getEnchantManager().getEcoHook().canApply(probe, enchantment)
+                                    : enchantment.canEnchantItem(probe));
                 }).toList();
     }
 

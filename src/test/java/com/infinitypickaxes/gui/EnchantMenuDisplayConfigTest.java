@@ -45,8 +45,10 @@ class EnchantMenuDisplayConfigTest {
         assertNotNull(configResource);
         var config = YamlConfiguration.loadConfiguration(
                 new InputStreamReader(configResource, StandardCharsets.UTF_8));
-        List<String> lore = config.getStringList("pickaxe-lore.quarantine-lore");
-        assertFalse(lore.isEmpty());
-        assertTrue(lore.stream().anyMatch(line -> line.contains("%uuid%")));
+        for (String root : List.of("pickaxe-lore", "gear-lore")) {
+            List<String> lore = config.getStringList(root + ".quarantine-lore");
+            assertFalse(lore.isEmpty(), root);
+            assertTrue(lore.stream().anyMatch(line -> line.contains("%uuid%")), root);
+        }
     }
 }
