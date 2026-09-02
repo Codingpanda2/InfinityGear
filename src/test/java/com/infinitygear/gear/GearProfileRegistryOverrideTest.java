@@ -10,6 +10,25 @@ import static org.junit.jupiter.api.Assertions.*;
 class GearProfileRegistryOverrideTest {
 
     @Test
+    void autoConvertMaterialOverlapIsReportedOnceAtLoad() {
+        YamlConfiguration config = new YamlConfiguration();
+        for (String id : java.util.List.of("first", "second")) {
+            String root = "profiles.test:" + id;
+            config.set(root + ".enabled", true);
+            config.set(root + ".accepted-materials", java.util.List.of("DIAMOND_AXE"));
+            config.set(root + ".default-material", "DIAMOND_AXE");
+            config.set(root + ".progression", "STATIC");
+            config.set(root + ".auto-convert", true);
+        }
+        Logger logger = org.mockito.Mockito.mock(Logger.class);
+
+        new GearProfileRegistry().load(config, logger);
+
+        org.mockito.Mockito.verify(logger, org.mockito.Mockito.times(1))
+                .warning(org.mockito.ArgumentMatchers.contains("Auto-convert material DIAMOND_AXE"));
+    }
+
+    @Test
     void loaderParsesTheCompleteSparseOverrideShape() {
         YamlConfiguration config = new YamlConfiguration();
         String root = "profiles.infinitygear:test";

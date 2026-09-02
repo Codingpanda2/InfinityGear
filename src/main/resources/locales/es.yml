@@ -15,6 +15,8 @@ messages:
   limitbreak-missing-enchantment: "<red>%enchant% debe estar instalado antes de usar LimitBreak.</red>"
   limitbreak-premature: "<red>%enchant% debe alcanzar primero su máximo estándar de %max%.</red>"
   pickaxe-quarantined: "<red>Este pico está en cuarentena porque su UUID fue duplicado. Contacta a un administrador.</red>"
+  gear-quarantined: "<red>Este equipo está en cuarentena porque su UUID fue duplicado. Contacta a un administrador.</red>"
+  gear-duplicate-detected: "<red>Se detectó un objeto <yellow>%profile%</yellow> duplicado en tu inventario. El UUID <white>%uuid%</white> fue puesto en cuarentena; contacta a un administrador.</red>"
   enchant-conflict: "<red>%enchant% no se puede aplicar debido a un conflicto nativo o configurado, requisito o destino inválido.</red>"
   no-permission: "<red>No tienes permisos suficientes para ejecutar este comando.</red>"
   player-only: "<red>Este comando solo puede ser ejecutado por jugadores en el servidor.</red>"

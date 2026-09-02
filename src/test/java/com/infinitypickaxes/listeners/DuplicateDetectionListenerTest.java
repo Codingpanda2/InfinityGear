@@ -57,7 +57,7 @@ class DuplicateDetectionListenerTest {
         Inventory inventory = mock(Inventory.class);
         when(inventory.getHolder()).thenReturn(holder);
         when(duplicateService.isPhysicalStorageInventory(inventory)).thenReturn(true);
-        when(duplicateService.containsInfinityPickaxe(inventory)).thenReturn(true);
+        when(duplicateService.containsTrackedItem(inventory)).thenReturn(true);
 
         HumanEntity player = mock(HumanEntity.class);
         when(player.getName()).thenReturn("builder");

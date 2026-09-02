@@ -88,6 +88,22 @@ public final class GearProfileRegistry {
                 logger.warning("Disabled invalid gear profile '" + id + "': " + invalid.getMessage());
             }
         }
+        warnAutoConvertOverlaps(logger);
+    }
+
+    private void warnAutoConvertOverlaps(Logger logger) {
+        Map<Material, List<String>> owners = new LinkedHashMap<>();
+        for (GearProfile profile : profiles.values()) {
+            if (!profile.enabled() || !profile.autoConvert()) continue;
+            for (Material material : profile.acceptedMaterials()) {
+                owners.computeIfAbsent(material, ignored -> new ArrayList<>()).add(profile.id());
+            }
+        }
+        owners.forEach((material, profileIds) -> {
+            if (profileIds.size() > 1) logger.warning("Auto-convert material " + material
+                    + " is accepted by multiple profiles " + profileIds
+                    + "; ordinary items of this material will not be converted.");
+        });
     }
 
     private static Map<String, Double> readDoubleMap(ConfigurationSection section) {
